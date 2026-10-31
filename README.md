@@ -53,4 +53,4 @@ git add -- 需要提交的文件路径
 git commit -m "说明本次改动"
 ```
 
-仓库当前仅在本机初始化，远程地址与推送需另行配置。
+远程仓库为 [houbiyang/noman](https://github.com/houbiyang/noman)，对应远程名称 `origin`，主分支为 `main`。
