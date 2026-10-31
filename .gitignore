@@ -1,0 +1,42 @@
+# 本地数据库、凭据和运行数据
+.local/
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Python 环境与缓存
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 前端依赖、构建产物和测试报告
+node_modules/
+dist/
+dist-*/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# 日志与编辑器临时文件
+*.log
+.idea/
+.vs/
+*.user
+*.suo
+*.tmp
+*.bak
+Thumbs.db
+.DS_Store
+
+# 历史文档备份在本机保留，现行规格由 docs 管理
+/文档归档/
