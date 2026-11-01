@@ -1,0 +1,7 @@
+<linker>
+  <!-- 运行时创建圆柱和球体时，Unity 原生入口需要这些组件，不能按静态场景引用裁剪。 -->
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.SphereCollider" preserve="all" />
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all" />
+  </assembly>
+</linker>

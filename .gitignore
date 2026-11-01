@@ -40,3 +40,20 @@ Thumbs.db
 
 # 历史文档备份在本机保留，现行规格由 docs 管理
 /文档归档/
+
+# Unity 自动生成目录与本机构建
+/unity-client/[Ll]ibrary/
+/unity-client/[Tt]emp/
+/unity-client/[Oo]bj/
+/unity-client/[Ll]ogs/
+/unity-client/[Uu]ser[Ss]ettings/
+/unity-client/[Bb]uild/
+/unity-client/[Bb]uilds/
+/unity-client/[Dd]ata/
+/unity-client/.vs/
+/unity-client/*.csproj
+/unity-client/*.sln
+/unity-client/*.slnx
+/unity-client/*.pidb
+/unity-client/*.booproj
+/unity-client/MapPreview/Battlefield/*.blend1

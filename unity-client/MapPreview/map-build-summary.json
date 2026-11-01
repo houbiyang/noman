@@ -1,0 +1,17 @@
+{
+  "mapId": "qinglan-valley-v4",
+  "contentHash": "959b759cc8e12793e63fabfe3c6bb2e9582223357c17b0784b084f7bd3397a20",
+  "nodes": 30,
+  "roads": 31,
+  "bridges": 3,
+  "points": 11,
+  "meshParts": 43,
+  "triangles": 62616,
+  "buildings": 80,
+  "damageCounts": {
+    "0": 19,
+    "1": 23,
+    "2": 20,
+    "3": 18
+  }
+}

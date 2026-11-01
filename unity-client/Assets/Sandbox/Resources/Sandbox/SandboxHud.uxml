@@ -1,0 +1,114 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="SandboxHud.uss" />
+    <ui:VisualElement name="sandboxRoot" class="sandbox-root" picking-mode="Ignore">
+        <ui:VisualElement name="mapAnnotations" class="map-annotations" picking-mode="Ignore" />
+        <ui:VisualElement class="topbar ui-blocker">
+            <ui:VisualElement class="brand-block">
+                <ui:Label text="穹图" class="brand-title" />
+                <ui:Label text="QIONGTU  /  三维协同沙盘" class="brand-subtitle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="topbar-section">
+                <ui:Label text="作战沙盘" class="active-section" />
+                <ui:Label text="阶段一 · Unity 三维客户端" class="muted" />
+            </ui:VisualElement>
+            <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />
+            <ui:VisualElement class="role-switch">
+                <ui:Button name="redRole" text="红方" />
+                <ui:Button name="blueRole" text="蓝方" />
+                <ui:Button name="hostRole" text="主持人" />
+            </ui:VisualElement>
+            <ui:Label name="roleCaption" class="role-caption" />
+        </ui:VisualElement>
+        <ui:VisualElement class="source-strip ui-blocker">
+            <ui:Label name="sourceLabel" text="本地演示数据 · 未连接仿真服务" />
+            <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />
+            <ui:Label text="固定虚构场景 / 相机操作不推进仿真" class="muted" />
+        </ui:VisualElement>
+        <ui:VisualElement class="mission-heading" picking-mode="Ignore">
+            <ui:Label text="QINGLAN VALLEY  /  01" class="eyebrow" />
+            <ui:Label name="sessionTitle" class="mission-title" />
+            <ui:Label text="三维沙盘总览 · 红蓝协同 · 人工确认" class="muted" />
+        </ui:VisualElement>
+        <ui:VisualElement class="step-status ui-blocker">
+            <ui:Label name="phaseLabel" class="phase-badge" />
+            <ui:Label text="当前演示步 / MIN" class="eyebrow" />
+            <ui:Label name="stepLabel" class="step-number" />
+        </ui:VisualElement>
+        <ui:VisualElement class="mission-card ui-blocker">
+            <ui:VisualElement class="card-heading">
+                <ui:Label text="当前任务" class="eyebrow" />
+                <ui:Label text="固定样例" class="small-tag" />
+            </ui:VisualElement>
+            <ui:Label name="taskName" class="card-title" />
+            <ui:Label name="taskDescription" class="body-text" />
+            <ui:VisualElement class="task-nodes">
+                <ui:Label text="A" class="task-node" />
+                <ui:VisualElement class="node-connector" />
+                <ui:Label text="B" class="task-node" />
+                <ui:VisualElement class="node-connector" />
+                <ui:Label text="C" class="task-node" />
+            </ui:VisualElement>
+            <ui:Label name="taskProgress" text="正式节点进度待服务端返回" class="muted wrap" />
+            <ui:Button name="taskDetailsButton" text="任务详情与兵种职责  →" class="text-button" />
+        </ui:VisualElement>
+        <ui:VisualElement class="map-tools ui-blocker">
+            <ui:Label text="N ↑" class="compass" />
+            <ui:Button name="zoomInButton" text="＋" tooltip="放大观察距离" />
+            <ui:Button name="zoomOutButton" text="－" tooltip="缩小观察距离" />
+            <ui:Button name="layersButton" text="图层" />
+            <ui:Button name="overviewButton" text="总览" tooltip="回到初始总览，快捷键 R" />
+        </ui:VisualElement>
+        <ui:VisualElement name="waitingCard" class="waiting-card ui-blocker">
+            <ui:VisualElement class="waiting-copy">
+                <ui:Label name="waitingTitle" class="waiting-title" />
+                <ui:Label name="waitingDetail" class="muted wrap" />
+            </ui:VisualElement>
+            <ui:Button name="waitingPlanButton" text="查看建议  →" class="accent-button" />
+        </ui:VisualElement>
+        <ui:VisualElement class="map-legend" picking-mode="Ignore">
+            <ui:Label text="● 红方" class="red-text" />
+            <ui:Label text="● 蓝方" class="blue-text" />
+            <ui:Label text="道路 / 任务点 / 公开地形" class="muted" />
+        </ui:VisualElement>
+        <ui:VisualElement class="bottom-dock ui-blocker">
+            <ui:VisualElement class="selected-summary">
+                <ui:Label name="selectedSummary" text="尚未选择单位" class="selected-title" />
+                <ui:Label text="单击选择 · 拖动平移 · F 跟随" class="muted" />
+            </ui:VisualElement>
+            <ui:Button name="unitsButton" text="单位" />
+            <ui:Button name="tasksButton" text="任务" />
+            <ui:Button name="planButton" text="建议" />
+            <ui:Button name="eventsButton" text="事件" />
+            <ui:Button name="timelineButton" text="时间线" />
+            <ui:Button name="savesButton" text="存档" />
+            <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />
+            <ui:Button name="followButton" text="跟随单位" />
+            <ui:Button name="stepButton" text="单步 +1" />
+            <ui:Button name="playButton" text="播放演示" class="primary-button" />
+        </ui:VisualElement>
+        <ui:VisualElement class="status-footer ui-blocker">
+            <ui:Label text="左键/中键拖动 · 右键旋转 · 滚轮缩放 · R 总览" />
+            <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />
+            <ui:Label text="显示高度不参与规则结算 · 当前角色切换仅作本机审阅" />
+        </ui:VisualElement>
+        <ui:VisualElement name="drawer" class="drawer ui-blocker hidden">
+            <ui:VisualElement class="drawer-header">
+                <ui:VisualElement class="drawer-header-copy">
+                    <ui:Label name="drawerEyebrow" text="SANDBOX / WORKSPACE" class="eyebrow" />
+                    <ui:Label name="drawerTitle" class="drawer-title" />
+                </ui:VisualElement>
+                <ui:Button name="closeDrawerButton" text="关闭" />
+            </ui:VisualElement>
+            <ui:ScrollView name="drawerContent" class="drawer-content" />
+        </ui:VisualElement>
+        <ui:VisualElement name="modalBackdrop" class="modal-backdrop ui-blocker hidden">
+            <ui:VisualElement class="modal-card">
+                <ui:Label name="modalTitle" class="drawer-title" />
+                <ui:Label name="modalMessage" class="body-text" />
+                <ui:Button name="confirmModalButton" text="确认恢复" class="primary-button" />
+                <ui:Button name="cancelModalButton" text="取消，保留当前状态" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label name="feedbackLabel" class="feedback hidden" />
+    </ui:VisualElement>
+</ui:UXML>

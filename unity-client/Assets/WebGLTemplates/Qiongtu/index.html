@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>穹图 · 三维作战沙盘</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="player">
+    <canvas id="unity-canvas" width="{{{ WIDTH }}}" height="{{{ HEIGHT }}}" tabindex="0" aria-label="穹图三维作战沙盘"></canvas>
+    <section id="loading" aria-live="polite">
+      <div class="loading-card">
+        <p class="eyebrow">QIONGTU / 3D SANDBOX</p>
+        <h1>穹图 · 作战沙盘</h1>
+        <p id="status">正在载入三维地图…</p>
+        <progress id="progress" max="1" value="0" aria-label="加载进度"></progress>
+        <p id="detail">青岚河谷 · 本地演示数据</p>
+        <button id="restart" type="button" hidden>重新进入沙盘</button>
+      </div>
+    </section>
+    <button id="fullscreen" type="button" hidden aria-label="全屏显示沙盘">全屏</button>
+  </main>
+  <script>
+    // 构建时由 Unity 填充文件名，页面不依赖外部脚本或在线字体服务。
+    window.qiongtuBuild = {
+      loaderUrl: "Build/{{{ LOADER_FILENAME }}}",
+#if PROGRESSIVE_ASSET_LOADING
+      primaryDataUrls: {{{ JSON.stringify(PRIMARY_DATA_FILES) }}},
+      secondaryDataUrls: {{{ JSON.stringify(SECONDARY_DATA_FILES) }}},
+#else
+      dataUrl: "Build/{{{ DATA_FILENAME }}}",
+#endif
+      frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_WASM
+      codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+      symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+      productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}}
+    };
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

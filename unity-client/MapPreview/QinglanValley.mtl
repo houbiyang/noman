@@ -1,0 +1,123 @@
+newmtl GroundLow
+Kd 0.48235 0.52941 0.36863
+Ka 0.2 0.2 0.2
+
+newmtl GroundHigh
+Kd 0.39608 0.45098 0.30588
+Ka 0.2 0.2 0.2
+
+newmtl Rock
+Kd 0.55294 0.58039 0.49020
+Ka 0.2 0.2 0.2
+
+newmtl Water
+Kd 0.29804 0.50980 0.56471
+Ka 0.2 0.2 0.2
+
+newmtl Road
+Kd 0.71765 0.67451 0.53725
+Ka 0.2 0.2 0.2
+
+newmtl Bridge
+Kd 0.61961 0.62353 0.56078
+Ka 0.2 0.2 0.2
+
+newmtl Wall
+Kd 0.81961 0.78431 0.66667
+Ka 0.2 0.2 0.2
+
+newmtl Roof
+Kd 0.40000 0.43922 0.41569
+Ka 0.2 0.2 0.2
+
+newmtl Forest
+Kd 0.19216 0.33333 0.23529
+Ka 0.2 0.2 0.2
+
+newmtl ForestLight
+Kd 0.29804 0.42353 0.25882
+Ka 0.2 0.2 0.2
+
+newmtl Wood
+Kd 0.43137 0.38824 0.27843
+Ka 0.2 0.2 0.2
+
+newmtl Base
+Kd 0.15294 0.24314 0.25098
+Ka 0.2 0.2 0.2
+
+newmtl Red
+Kd 0.74510 0.46667 0.38431
+Ka 0.2 0.2 0.2
+
+newmtl Blue
+Kd 0.40000 0.60784 0.70980
+Ka 0.2 0.2 0.2
+
+newmtl Mission
+Kd 0.84706 0.75686 0.48235
+Ka 0.2 0.2 0.2
+
+newmtl White
+Kd 0.89412 0.87451 0.76863
+Ka 0.2 0.2 0.2
+
+newmtl Crop
+Kd 0.63137 0.65098 0.42745
+Ka 0.2 0.2 0.2
+
+newmtl Grid
+Kd 0.55686 0.60784 0.47059
+Ka 0.2 0.2 0.2
+
+newmtl Bank
+Kd 0.66667 0.62353 0.49020
+Ka 0.2 0.2 0.2
+
+newmtl Mud
+Kd 0.45098 0.41961 0.31373
+Ka 0.2 0.2 0.2
+
+newmtl Soil
+Kd 0.54902 0.47451 0.33333
+Ka 0.2 0.2 0.2
+
+newmtl FieldGreen
+Kd 0.49804 0.59216 0.31373
+Ka 0.2 0.2 0.2
+
+newmtl FieldGold
+Kd 0.70588 0.66667 0.40784
+Ka 0.2 0.2 0.2
+
+newmtl Plaster
+Kd 0.72549 0.69804 0.60392
+Ka 0.2 0.2 0.2
+
+newmtl Tile
+Kd 0.53333 0.36471 0.29020
+Ka 0.2 0.2 0.2
+
+newmtl Asphalt
+Kd 0.40784 0.43137 0.40784
+Ka 0.2 0.2 0.2
+
+newmtl Glass
+Kd 0.27059 0.36863 0.40000
+Ka 0.2 0.2 0.2
+
+newmtl Meadow
+Kd 0.52157 0.54902 0.39216
+Ka 0.2 0.2 0.2
+
+newmtl MeadowDry
+Kd 0.57647 0.56471 0.41569
+Ka 0.2 0.2 0.2
+
+newmtl Earth
+Kd 0.53725 0.50980 0.43922
+Ka 0.2 0.2 0.2
+
+newmtl Ash
+Kd 0.28235 0.27451 0.24706
+Ka 0.2 0.2 0.2

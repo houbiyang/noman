@@ -1,0 +1,58 @@
+{
+  "generator": "Blender 5.2.1 LTS",
+  "originalAssets": true,
+  "textureSize": 512,
+  "textures": 24,
+  "models": {
+    "House_0": {
+      "triangles": 3176,
+      "vertices": 6356,
+      "damage": 0
+    },
+    "House_1": {
+      "triangles": 4436,
+      "vertices": 8780,
+      "damage": 1
+    },
+    "House_2": {
+      "triangles": 4822,
+      "vertices": 9504,
+      "damage": 2
+    },
+    "House_3": {
+      "triangles": 5126,
+      "vertices": 10060,
+      "damage": 3
+    }
+  },
+  "files": {
+    "Models\\House_0.fbx": "6fc358d91d506d4c81901f9d229632b7a0dc82b43af493c05c602575253d048e",
+    "Models\\House_1.fbx": "aa698e2753ec3c115e2251c76710796388dbc83c7285e74b84906a8b05747b34",
+    "Models\\House_2.fbx": "fa28f43296e76e234e642f67edd1b90acd37df16a0a97477e0f7e48cf6400403",
+    "Models\\House_3.fbx": "309ea0b432b54fa26e8c47f316cd354c0e97a3000cc6c3ea4a6ebbeba22adec5",
+    "Textures\\Ash_Base.png": "d67d21894e825bd807249a3e6c51bf3d6bece50a5af1f81d64a9ffd563d92780",
+    "Textures\\Ash_Normal.png": "9a4d67d3187871c995786b39295f5aaabb23b7ba81a5280efc81cf408ae719f6",
+    "Textures\\Brick_Base.png": "598f01d3a8143386440507a2e6b6bcafdf4cc92881ecf52f014f06334ef70751",
+    "Textures\\Brick_Normal.png": "97bd660e1932116c15ef54912eb025e9706a826d192f7438a2f406f7b7162127",
+    "Textures\\Concrete_Base.png": "8dc69f8c295b97d947ec323260b13d84d1cae08aa3eb44e94e094f7994d87138",
+    "Textures\\Concrete_Normal.png": "be9497fa7358d3379eb34d0855afab907044c108ee09ced6d2fc95d1afcf773d",
+    "Textures\\Foliage_Base.png": "9bea428938bc00a3bbebbdb87cef8184677330a7685be93b34d0f935308a0516",
+    "Textures\\Foliage_Normal.png": "40a8b46f83737ebcb678531991fa941f545e36b93beb7c32edaccaa8ecb20b0a",
+    "Textures\\Ground_Base.png": "9f5eaad26aff8c5a154950b4bfc90702332d4d1d507d7247d31f0f95743cf86b",
+    "Textures\\Ground_Normal.png": "c63e89b09119281158d27d01b99713d01d647fb46050a0bd12a61bd0e8d488b7",
+    "Textures\\Metal_Base.png": "301284232e4978cf8ccedbc43d40c09e75bc4e8d7609b44039d0ff07f23c657a",
+    "Textures\\Metal_Normal.png": "67b2582b74f8a693e8b1afe0ae52122a2a81c08fb185cf394b375baf1a110683",
+    "Textures\\Plaster_Base.png": "1ca1bd40281d28976a979bb2d1b55ca8cdde1bab12739b7a26a6690a509b247f",
+    "Textures\\Plaster_Normal.png": "dfc8c0c8cca559db386b59ad5d9b121bde77c4b3355cb759c15ee5c1bb3f7194",
+    "Textures\\Road_Base.png": "161c7941dca457a4d384efa6ee5a73782a1c1188693ed23a7f4566b0383ac55f",
+    "Textures\\Road_Normal.png": "3863999be7cee3b60b3635164286032f928e2b275abdc4cfc9780bd0d936309b",
+    "Textures\\Soil_Base.png": "4b54cd21a4faa81f4959f7a0973e48cee8a46dc3de72bd316d5da0d1b8efcca5",
+    "Textures\\Soil_Normal.png": "b6d29fffe7e9d979d3c92d55ac0a72757be762ff5e0e700faba91c45aa92e675",
+    "Textures\\Tile_Base.png": "17b17d3707fba248246fa38691231df336a5d8c0dd9bae9118a213a9e327e226",
+    "Textures\\Tile_Normal.png": "ddab18ab7c3c55228064e711e0a8365b360de69fdd2f5d69743ca5a5812750af",
+    "Textures\\Timber_Base.png": "9698001f9b2c944423447bc77d49adc7fa8e409f474216e7e4425a0971edf0e5",
+    "Textures\\Timber_Normal.png": "d0ea20c775557ba899bcc5bef09c88c39943c0aa05f5be538f6b5a97da8d8a6a",
+    "Textures\\Water_Base.png": "b91e1d6a7bdc802f48fecaf2bdc6142c75e76d5758b4a4d60de5a3685c43fa22",
+    "Textures\\Water_Normal.png": "be665b92a8d04f852c6d9116047c850d0e7b008359161eeb42aceb2003acb424"
+  }
+}
