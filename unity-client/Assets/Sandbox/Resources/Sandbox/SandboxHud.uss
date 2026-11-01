@@ -13,50 +13,34 @@
 .map-label { position: absolute; padding: 3px 7px; font-size: 11px; background-color: rgba(13, 30, 29, 0.92); border-width: 1px; border-color: #788f72; border-radius: 3px; color: #e5e6bc; }
 .map-label.red-text { border-color: #c87f6b; color: #f0b49e; }
 .map-label.blue-text { border-color: #70a1c2; color: #add7ec; }
-.topbar {
+.role-float {
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 76px;
-    padding-left: 30px;
-    padding-right: 26px;
-    flex-direction: row;
-    align-items: center;
-    background-color: #111e24;
-    border-bottom-width: 1px;
-    border-bottom-color: #35473e;
+    right: 24px;
+    top: 18px;
+    padding: 5px 8px;
+    align-items: flex-end;
+    background-color: rgba(17, 30, 36, 0.88);
+    border-width: 1px;
+    border-color: #506356;
+    border-radius: 8px;
 }
-.brand-block { min-width: 230px; }
-.brand-title { font-size: 30px; -unity-font-style: bold; letter-spacing: 6px; }
-.brand-subtitle { color: #92a99e; font-size: 10px; letter-spacing: 1px; }
-.topbar-section { margin-left: 28px; }
-.active-section { color: #e4e9d4; font-size: 16px; margin-bottom: 5px; }
-.role-switch { flex-direction: row; margin-right: 20px; }
-.role-caption { min-width: 108px; color: #d5ded6; }
-.source-strip {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 76px;
-    height: 29px;
-    padding-left: 30px;
-    padding-right: 28px;
-    flex-direction: row;
-    align-items: center;
-    background-color: #24372f;
-    color: #cfdbb9;
-    font-size: 11px;
-}
-.mission-heading { position: absolute; left: 32px; top: 135px; }
+.role-switch { flex-direction: row; }
+.role-switch Button { min-height: 40px; }
+.role-caption { color: #d5ded6; font-size: 11px; margin-right: 5px; margin-bottom: 3px; }
+.red-role { border-color: #a16d63; }
+.blue-role { border-color: #6c93a8; }
+.host-role { border-color: #929b71; }
+.mission-heading { position: absolute; left: 32px; top: 24px; }
 .mission-title { font-size: 27px; -unity-font-style: bold; margin-top: 10px; margin-bottom: 7px; }
-.step-status { position: absolute; right: 34px; top: 132px; align-items: flex-end; }
+.source-note { color: #cfdbb9; font-size: 11px; margin-top: 8px; }
+.step-status { display: none; position: absolute; right: 34px; top: 116px; align-items: flex-end; }
 .phase-badge { color: #e2cc91; background-color: #28372d; padding: 6px 12px; margin-bottom: 16px; border-radius: 4px; }
 .step-number { font-size: 35px; color: #f0f0d8; margin-top: 3px; }
 .mission-card {
+    display: none;
     position: absolute;
     left: 32px;
-    top: 262px;
+    top: 164px;
     width: 292px;
     padding: 22px;
     background-color: rgba(19, 33, 34, 0.94);
@@ -71,21 +55,32 @@
 .task-nodes { flex-direction: row; align-items: center; margin-top: 10px; margin-bottom: 20px; }
 .task-node { width: 30px; height: 30px; border-width: 1px; border-color: #9dad8f; color: #d5deba; border-radius: 15px; -unity-text-align: middle-center; }
 .node-connector { width: 45px; height: 1px; background-color: #7c8d73; }
-.map-tools { position: absolute; right: 32px; top: 303px; width: 58px; padding: 7px; background-color: #172b29; border-width: 1px; border-color: #4a6052; border-radius: 6px; }
+.map-tools { display: none; position: absolute; right: 32px; top: 280px; width: 58px; padding: 7px; background-color: #172b29; border-width: 1px; border-color: #4a6052; border-radius: 6px; }
 .map-tools Button { margin: 3px 0; height: 40px; padding: 0; }
 .compass { color: #c9d7bc; -unity-text-align: middle-center; height: 36px; }
-.waiting-card { position: absolute; left: 36%; bottom: 158px; width: 550px; min-height: 76px; padding: 16px; flex-direction: row; align-items: center; background-color: #24352c; border-width: 1px; border-color: #a18d54; border-radius: 6px; }
+.waiting-card { display: none; position: absolute; left: 36%; bottom: 158px; width: 550px; min-height: 76px; padding: 16px; flex-direction: row; align-items: center; background-color: #24352c; border-width: 1px; border-color: #a18d54; border-radius: 6px; }
 .waiting-copy { flex-grow: 1; flex-shrink: 1; margin-right: 14px; }
 .waiting-title { color: #eed8a6; font-size: 15px; margin-bottom: 6px; }
 .panel-open .waiting-card { display: none; }
-.map-legend { position: absolute; left: 34px; bottom: 140px; flex-direction: row; }
+.map-legend { position: absolute; left: 132px; bottom: 140px; flex-direction: row; }
 .map-legend Label { margin-right: 18px; font-size: 11px; }
 .red-text { color: #f0a18d; }
 .blue-text { color: #99c9e8; }
+.action-tile { position: absolute; width: 96px; height: 106px; margin: 0; padding: 5px; flex-direction: column; align-items: center; justify-content: flex-end; background-color: #203731; border-top-width: 3px; border-right-width: 3px; border-bottom-width: 4px; border-left-width: 3px; border-top-color: #8ea184; border-right-color: #58715e; border-bottom-color: #172b29; border-left-color: #58715e; border-radius: 9px; }
+.action-tile:hover { background-color: #335044; border-top-color: #b1c3a3; border-right-color: #78957a; border-bottom-color: #274036; border-left-color: #78957a; }
+.action-tile:active { background-color: #3d5848; }
+.action-icon { width: 72px; height: 70px; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: #d1d9c9; }
+.battle-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Battle.png"); }
+.army-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Army.png"); }
+.settings-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Settings.png"); }
+.action-caption { color: #e4ead8; font-size: 16px; -unity-font-style: bold; -unity-text-align: middle-center; }
+.settings-action { right: 24px; top: 104px; }
+.battle-action { left: 24px; bottom: 148px; }
+.army-action { right: 24px; bottom: 148px; }
 .bottom-dock { position: absolute; left: 24px; right: 24px; bottom: 51px; min-height: 70px; padding: 12px 16px; flex-direction: row; align-items: center; background-color: rgba(16, 31, 32, 0.97); border-width: 1px; border-color: #4c6355; border-radius: 7px; }
 .selected-summary { min-width: 208px; margin-right: 13px; }
 .selected-title { color: #e4e9db; -unity-font-style: bold; margin-bottom: 5px; }
-.status-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 29px; padding: 0 25px; flex-direction: row; align-items: center; background-color: #132125; color: #97aaa2; font-size: 10px; }
+.status-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 29px; padding: 0 25px; flex-direction: row; align-items: center; color: #c2d2c8; font-size: 10px; }
 Button {
     min-height: 36px;
     margin: 3px 4px;
@@ -107,7 +102,7 @@ Button:disabled { opacity: 0.42; }
 .accent-button { background-color: #d6c394; color: #28352c; border-color: #dfcfa5; }
 .text-button { border-width: 0; background-color: rgba(0, 0, 0, 0); color: #d2dfc4; padding-left: 0; -unity-text-align: middle-left; margin-left: 0; }
 .selected-role { border-color: #d6d7a3; background-color: #415340; color: #f0efce; }
-.drawer { position: absolute; right: 18px; top: 121px; bottom: 136px; width: 398px; background-color: #16282a; border-width: 1px; border-color: #52665a; border-radius: 8px; }
+.drawer { position: absolute; right: 18px; top: 104px; bottom: 136px; width: 398px; background-color: #16282a; border-width: 1px; border-color: #52665a; border-radius: 8px; }
 .drawer-header { flex-direction: row; align-items: center; padding: 22px; border-bottom-width: 1px; border-bottom-color: #3a5144; }
 .drawer-header-copy { flex-grow: 1; }
 .drawer-title { font-size: 23px; margin-top: 6px; -unity-font-style: bold; white-space: normal; }
@@ -131,9 +126,15 @@ Button:disabled { opacity: 0.42; }
 .modal-card { width: 460px; padding: 30px; background-color: #1c302d; border-width: 1px; border-color: #91a682; border-radius: 8px; }
 .modal-card .body-text { margin-top: 18px; }
 .modal-card Button { margin: 6px 0; }
-.feedback { position: absolute; bottom: 137px; left: 24px; max-width: 630px; padding: 14px 20px; background-color: #102925; color: #e5e7c2; border-width: 1px; border-color: #9ba67e; border-radius: 5px; white-space: normal; }
-.compact .brand-block { min-width: 180px; }
-.compact .topbar-section { margin-left: 5px; }
+.feedback { position: absolute; bottom: 137px; left: 132px; max-width: 630px; padding: 14px 20px; background-color: #102925; color: #e5e7c2; border-width: 1px; border-color: #9ba67e; border-radius: 5px; white-space: normal; }
+.compact .role-float { right: 14px; top: 12px; }
+.compact .role-switch Button { padding-left: 9px; padding-right: 9px; margin-left: 2px; margin-right: 2px; }
+.compact .action-tile { width: 84px; height: 94px; padding: 4px; }
+.compact .action-icon { width: 64px; height: 62px; }
+.compact .action-caption { font-size: 15px; }
+.compact .settings-action { right: 14px; top: 98px; }
+.compact .battle-action { left: 14px; bottom: 141px; }
+.compact .army-action { right: 14px; bottom: 141px; }
 .compact .mission-title { font-size: 23px; }
 .compact .mission-card { width: 262px; padding: 18px; }
 .compact .selected-summary { min-width: 160px; }

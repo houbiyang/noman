@@ -613,7 +613,7 @@ namespace Qiongtu.Sandbox
                 Vector3 position = unit != null ? unit.position + Vector3.up * 2.3f : SandboxWorld.Surface(point.x, point.z) + Vector3.up * (point.kind == "camp" || point.kind == "facility" || point.kind == "task" ? 4 : 2);
                 Vector3 screen = cameraRig.WorldToScreen(position);
                 Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(screen.x, Screen.height - screen.y));
-                bool visible = screen.z > 0 && panelPosition.x > 0 && panelPosition.x < root.resolvedStyle.width && panelPosition.y > 108 && panelPosition.y < root.resolvedStyle.height - 120;
+                bool visible = screen.z > 0 && panelPosition.x > 0 && panelPosition.x < root.resolvedStyle.width && panelPosition.y > 16 && panelPosition.y < root.resolvedStyle.height - 120;
                 pair.Value.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
                 if (!visible) continue;
                 pair.Value.style.left = panelPosition.x - 30;

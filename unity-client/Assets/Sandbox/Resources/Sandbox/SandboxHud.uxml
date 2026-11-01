@@ -2,33 +2,24 @@
     <Style src="SandboxHud.uss" />
     <ui:VisualElement name="sandboxRoot" class="sandbox-root" picking-mode="Ignore">
         <ui:VisualElement name="mapAnnotations" class="map-annotations" picking-mode="Ignore" />
-        <ui:VisualElement class="topbar ui-blocker">
-            <ui:VisualElement class="brand-block">
-                <ui:Label text="穹图" class="brand-title" />
-                <ui:Label text="QIONGTU  /  三维协同沙盘" class="brand-subtitle" />
-            </ui:VisualElement>
-            <ui:VisualElement class="topbar-section">
-                <ui:Label text="作战沙盘" class="active-section" />
-                <ui:Label text="阶段一 · Unity 三维客户端" class="muted" />
-            </ui:VisualElement>
-            <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />
+        <ui:VisualElement class="role-float ui-blocker">
             <ui:VisualElement class="role-switch">
-                <ui:Button name="redRole" text="红方" />
-                <ui:Button name="blueRole" text="蓝方" />
-                <ui:Button name="hostRole" text="主持人" />
+                <ui:Button name="redRole" text="红方" class="red-role" />
+                <ui:Button name="blueRole" text="蓝方" class="blue-role" />
+                <ui:Button name="hostRole" text="主持人" class="host-role" />
             </ui:VisualElement>
             <ui:Label name="roleCaption" class="role-caption" />
-        </ui:VisualElement>
-        <ui:VisualElement class="source-strip ui-blocker">
-            <ui:Label name="sourceLabel" text="本地演示数据 · 未连接仿真服务" />
-            <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />
-            <ui:Label text="固定虚构场景 / 相机操作不推进仿真" class="muted" />
         </ui:VisualElement>
         <ui:VisualElement class="mission-heading" picking-mode="Ignore">
             <ui:Label text="QINGLAN VALLEY  /  01" class="eyebrow" />
             <ui:Label name="sessionTitle" class="mission-title" />
             <ui:Label text="三维沙盘总览 · 红蓝协同 · 人工确认" class="muted" />
+            <ui:Label name="sourceLabel" text="本地演示数据 · 未连接仿真服务" class="source-note" />
         </ui:VisualElement>
+        <ui:Button name="settingsAction" class="action-tile settings-action ui-blocker" tooltip="设置功能后续接入">
+            <ui:VisualElement class="action-icon settings-icon" picking-mode="Ignore" />
+            <ui:Label text="设置" class="action-caption" picking-mode="Ignore" />
+        </ui:Button>
         <ui:VisualElement class="step-status ui-blocker">
             <ui:Label name="phaseLabel" class="phase-badge" />
             <ui:Label text="当前演示步 / MIN" class="eyebrow" />
@@ -70,6 +61,14 @@
             <ui:Label text="● 蓝方" class="blue-text" />
             <ui:Label text="道路 / 任务点 / 公开地形" class="muted" />
         </ui:VisualElement>
+        <ui:Button name="battleAction" class="action-tile battle-action ui-blocker" tooltip="战斗功能后续接入">
+            <ui:VisualElement class="action-icon battle-icon" picking-mode="Ignore" />
+            <ui:Label text="战斗" class="action-caption" picking-mode="Ignore" />
+        </ui:Button>
+        <ui:Button name="armyAction" class="action-tile army-action ui-blocker" tooltip="军队功能后续接入">
+            <ui:VisualElement class="action-icon army-icon" picking-mode="Ignore" />
+            <ui:Label text="军队" class="action-caption" picking-mode="Ignore" />
+        </ui:Button>
         <ui:VisualElement class="bottom-dock ui-blocker">
             <ui:VisualElement class="selected-summary">
                 <ui:Label name="selectedSummary" text="尚未选择单位" class="selected-title" />
