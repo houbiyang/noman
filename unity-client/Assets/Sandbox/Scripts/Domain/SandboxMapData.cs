@@ -132,7 +132,7 @@ namespace Qiongtu.Sandbox
         /// <returns>空字符串表示字段与拓扑检查通过，不代表四任务业务验收。</returns>
         public string Validate()
         {
-            if (schemaVersion != 1 || mapId != "qinglan-valley-v4" || string.IsNullOrWhiteSpace(name) || contentHash == null || contentHash.Length != 64) return "地图身份或版本无效";
+            if (schemaVersion != 1 || mapId != "qinglan-valley-v5" || string.IsNullOrWhiteSpace(name) || contentHash == null || contentHash.Length != 64) return "地图身份或版本无效";
             if (width != 360 || length != 240 || displayScale != 3 || coordinateUnit != "scene-unit" || heightColumns < 2 || heightRows < 2
                 || heights == null || heights.Length != heightColumns * heightRows || heights.Any(value => float.IsNaN(value) || float.IsInfinity(value))) return "地图尺寸或高度数据无效";
             if (nodes == null || nodes.Length == 0 || roads == null || points == null || materials == null || deploymentZones == null) return "地图对象不完整";

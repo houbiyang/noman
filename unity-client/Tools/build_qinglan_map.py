@@ -28,7 +28,28 @@ PALETTE = {
     "FieldGreen": "#7f9750", "FieldGold": "#b4aa68", "Plaster": "#b9b29a",
     "Tile": "#885d4a", "Asphalt": "#686e68", "Glass": "#455e66",
     "Meadow": "#858c64", "MeadowDry": "#93906a", "Earth": "#898270", "Ash": "#48463f",
+    "Paving": "#999b91", "Gravel": "#9c9684", "Grass": "#697a55",
 }
+
+# 桥头示范区的显示街道，不增加规则道路连接或改变单位演示路线。
+BRIDGEHEAD_STREETS = [
+    ((34, 40), (52, 40), 2.2), ((34, 40), (46, 34), 1.6),
+    ((46, 31), (46, 50), 1.25), ((35, 47), (50, 47), 1.1),
+    ((34, 30), (40, 30), 1.1), ((68, 40), (86, 40), 2.2),
+    ((86, 40), (74, 46), 1.6), ((74, 33), (74, 46), 1.15),
+    ((74, 52), (85, 52), 1.15), ((85, 40), (85, 52), 1.15),
+]
+
+BRIDGEHEAD_HOUSES = [
+    (37, 43.6, 2.5, 1.9, 1.8, 0, 0), (41.5, 43.5, 2.8, 2, 2.1, 0, 0),
+    (49.4, 43.5, 2.3, 1.9, 1.65, 2, 0), (37.3, 50, 2.6, 1.8, 1.7, 0, 180),
+    (42, 32, 2.5, 2.2, 2.35, 1, 27), (49.4, 50.3, 2.2, 1.8, 1.55, 1, 180),
+    (39.3, 34, 2.6, 1.9, 1.75, 1, 27), (49.5, 35.2, 2.5, 2, 1.9, 3, 90),
+    (49.3, 30.5, 2.3, 1.7, 1.6, 2, 90),
+    (70.4, 44.5, 2.3, 1.8, 1.6, 3, -18), (78, 48.4, 2.6, 1.9, 1.85, 1, -25),
+    (82, 48, 2.3, 1.8, 1.6, 0, -25), (78, 35, 2.7, 2.1, 2.1, 0, 0),
+    (82, 35.3, 2.4, 1.8, 1.6, 1, 8), (70.3, 33.4, 2.3, 1.8, 1.8, 2, 90),
+]
 
 
 def point(identifier: str, name: str, kind: str, x: float, z: float, partner: str = "") -> dict:
@@ -145,6 +166,9 @@ def terrain_height(x: float, z: float) -> float:
     flatten = min(1, max(0, (road_distance - 1.4) / 2.6))
     if 8 <= x <= 28 and 28 <= z <= 52 or 92 <= x <= 112 and 28 <= z <= 52:
         flatten = 0
+    for minimum_x, maximum_x, minimum_z, maximum_z in ((35, 52, 30, 51), (69, 86, 32, 55)):
+        town_blend = max(0, min(1, (x-minimum_x)/2, (maximum_x-x)/2, (z-minimum_z)/2, (maximum_z-z)/2))
+        flatten *= 1-town_blend*0.94
     bank_blend = min(1, (river_distance - 3.7) / 2)
     return -0.25*(1-bank_blend)+(0.32+(elevation-0.32)*flatten)*bank_blend
 
@@ -163,7 +187,7 @@ class Geometry:
     def __init__(self) -> None:
         self.parts: dict[tuple[str, str], dict] = {}
         self.buildings: list[dict] = []
-        self.tree_positions: list[tuple[float,float,float]] = []
+        self.tree_positions: list[tuple[float,float,float,bool]] = []
 
     def house(self, layer: str, x: float, z: float, width: float, depth: float, height: float, damage: int, yaw: float) -> None:
         """记录 Blender 建筑的同源放置数据，替换无洞口的盒体房屋。"""
@@ -215,18 +239,52 @@ class Geometry:
             following = (index + 1) % sides
             self.face(layer, material, [lower[index], upper[index], upper[following], lower[following]])
 
-    def tree(self, x: float, z: float, size: float) -> None:
+    def tree(self, x: float, z: float, size: float, detailed: bool = False) -> None:
         """先记录树木候选位置，待建筑布局完整后排除穿过房屋的树冠。"""
-        self.tree_positions.append((x,z,size))
+        self.tree_positions.append((x,z,size,detailed))
 
     def build_trees(self) -> None:
         """保留建筑占地和树冠净空，避免新战损模型与原植被相互穿插。"""
         footprints=[(*unproject_position(building["x"]/DISPLAY_SCALE,building["z"]/DISPLAY_SCALE),
                      math.hypot(building["scaleX"]*7.5,building["scaleZ"]*6.3)/6+0.3) for building in self.buildings]
-        for x,z,size in self.tree_positions:
+        for x,z,size,detailed in self.tree_positions:
             if any(math.hypot(x-center_x,z-center_z)<radius+size*0.65 for center_x,center_z,radius in footprints):
                 continue
-            self.draw_tree(x,z,size)
+            if any(segment_distance(x,z,{"x":start[0],"z":start[1]},{"x":end[0],"z":end[1]})<width/2+size*.6
+                   for start,end,width in BRIDGEHEAD_STREETS):
+                continue
+            if detailed:
+                ground = terrain_height(x,z)
+                self.box("environment","Wood",x,ground+size*0.6,z,0.12,size*1.2,0.12)
+                for index, (offset_x,offset_z,level) in enumerate(((-.27,0,1),(.25,.15,1.15),(0,-.2,1.45),(0,0,1.65))):
+                    self.ellipsoid("environment","ForestLight" if index%3==0 else "Forest",
+                                   x+size*offset_x,ground+size*level,z+size*offset_z,
+                                   size*.43,size*.48,size*.4)
+            else:
+                self.draw_tree(x,z,size)
+
+    def ellipsoid(self, layer: str, material: str, x: float, y: float, z: float, width: float, height: float, depth: float) -> None:
+        """用封闭分层网格组成不规则树冠、灌木和路边石块。"""
+        rings=[]
+        for level in range(1,5):
+            latitude=-math.pi/2+level*math.pi/5
+            rings.append([(x+math.cos(index*math.tau/8)*math.cos(latitude)*width*(1+.08*math.sin(index*3+x)),
+                           y+math.sin(latitude)*height,z+math.sin(index*math.tau/8)*math.cos(latitude)*depth) for index in range(8)])
+        for index in range(8):
+            following=(index+1)%8
+            self.face(layer,material,[(x,y-height,z),rings[0][index],rings[0][following]])
+            self.face(layer,material,[(x,y+height,z),rings[-1][following],rings[-1][index]])
+            for level in range(3):
+                self.face(layer,material,[rings[level][index],rings[level+1][index],rings[level+1][following],rings[level][following]])
+
+    def rotated_box(self, layer: str, material: str, x: float, y: float, z: float, width: float, height: float, depth: float, yaw: float = 0) -> None:
+        """在局部坐标中建立旋转构件，供街道设施和车辆共用。"""
+        angle=math.radians(yaw)
+        vertices=[(x+horizontal*width/2*math.cos(angle)-longitudinal*depth/2*math.sin(angle),
+                   y+vertical*height/2,z+horizontal*width/2*math.sin(angle)+longitudinal*depth/2*math.cos(angle))
+                  for horizontal,vertical,longitudinal in ((-1,-1,-1),(1,-1,-1),(1,-1,1),(-1,-1,1),(-1,1,-1),(1,1,-1),(1,1,1),(-1,1,1))]
+        for indices in ((0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7),(4,5,6,7),(3,2,1,0)):
+            self.face(layer,material,[vertices[index] for index in reversed(indices)])
 
     def draw_tree(self, x: float, z: float, size: float) -> None:
         """建立封闭的阔叶树冠，避免从俯视角度看到顶部空洞。"""
@@ -338,6 +396,8 @@ def create_geometry() -> Geometry:
         x = 35 + index % 3 * 3.7
         z = 47 + index // 3 * 3.2
         for house_x, house_z in ((x, z), (80+index%4*2.9, 23+index//4*3.6)):
+            if 34 <= house_x <= 53 and 30 <= house_z <= 54:
+                continue
             facility_x, facility_z = (42, 52) if house_x < 60 else (78, 28)
             if abs(house_x - facility_x) < 4 and abs(house_z - facility_z) < 3.8:
                 continue
@@ -387,39 +447,124 @@ def add_surface_damage(geometry: Geometry) -> None:
 
 
 def add_central_environment(geometry: Geometry) -> None:
-    """为中部作战区建立沿道路与河谷分布的院落、田块、土路及植被。"""
-    for east_bank in (False, True):
-        def locate(x, z):
-            return (117-x*0.92, 75-z*0.88) if east_bank else (x, z)
+    """把中央桥头组织为西岸生活街区和东岸仓储街区，保留原规则道路。"""
+    surface=lambda x,z:terrain_height(x,z)+.045
+    for start,end,width in BRIDGEHEAD_STREETS:
+        geometry.ribbon("routes","Gravel",start,end,width+1.15,lambda x,z:surface(x,z)-.025)
+        geometry.ribbon("routes","Paving",start,end,width+.65,lambda x,z:surface(x,z)-.012)
+        geometry.ribbon("routes","Asphalt",start,end,width,surface)
+        direction_x,direction_z=end[0]-start[0],end[1]-start[1]
+        distance=math.hypot(direction_x,direction_z)
+        for direction in (-1,1):
+            offset_x=-direction_z/distance*(width/2+.07)*direction
+            offset_z=direction_x/distance*(width/2+.07)*direction
+            geometry.ribbon("routes","Bridge",(start[0]+offset_x,start[1]+offset_z),(end[0]+offset_x,end[1]+offset_z),.1,lambda x,z:surface(x,z)+.035)
+        if width>2:
+            for index in range(int(distance/1.5)):
+                parameter=(index+.2)*1.5/distance
+                mark_start=(start[0]+direction_x*parameter,start[1]+direction_z*parameter)
+                mark_end=(mark_start[0]+direction_x/distance*.65,mark_start[1]+direction_z/distance*.65)
+                geometry.ribbon("routes","White",mark_start,mark_end,.035,lambda x,z:surface(x,z)+.008)
 
-        for index in range(24):
-            x, z = locate(43 + index % 3 * 3.7+0.65*math.sin(index*2.4), 27 + index // 3 * 3.8+0.6*math.sin(index*1.7))
-            if abs(x-river_center(z)) < 7:
-                continue
-            road_distance = min(segment_distance(x,z,NODE_LOOKUP[start],NODE_LOOKUP[end]) for start,end in EDGE_PAIRS)
-            if road_distance < 2.8:
-                continue
-            y = terrain_height(x,z)
-            height = 1.2 + index%3*0.3
-            damage = (index+(1 if east_bank else 2))%4
-            geometry.house("central_village",x,z,2.1,1.7,height,damage,12*math.sin(index*1.9)+(16 if east_bank else -5))
-            for wall_x in (x-1.5,x+1.5):
-                geometry.box("central_village", "Wall", wall_x,y+0.3,z,0.1,0.6,2.8)
-        for start,end in [((46,34),(50,27)),((46,34),(49,52)),((40,28),(49,28)),((43,49),(49,49))]:
-            geometry.ribbon("routes", "Soil", locate(*start),locate(*end),0.8,lambda x,z:terrain_height(x,z)+0.015)
-        for index in range(4):
-            x,z=locate(40+index%2*6,22+index//2*35)
-            for row in range(7):
-                geometry.ribbon("farmland", "FieldGold" if index%2 else "FieldGreen",(x-2,z-2+row*0.6),(x+2,z-2+row*0.6),0.35,lambda x,z:terrain_height(x,z)+0.08)
-            geometry.ribbon("ditches","Mud",(x-2.5,z-2.5),(x+2.5,z-2.5),0.35,lambda x,z:terrain_height(x,z)+0.03)
-        for index in range(32):
-            x,z=locate(47+(index%3)*2,15+index*1.6)
-            if abs(x-river_center(z))<5.5 or min(segment_distance(x,z,NODE_LOOKUP[start],NODE_LOOKUP[end]) for start,end in EDGE_PAIRS)<2.7:
-                continue
-            if index%4==0:
-                geometry.tree(x,z,1.3+index%3*0.2)
-            else:
-                geometry.cylinder("scrub","ForestLight",x,terrain_height(x,z),z,0.45,0.35,7)
+    for index,(x,z,width,depth,height,damage,yaw) in enumerate(BRIDGEHEAD_HOUSES):
+        geometry.ribbon("routes","Gravel",(x-1.8,z),(x+1.8,z),3.2,lambda x,z:surface(x,z)-.018)
+        geometry.house("central_village",x,z,width,depth,height,damage,yaw)
+        ground=terrain_height(x,z)
+        # 院墙留出朝街开口，前门通过短步道接至最近街边。
+        nearest=min(BRIDGEHEAD_STREETS,key=lambda street:segment_distance(x,z,{"x":street[0][0],"z":street[0][1]},{"x":street[1][0],"z":street[1][1]}))
+        start,end,_=nearest
+        delta_x,delta_z=end[0]-start[0],end[1]-start[1]
+        parameter=max(0,min(1,((x-start[0])*delta_x+(z-start[1])*delta_z)/(delta_x**2+delta_z**2)))
+        street_point=(start[0]+parameter*delta_x,start[1]+parameter*delta_z)
+        geometry.ribbon("routes","Paving",(x,z),street_point,.45,lambda x,z:surface(x,z)+.008)
+        for wall_x in (x-1.8,x+1.8):
+            geometry.box("central_village","Wall",wall_x,ground+.25,z,.07,.5,2.9 if damage<2 else 1.5)
+        if damage<2:
+            geometry.rotated_box("central_village","Wood",x+1.2,ground+.45,z+1.1,.7,.9,.8,yaw)
+            geometry.ellipsoid("scrub","ForestLight",x-1.2,ground+.2,z+1.1,.4,.25,.3)
+        else:
+            for rubble_index in range(8):
+                angle=rubble_index*2.39
+                rubble_x,rubble_z=x+math.cos(angle)*(width*.55+.2),z+math.sin(angle)*(depth*.55+.2)
+                geometry.ellipsoid("central_village","Rock",rubble_x,terrain_height(rubble_x,rubble_z)+.09,rubble_z,.11,.1,.15)
+
+    # 西岸公共空地与路边停车，东岸设置有入口的仓储院区。
+    geometry.ribbon("routes","Paving",(35.8,34),(37.6,34),4.2,surface)
+    for bench_z in (32.7,35.3):
+        geometry.box("central_village","Wood",36.6,terrain_height(36.6,bench_z)+.22,bench_z,1,.12,.32)
+        for bench_x in (36.2,37):
+            geometry.box("central_village","Roof",bench_x,terrain_height(bench_x,bench_z)+.1,bench_z,.08,.2,.25)
+    add_warehouse_yard(geometry,79.5,53)
+    for index,(x,z,yaw,truck,damaged) in enumerate(((37,41.65,90,False,False),(42.5,41.65,90,False,False),
+                                                 (49,38.3,90,False,True),(77.2,51.5,0,True,False),(82,51,0,False,False))):
+        add_street_vehicle(geometry,x,z,yaw,truck,damaged)
+    for x,z in ((35,41.7),(44,41.7),(50.5,41.7),(47,46),(72,38.3),(81.5,41.6),(85.8,49.5)):
+        ground=terrain_height(x,z)
+        geometry.box("central_village","Roof",x,ground+1.25,z,.045,2.5,.045)
+        geometry.box("central_village","Roof",x+.25,ground+2.45,z,.55,.05,.045)
+        geometry.box("central_village","White",x+.48,ground+2.4,z,.18,.07,.12)
+
+    for index in range(70):
+        side=-1 if index%2==0 else 1
+        z=27+index*.4
+        x=river_center(z)+side*(5.4+.45*math.sin(index*1.9))
+        if min(abs(z-bridge_z) for bridge_z in (20,40,60))<2.3:
+            continue
+        material="Grass" if index%3 else "Gravel"
+        geometry.ellipsoid("riverbanks",material,x,terrain_height(x,z)+.035,z,.35,.05,.28)
+        if index%4==0:
+            geometry.ellipsoid("scrub","ForestLight",x,terrain_height(x,z)+.18,z,.38,.28,.32)
+    for index,(x,z) in enumerate(((35,45),(35,49),(39,52),(45,52.5),(51.5,47.5),(52.5,33),
+                                 (69.5,48),(72,50),(76,55.5),(84.5,55),(87,47),(87,34))):
+        geometry.tree(x,z,1.6+index%4*.16,True)
+    for index in range(50):
+        x=34+(index*7%54)
+        z=29+(index*11%27)
+        if abs(x-river_center(z))<5.5 or any(segment_distance(x,z,{"x":start[0],"z":start[1]},{"x":end[0],"z":end[1]})<width/2+.4 for start,end,width in BRIDGEHEAD_STREETS):
+            continue
+        if any(math.hypot(x-house[0],z-house[1])<2.2 for house in BRIDGEHEAD_HOUSES):
+            continue
+        geometry.ellipsoid("scrub","ForestLight",x,terrain_height(x,z)+.15,z,.28,.23,.33)
+
+
+def add_warehouse_yard(geometry: Geometry, x: float, z: float) -> None:
+    """建立带装卸场、坡屋顶、门窗、围栏及入口的仓储院落。"""
+    ground=terrain_height(x,z)
+    geometry.ribbon("routes","Gravel",(x-3.7,z),(x+3.7,z),5.2,lambda x,z:terrain_height(x,z)+.018)
+    geometry.box("central_village","Wall",x,ground+.9,z+1,5.4,1.8,2.4)
+    geometry.face("central_village","Roof",[(x-2.85,ground+1.85,z-.35),(x-2.85,ground+2.3,z+1),(x+2.85,ground+2.3,z+1),(x+2.85,ground+1.85,z-.35)])
+    geometry.face("central_village","Roof",[(x-2.85,ground+2.3,z+1),(x-2.85,ground+1.85,z+2.35),(x+2.85,ground+1.85,z+2.35),(x+2.85,ground+2.3,z+1)])
+    geometry.face("central_village","Wall",[(x-2.7,ground+1.8,z-.2),(x-2.7,ground+1.8,z+2.2),(x-2.7,ground+2.3,z+1)])
+    geometry.face("central_village","Wall",[(x+2.7,ground+1.8,z+2.2),(x+2.7,ground+1.8,z-.2),(x+2.7,ground+2.3,z+1)])
+    for door_x in (x-1.3,x+1.3):
+        geometry.box("central_village","Roof",door_x,ground+.65,z-.22,1.4,1.3,.06)
+        geometry.box("central_village","Glass",door_x,ground+1.55,z-.23,1.25,.25,.07)
+    for fence_start,fence_end in (((x-4,z-2.8),(x-4,z+2.7)),((x+4,z-2.8),(x+4,z+2.7)),((x-4,z+2.7),(x+4,z+2.7)),((x-4,z-2.8),(x-1,z-2.8))):
+        length=math.dist(fence_start,fence_end)
+        for index in range(math.ceil(length/.7)+1):
+            parameter=min(1,index*.7/length)
+            post_x,post_z=fence_start[0]+(fence_end[0]-fence_start[0])*parameter,fence_start[1]+(fence_end[1]-fence_start[1])*parameter
+            geometry.box("central_village","Roof",post_x,terrain_height(post_x,post_z)+.36,post_z,.04,.72,.04)
+        for level in (.18,.5):
+            geometry.ribbon("central_village","Roof",fence_start,fence_end,.035,lambda x,z:terrain_height(x,z)+level)
+    for index in range(9):
+        crate_x,crate_z=x-2.5+index%3*.55,z-1.3+index//3*.55
+        geometry.box("central_village","Wood",crate_x,ground+.22,crate_z,.45,.44,.45)
+
+
+def add_street_vehicle(geometry: Geometry, x: float, z: float, yaw: float, truck: bool, damaged: bool) -> None:
+    """添加不参与仿真的静态车辆，作为街道尺度与使用痕迹。"""
+    ground=terrain_height(x,z)
+    length=2 if truck else 1.35
+    body="Ash" if damaged else "Roof"
+    geometry.rotated_box("central_village",body,x,ground+.25,z,.65,.3,length,yaw)
+    geometry.rotated_box("central_village","Glass",x,ground+.5,z-.12,.54,.25,.65,yaw)
+    for horizontal in (-.34,.34):
+        for longitudinal in (-length*.32,length*.32):
+            angle=math.radians(yaw)
+            wheel_x=x+horizontal*math.cos(angle)-longitudinal*math.sin(angle)
+            wheel_z=z+horizontal*math.sin(angle)+longitudinal*math.cos(angle)
+            geometry.rotated_box("central_village","Ash",wheel_x,ground+.15,wheel_z,.12,.24,.26,yaw)
 
 
 def add_rural_environment(geometry: Geometry) -> None:
@@ -462,6 +607,8 @@ def add_rural_environment(geometry: Geometry) -> None:
         geometry.cylinder("ponds", "Water", x, y+0.06, z, 3.1, 0.02, 20)
         for index in range(45):
             x, z = locate(4 + index * 13 % 47, 4 + index * 19 % 72)
+            if 34<x<54 and 28<z<56 or 68<x<89 and 30<z<58:
+                continue
             if 6 < z < 25 or 27 < x < 49 and 62 < z < 77:
                 continue
             if min(segment_distance(x,z,NODE_LOOKUP[start],NODE_LOOKUP[end]) for start,end in EDGE_PAIRS) < 3:
@@ -486,6 +633,18 @@ def validate_layout() -> None:
         pending.extend(adjacency[current] - visited)
     assert visited == set(NODE_LOOKUP), "道路节点不连通"
     assert len(BRIDGES) == 3
+    for index,house in enumerate(BRIDGEHEAD_HOUSES):
+        x,z,width,depth,_,_,_=house
+        radius=math.hypot(width,depth)/2
+        for start,end,street_width in BRIDGEHEAD_STREETS:
+            clearance=segment_distance(x,z,{"x":start[0],"z":start[1]},{"x":end[0],"z":end[1]})-street_width/2-radius
+            assert clearance>.5, "桥头住宅侵入街道或人行道"
+        assert abs(x-river_center(z))>4+radius, "桥头住宅侵入河道"
+        for other in BRIDGEHEAD_HOUSES[index+1:]:
+            assert math.hypot(x-other[0],z-other[1])>radius+math.hypot(other[2],other[3])/2, "桥头住宅占地重叠"
+        for marker in MARKERS:
+            if marker["kind"]=="facility":
+                assert math.hypot(x-marker["x"],z-marker["z"])>radius+2.5, "桥头住宅与关键设施重叠"
     for row in range(9):
         for column in range(13):
             x, z = column * 10, row * 10
@@ -513,7 +672,7 @@ def main() -> None:
     geometry = create_geometry()
     parts = list(geometry.parts.values())
     # 业务演示坐标保持原值，地图与建筑按三倍显示尺度发布，旧存档无需改写。
-    definition.update(mapId="qinglan-valley-v4", width=WIDTH*DISPLAY_SCALE,
+    definition.update(mapId="qinglan-valley-v5", width=WIDTH*DISPLAY_SCALE,
                       length=LENGTH*DISPLAY_SCALE, displayScale=DISPLAY_SCALE)
     definition["buildings"] = geometry.buildings
     definition["heights"] = [round(terrain_height(*unproject_position(column*WIDTH/COLUMNS,row*LENGTH/ROWS))*DISPLAY_SCALE,5)
@@ -556,7 +715,8 @@ def main() -> None:
     (EXPORT_ROOT / "QinglanValley.obj").write_text("\n".join(object_lines) + "\n", encoding="utf-8")
     (EXPORT_ROOT / "QinglanValley.mtl").write_text("\n".join(f'newmtl {material["id"]}\nKd {material["red"]:.5f} {material["green"]:.5f} {material["blue"]:.5f}\nKa 0.2 0.2 0.2\n' for material in materials), encoding="utf-8")
     summary = {"mapId": definition["mapId"], "contentHash": definition["contentHash"], "nodes": len(NODES), "roads": len(EDGE_PAIRS), "bridges": len(BRIDGES), "points": len(MARKERS), "meshParts": len(parts), "triangles": sum(len(part["triangles"]) // 3 for part in parts),
-               "buildings":len(geometry.buildings),"damageCounts":{str(damage):sum(building["damage"]==damage for building in geometry.buildings) for damage in range(4)}}
+               "buildings":len(geometry.buildings),"damageCounts":{str(damage):sum(building["damage"]==damage for building in geometry.buildings) for damage in range(4)},
+               "bridgeheadSample":{"houses":len(BRIDGEHEAD_HOUSES),"visualStreets":len(BRIDGEHEAD_STREETS),"warehouses":1,"parkedVehicles":5,"streetlights":7}}
     (EXPORT_ROOT / "map-build-summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=True))
 

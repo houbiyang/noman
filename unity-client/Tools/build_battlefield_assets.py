@@ -370,7 +370,22 @@ def render_map(materials: dict) -> None:
     source_materials={material["id"]:material for material in definition["materials"]}
     surface_map={"GroundLow":"Ground","GroundHigh":"Ground","Rock":"Concrete","Meadow":"Ground","MeadowDry":"Ground","Earth":"Soil",
                  "Water":"Water","Road":"Road","Bridge":"Concrete","Wall":"Plaster","Roof":"Metal","Forest":"Foliage","ForestLight":"Foliage",
-                 "Wood":"Timber","Bank":"Soil","Mud":"Soil","Soil":"Soil","FieldGreen":"Ground","FieldGold":"Soil","Plaster":"Plaster","Tile":"Tile","Asphalt":"Road","Glass":"Ash"}
+                 "Wood":"Timber","Bank":"Soil","Mud":"Soil","Soil":"Soil","FieldGreen":"Ground","FieldGold":"Soil","Plaster":"Plaster","Tile":"Tile","Asphalt":"Road","Glass":"Ash",
+                 "Paving":"Concrete","Gravel":"Soil","Grass":"Ground"}
+    for identifier,tint in {"Asphalt":(.52,.56,.58),"Paving":(.84,.87,.84),"Gravel":(.89,.9,.85),"Grass":(.69,.79,.58)}.items():
+        surface=surface_map[identifier]
+        material=materials[surface].copy()
+        shader=material.node_tree.nodes.get("Principled BSDF")
+        color_input=shader.inputs["Base Color"]
+        texture=color_input.links[0].from_socket
+        multiply=material.node_tree.nodes.new("ShaderNodeMixRGB")
+        multiply.blend_type="MULTIPLY"
+        multiply.inputs[0].default_value=1
+        multiply.inputs[2].default_value=(*tint,1)
+        material.node_tree.links.new(texture,multiply.inputs[1])
+        material.node_tree.links.new(multiply.outputs[0],color_input)
+        materials[identifier]=material
+        surface_map[identifier]=identifier
     for part in geometry["parts"]:
         if part["layer"] in ("grid","deployment","markers"):
             continue
@@ -380,7 +395,7 @@ def render_map(materials: dict) -> None:
         builder.vertices=vertices
         builder.faces=faces
         builder.materials=[surface_map.get(part["material"],"Concrete")]*len(faces)
-        if part["layer"] in ("terrain","landscape"):
+        if part["layer"] in ("terrain","landscape","environment"):
             # 合并重复位置后再平滑，令离线地形与 Unity 的连续法线保持一致。
             unique_vertices=[]
             position_indices={}
@@ -395,7 +410,7 @@ def render_map(materials: dict) -> None:
         instance=builder.object(part["name"],materials)
         if part["layer"] in ("routes","farmland","ditches","riverbanks","damage","ponds"):
             instance.visible_shadow=False
-        if part["layer"] in ("terrain","landscape"):
+        if part["layer"] in ("terrain","landscape","environment"):
             for polygon in instance.data.polygons:
                 polygon.use_smooth=True
     prototypes={damage:build_house(damage,materials) for damage in range(4)}
@@ -408,7 +423,7 @@ def render_map(materials: dict) -> None:
         instance.location=(building["x"],-building["z"],building["y"])
         instance.rotation_euler.z=math.radians(-building["yaw"])
         instance.scale=(building["scaleX"],building["scaleZ"],building["scaleY"])
-    setup_render((226,-170,25),(202,-137,5),PREVIEW_ROOT/"战损河谷_Blender渲染.png")
+    setup_render((155,-195,65),(132,-130,3),PREVIEW_ROOT/"战损河谷_Blender渲染.png")
     bpy.ops.file.pack_all()
     bpy.ops.wm.save_as_mainfile(filepath=str(PREVIEW_ROOT/"战损河谷完整场景.blend"))
     bpy.ops.render.render(write_still=True)

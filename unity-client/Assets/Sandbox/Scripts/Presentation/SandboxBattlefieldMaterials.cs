@@ -37,10 +37,10 @@ namespace Qiongtu.Sandbox
             if (identifier.StartsWith("Battle_", StringComparison.Ordinal)) return identifier.Substring(7);
             switch (identifier)
             {
-                case "GroundLow": case "GroundHigh": case "Meadow": case "MeadowDry": case "FieldGreen": case "Crop": return "Ground";
-                case "Earth": case "Bank": case "Mud": case "Soil": case "FieldGold": return "Soil";
+                case "GroundLow": case "GroundHigh": case "Meadow": case "MeadowDry": case "FieldGreen": case "Crop": case "Grass": return "Ground";
+                case "Earth": case "Bank": case "Mud": case "Soil": case "FieldGold": case "Gravel": return "Soil";
                 case "Road": case "Asphalt": return "Road";
-                case "Rock": case "Bridge": return "Concrete";
+                case "Rock": case "Bridge": case "Paving": return "Concrete";
                 case "Plaster": case "Wall": return "Plaster";
                 case "Roof": return "Metal";
                 case "Forest": case "ForestLight": return "Foliage";
@@ -61,6 +61,10 @@ namespace Qiongtu.Sandbox
             if (identifier == "FieldGold") return new Color(1, 0.96f, 0.79f);
             if (identifier == "Forest") return new Color(0.78f, 0.85f, 0.72f);
             if (identifier == "Mud") return new Color(0.69f, 0.68f, 0.59f);
+            if (identifier == "Asphalt") return new Color(0.52f, 0.56f, 0.58f);
+            if (identifier == "Paving") return new Color(0.84f, 0.87f, 0.84f);
+            if (identifier == "Gravel") return new Color(0.89f, 0.9f, 0.85f);
+            if (identifier == "Grass") return new Color(0.69f, 0.79f, 0.58f);
             return Color.white;
         }
     }

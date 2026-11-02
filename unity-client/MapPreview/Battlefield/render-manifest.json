@@ -1,13 +1,13 @@
 {
-  "mapId": "qinglan-valley-v4",
-  "contentHash": "959b759cc8e12793e63fabfe3c6bb2e9582223357c17b0784b084f7bd3397a20",
+  "mapId": "qinglan-valley-v5",
+  "contentHash": "acafae1e7b1fa9623320a2eb57c35007cb2743b37b7aa12a92aab06afbeba399",
   "renderer": "Blender Cycles",
   "samples": 32,
   "resolution": [
     1440,
     960
   ],
-  "buildings": 80,
+  "buildings": 64,
   "images": [
     "战损河谷_Blender渲染.png",
     "战损河谷_Blender总览.png"

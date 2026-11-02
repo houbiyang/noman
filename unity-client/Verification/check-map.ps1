@@ -25,10 +25,13 @@ Assert-MapCheck ($map.nodes.Count -eq 30 -and $map.roads.Count -eq 31) '扩展�
 Assert-MapCheck ($map.width -eq 360 -and $map.length -eq 240 -and $map.displayScale -eq 3) '显示范围扩大为三百六十乘二百四十'
 Assert-MapCheck (@($map.roads | Where-Object isBridge).Count -eq 3) '南中北有三处桥接'
 Assert-MapCheck ($map.points.Count -eq 11) '十一处地图对象身份完整'
-Assert-MapCheck ($geometry.parts.Count -eq 43) '战损河谷地表合并为四十三个网格分块'
-Assert-MapCheck ($map.buildings.Count -eq 80) '八十栋 Blender 建筑使用同源显示布局'
+Assert-MapCheck ($geometry.parts.Count -eq 54) '桥头示范区地表合并为五十四个网格分块'
+Assert-MapCheck ($map.buildings.Count -eq 64) '六十四栋 Blender 建筑使用同源显示布局'
 Assert-MapCheck (@($map.buildings.damage | Sort-Object -Unique).Count -eq 4) '完整、轻损、重损和坍塌四档模型均已布置'
-Assert-MapCheck (@($map.buildings | Where-Object layer -eq 'central_village').Count -gt 0) '中央作战区也有战损建筑'
+Assert-MapCheck (@($map.buildings | Where-Object layer -eq 'central_village').Count -eq 15) '桥头街区包含十五栋独立布置的住宅'
+foreach ($surface in @('Asphalt','Paving','Gravel','Grass')) {
+    Assert-MapCheck (@($geometry.parts | Where-Object material -eq $surface).Count -gt 0) ('桥头道路和地表包含：'+$surface)
+}
 foreach ($layer in @('riverbanks','farmland','ditches','village','logistics','ponds','scrub','central_village','landscape','damage')) {
     Assert-MapCheck (@($geometry.parts | Where-Object layer -eq $layer).Count -gt 0) ('包含环境图层：' + $layer)
 }

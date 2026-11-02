@@ -1,17 +1,24 @@
 {
-  "mapId": "qinglan-valley-v4",
-  "contentHash": "959b759cc8e12793e63fabfe3c6bb2e9582223357c17b0784b084f7bd3397a20",
+  "mapId": "qinglan-valley-v5",
+  "contentHash": "acafae1e7b1fa9623320a2eb57c35007cb2743b37b7aa12a92aab06afbeba399",
   "nodes": 30,
   "roads": 31,
   "bridges": 3,
   "points": 11,
-  "meshParts": 43,
-  "triangles": 62616,
-  "buildings": 80,
+  "meshParts": 54,
+  "triangles": 75357,
+  "buildings": 64,
   "damageCounts": {
-    "0": 19,
-    "1": 23,
-    "2": 20,
-    "3": 18
+    "0": 17,
+    "1": 19,
+    "2": 14,
+    "3": 14
+  },
+  "bridgeheadSample": {
+    "houses": 15,
+    "visualStreets": 10,
+    "warehouses": 1,
+    "parkedVehicles": 5,
+    "streetlights": 7
   }
 }
