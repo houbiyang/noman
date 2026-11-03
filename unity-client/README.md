@@ -66,6 +66,22 @@
 
 Windows 构建成功后的入口为 `Builds/Windows/QiongtuSandbox.exe`；当前没有可宣称已经生成和验收的可执行文件。
 
+## macOS 启动
+
+Apple Silicon Mac 使用与工程一致的 `6000.6.7f1` ARM64 编辑器。网页构建需要 Web Build Support；在 Mac 上构建本工程的 Windows Mono 客户端还需要 Windows Build Support (Mono)。
+
+编辑器安装并激活后，可双击本目录 `start-unity.command` 生成场景并进入 Play Mode，或在终端中选择操作：
+
+```sh
+./start-unity.command Open          # 打开工程
+./start-unity.command Run           # 生成场景并运行（默认）
+./start-unity.command Prepare       # 关闭编辑器后，以批处理生成场景
+./start-unity.command BuildWeb      # 关闭编辑器后，构建网页
+./start-unity.command BuildWindows  # 关闭编辑器后，构建 Windows Mono 客户端
+```
+
+脚本从 `ProjectSettings/ProjectVersion.txt` 读取版本，默认使用 `/Applications/Unity/Hub/Editor/<版本>/Unity.app`。若编辑器安装在其他目录，设置 `UNITY_EDITOR_PATH` 为该应用内 `Contents/MacOS/Unity` 的完整路径。日志保存在仓库根目录 `.local/unity/`。Windows `.exe` 需要在 Windows 环境中运行。
+
 ## 网页构建与打开
 
 开发电脑需要已激活的 Unity Editor 及 Web 构建模块；访问已部署网页的使用者不需要安装 Unity 或 Unity Hub。网页加载的仍是本工程的 Unity 场景，不使用旧 Vue 原型。
@@ -143,3 +159,15 @@ node .\Verification\check-web-build.cjs
 本机前端存档位于 `Application.persistentDataPath/FrontendSandboxSaves/`。它与旧后端 `.local/` 数据库、旧 Vue 页面存档及正式游戏存档格式均独立。
 
 实现核对采用 [Unity 6000.6 命令行参数](https://docs.unity.com/en-us/engine/6000.6/manual/unity-editor/command-line-arguments/editor)、[运行时 UI 配置](https://docs.unity.com/en-us/engine/6000.6/manual/uitoolkits/uielements/uie-support-for-runtime-ui/uie-render-runtime-ui)与[主题样式表规范](https://docs.unity.com/en-us/engine/6000.6/manual/uitoolkits/uielements/uie-uss/uie-tss)。实际 API 兼容性仍以目标编辑器编译和运行结果为准。
+
+## 军队配置与地图部署（2026-11-03）
+
+地图右侧「军队」打开 Unity 原生军队配置页面。三个卡片分别展示从 `sandbox-units.blend` 导入并由 Unity 渲染的侦察无人机、履带地面单元和六轮保障车；模型也以 Unity 预制体放置在实际地图中。
+
+- 每类使用加减按钮选择 1–10 个单位，每方最多 30 个。「应用编队」调整当前编制，「选点部署」后单击地图重新放置同类编队。
+- 选择单位后，按 Shift 单击地图设置移动目标，或从底部「单位」面板点击「地图移动」。F 跟随单位，R 返回总览，Esc 取消待部署或待移动操作。
+- 地面单位避开地图水面与静态建筑，经桥梁通行；无人机飞往目标。模型具有加速、转向、旋翼或车轮转动以及轻微悬挂动画。尚未实现单位之间的动态避让。
+- 红蓝双方分别保存配置，主持人可切换配置双方。编制和目标位置进入原有本机存档；恢复时放置于保存的目标位置。
+- 卡片区域在可用高度不足时可滚动，底部编队总数与应用按钮保持可用。
+
+模型重新导出与生成方式见 [模型说明](SourceModels/README.md)；本次实际构建和交互结果见 [军队配置验证记录](Verification/军队配置验证_2026-11-03.md)。

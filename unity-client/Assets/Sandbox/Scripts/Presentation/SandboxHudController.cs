@@ -9,7 +9,7 @@ namespace Qiongtu.Sandbox
 {
     /// <summary>绑定独立 Unity 作战沙盘的 HUD、抽屉和本机操作流程。</summary>
     [DefaultExecutionOrder(100)]
-    public sealed class SandboxHudController : MonoBehaviour
+    public sealed partial class SandboxHudController : MonoBehaviour
     {
         private DemoSandboxViewSource source;
         private SandboxWorld world;
@@ -67,7 +67,12 @@ namespace Qiongtu.Sandbox
             root.style.unityFontDefinition = FontDefinition.FromFont(runtimeFont);
             root.RegisterCallback<GeometryChangedEvent>(_ => root.EnableInClassList("compact", root.resolvedStyle.width < 1450));
             cameraRig.IsPointerOverUi = IsPointerOverUi;
-            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null;
+            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null;
+            cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null;
+            cameraRig.MapClicked += HandleArmyMapClick;
+            root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxArmy"));
+            BindButton("armyAction", OpenArmy);
+            root.Q<Button>("armyAction").tooltip = "配置军队、调整数量与地图部署";
             cameraRig.UnitSelected += SelectUnit;
             cameraRig.ViewChanged += UpdateCameraButton;
             BindButton("redRole", () => ChangeRole(SandboxRole.Red));
@@ -132,6 +137,7 @@ namespace Qiongtu.Sandbox
         private void ChangeRole(SandboxRole next)
         {
             if (next == role) return;
+            CloseArmy(); CancelArmyCommand();
             PausePlayback();
             CloseModal();
             ClosePanel();
@@ -167,6 +173,7 @@ namespace Qiongtu.Sandbox
         /// <summary>创建指定功能面板并暂停本地演示播放。</summary>
         private void ShowPanel(string panel)
         {
+            CloseArmy(); CancelArmyCommand();
             PausePlayback();
             activePanel = panel;
             root.Q("drawer").RemoveFromClassList("hidden");
@@ -223,6 +230,7 @@ namespace Qiongtu.Sandbox
                     actions.AddToClassList("action-row");
                     card.Add(actions);
                     AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id); RefreshProjection(); render?.Invoke(); });
+                    AddButton(actions, "地图移动", () => BeginMove(unit.id));
                     AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection(); render?.Invoke(); });
                 }
             };
@@ -421,6 +429,7 @@ namespace Qiongtu.Sandbox
                 SandboxSessionData restored = JsonUtility.FromJson<SandboxSessionData>(JsonUtility.ToJson(save.snapshot));
                 if (source.TryRestore(restored, out string message))
                 {
+                    CloseArmy(); CancelArmyCommand();
                     cameraRig.ResetOverview();
                     world.ClearProjection();
                     selectedId = null;
@@ -565,11 +574,13 @@ namespace Qiongtu.Sandbox
             if (keyboard == null) return;
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
-                if (modalAction != null) CloseModal();
+                if (armyOverlay != null) CloseArmy();
+                else if (pendingArmyType.HasValue || pendingMoveId != null) CancelArmyCommand();
+                else if (modalAction != null) CloseModal();
                 else if (activePanel != null) ClosePanel();
                 else cameraRig.ReturnToOverview();
             }
-            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null) ToggleFollow();
+            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null) ToggleFollow();
         }
 
         /// <summary>失焦后停止播放，避免后台继续推进演示。</summary>

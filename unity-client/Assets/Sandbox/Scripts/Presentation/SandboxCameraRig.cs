@@ -41,6 +41,20 @@ namespace Qiongtu.Sandbox
 
         /// <summary>用户点选单位后通知页面。</summary>
         public event Action<string> UnitSelected;
+        public Func<bool> IsMapCommand;
+        public event Action<Vector3> MapClicked;
+        public bool TryMapPoint(Vector2 screen, out Vector3 point)
+        {
+            Ray ray = viewCamera.ScreenPointToRay(screen);
+            float height = 0; point = Vector3.zero;
+            for (int i = 0; i < 8; i++)
+            {
+                var plane = new Plane(Vector3.up, new Vector3(0, height, 0));
+                if (!plane.Raycast(ray, out float distance)) return false;
+                point = ray.GetPoint(distance); height = SandboxWorld.Surface(point.x, point.z).y;
+            }
+            return point.x >= 0 && point.x <= world.MapSize.x && point.z >= 0 && point.z <= world.MapSize.y;
+        }
 
         /// <summary>跟随状态改变后通知页面。</summary>
         public event Action ViewChanged;
@@ -228,7 +242,11 @@ namespace Qiongtu.Sandbox
             previousPointerPosition = pointer;
             if (held) return;
             if (pointerGesture == PointerGesture.SelectOrPan && !pointerDragged)
-                UnitSelected?.Invoke(PickUnit(pointer));
+            {
+                if (IsMapCommand?.Invoke() == true || Keyboard.current?.shiftKey.isPressed == true)
+                { if (TryMapPoint(pointer, out Vector3 point)) MapClicked?.Invoke(point); }
+                else UnitSelected?.Invoke(PickUnit(pointer));
+            }
             CancelPointerGesture();
         }
 

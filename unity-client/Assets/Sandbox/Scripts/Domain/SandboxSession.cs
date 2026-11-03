@@ -108,7 +108,7 @@ namespace Qiongtu.Sandbox
     }
 
     /// <summary>固定虚构场景的数据适配器；仅承载前端操作和预置帧展示。</summary>
-    public sealed class DemoSandboxViewSource : ISandboxViewSource
+    public sealed partial class DemoSandboxViewSource : ISandboxViewSource
     {
         public static readonly string[] TaskTypes = { "区域巡查", "物资护送", "关键设施保护", "受损设备撤离" };
         public static readonly string[] EventTypes = { "设备故障", "通信中断", "天气变化", "任务变化" };
@@ -160,7 +160,7 @@ namespace Qiongtu.Sandbox
             foreach (SandboxUnitData unit in session.units)
             {
                 if (unit.type == SandboxUnitType.Ground)
-                    unit.x += unit.side == SandboxRole.Red ? 0.45f : -0.45f;
+                    unit.x = Math.Max(0, Math.Min(120, unit.x + (unit.side == SandboxRole.Red ? 0.45f : -0.45f)));
             }
             message = session.step == 60 ? "演示已到截止步；正式任务结果与评分待后端结算" : "已切换至下一演示帧";
             return true;
@@ -289,13 +289,12 @@ namespace Qiongtu.Sandbox
         {
             if (data == null || data.schemaVersion != 1) return "不支持的前端存档版本";
             if (!Guid.TryParse(data.sessionId, out _) || !ValidText(data.title, 60) || !TaskTypes.Contains(data.taskType)) return "存档标识或任务字段无效";
-            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || data.units.Length != 6 || data.records == null) return "存档状态不完整";
-            var expectedUnits = CreateInitialSession().units;
+            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || (data.units.Length < 6 || data.units.Length > 60) || data.records == null) return "存档状态不完整";
             var identities = new HashSet<string>();
             foreach (SandboxUnitData unit in data.units)
             {
                 if (unit == null || !ValidText(unit.id, 40) || !identities.Add(unit.id)
-                    || !expectedUnits.Any(expected => expected.id == unit.id && expected.side == unit.side && expected.type == unit.type)
+                    || !ValidArmyIdentity(unit)
                     || !ValidText(unit.name, 60) || !ValidText(unit.status, 60)
                     || float.IsNaN(unit.x) || float.IsInfinity(unit.x) || unit.x < 0 || unit.x > 120
                     || float.IsNaN(unit.z) || float.IsInfinity(unit.z) || unit.z < 0 || unit.z > 80)
@@ -303,6 +302,11 @@ namespace Qiongtu.Sandbox
             }
             foreach (SandboxRole side in new[] { SandboxRole.Red, SandboxRole.Blue })
             {
+                foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
+                {
+                    int count = data.units.Count(unit => unit.side == side && unit.type == type);
+                    if (count < 1 || count > 10) return "每方每类单位须为 1–10 个";
+                }
                 SandboxPlanData plan = side == SandboxRole.Red ? data.redPlan : data.bluePlan;
                 if (plan == null || plan.side != side || plan.version < 1 || !Enum.IsDefined(typeof(SandboxPlanStatus), plan.status)
                     || plan.resourceAllowance < 0 || plan.resourceAllowance > 20 || !ValidText(plan.priority, 120)

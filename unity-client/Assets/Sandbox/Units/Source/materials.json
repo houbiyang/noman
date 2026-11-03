@@ -1,0 +1,636 @@
+{
+  "materials": [
+    {
+      "name": "Ceramic_Armor",
+      "color": [
+        0.6299999952316284,
+        0.7099999785423279,
+        0.7400000095367432,
+        1.0
+      ],
+      "metallic": 0.44999998807907104,
+      "roughness": 0.3199999928474426
+    },
+    {
+      "name": "Graphite_Chassis",
+      "color": [
+        0.04500000178813934,
+        0.07000000029802322,
+        0.09000000357627869,
+        1.0
+      ],
+      "metallic": 0.5,
+      "roughness": 0.44999998807907104
+    },
+    {
+      "name": "Machined_Metal",
+      "color": [
+        0.23000000417232513,
+        0.3100000023841858,
+        0.36000001430511475,
+        1.0
+      ],
+      "metallic": 0.75,
+      "roughness": 0.2800000011920929
+    },
+    {
+      "name": "Marking_White",
+      "color": [
+        0.8799999952316284,
+        0.9399999976158142,
+        0.9300000071525574,
+        1.0
+      ],
+      "metallic": 0.10000000149011612,
+      "roughness": 0.44999998807907104
+    },
+    {
+      "name": "Preview_Background",
+      "color": [
+        0.017999999225139618,
+        0.029999999329447746,
+        0.04500000178813934,
+        1.0
+      ],
+      "metallic": 0.10000000149011612,
+      "roughness": 0.800000011920929
+    },
+    {
+      "name": "Preview_Podium",
+      "color": [
+        0.054999999701976776,
+        0.09000000357627869,
+        0.11999999731779099,
+        1.0
+      ],
+      "metallic": 0.3499999940395355,
+      "roughness": 0.44999998807907104
+    },
+    {
+      "name": "Rubber_Tread",
+      "color": [
+        0.017999999225139618,
+        0.024000000208616257,
+        0.029999999329447746,
+        1.0
+      ],
+      "metallic": 0.05000000074505806,
+      "roughness": 0.800000011920929
+    },
+    {
+      "name": "Sensor_Glass",
+      "color": [
+        0.11999999731779099,
+        0.75,
+        0.8399999737739563,
+        1.0
+      ],
+      "metallic": 0.5,
+      "roughness": 0.20000000298023224
+    },
+    {
+      "name": "Service_Amber",
+      "color": [
+        0.9599999785423279,
+        0.5799999833106995,
+        0.11999999731779099,
+        1.0
+      ],
+      "metallic": 0.30000001192092896,
+      "roughness": 0.44999998807907104
+    },
+    {
+      "name": "TeamAccent",
+      "color": [
+        0.8999999761581421,
+        0.18000000715255737,
+        0.12999999523162842,
+        1.0
+      ],
+      "metallic": 0.4000000059604645,
+      "roughness": 0.3199999928474426
+    }
+  ],
+  "parts": [
+    {
+      "name": "Carbon outrigger",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Carbon outrigger.001",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Carbon outrigger.002",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Carbon outrigger.003",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Data antenna",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Gimbal body",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Landing skid",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Landing skid.001",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Landing strut",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Landing strut.001",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Link lamp",
+      "material": "Sensor_Glass"
+    },
+    {
+      "name": "Motor housing",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Motor housing.001",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Motor housing.002",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Motor housing.003",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Optical lens",
+      "material": "Sensor_Glass"
+    },
+    {
+      "name": "Protective rotor ring",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Protective rotor ring.001",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Protective rotor ring.002",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Protective rotor ring.003",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Rotor cap",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Rotor cap.001",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Rotor cap.002",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Rotor cap.003",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Rotor blade",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rotor blade.001",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rotor blade.002",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rotor blade.003",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rotor blade.004",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rotor blade.005",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rotor blade.006",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rotor blade.007",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Sensor fuselage",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Team spine",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Top panel",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Armoured hull",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Continuous rubber track",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "Continuous rubber track.001",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "Front lamp",
+      "material": "Marking_White"
+    },
+    {
+      "name": "Front lamp.001",
+      "material": "Marking_White"
+    },
+    {
+      "name": "Front light housing",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Front light housing.001",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Ground link antenna",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Lower chassis",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Mission module",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Module tip",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Rear vent",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rear vent.001",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rear vent.002",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Road wheel",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Road wheel.001",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Road wheel.002",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Road wheel.003",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Road wheel.004",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Road wheel.005",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Road wheel.006",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Road wheel.007",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Sensor face",
+      "material": "Sensor_Glass"
+    },
+    {
+      "name": "Sensor head",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Team side armour",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Team side armour.001",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Team turret roof",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Track top pad",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.001",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.002",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.003",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.004",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.005",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.006",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.007",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.008",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.009",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.010",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.011",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.012",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.013",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.014",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.015",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.016",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.017",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.018",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Track top pad.019",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Turret bearing",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Unmanned turret",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "All terrain tyre",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "All terrain tyre.001",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "All terrain tyre.002",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "All terrain tyre.003",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "All terrain tyre.004",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "All terrain tyre.005",
+      "material": "Rubber_Tread"
+    },
+    {
+      "name": "Amber service beacon",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Autonomous cab",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Beacon base",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Cab team roof",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Cargo restraint",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Cargo restraint.001",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Cargo restraint.002",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Cargo restraint.003",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Hub marker",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Hub marker.001",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Hub marker.002",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Hub marker.003",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Hub marker.004",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Hub marker.005",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Modular supply case",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Modular supply case.001",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Modular supply case.002",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Modular supply case.003",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Navigation optics",
+      "material": "Sensor_Glass"
+    },
+    {
+      "name": "Navigation optics.001",
+      "material": "Sensor_Glass"
+    },
+    {
+      "name": "Navigation visor",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Rear recovery beam",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Service case lid",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Service case lid.001",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Service case lid.002",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Service case lid.003",
+      "material": "Service_Amber"
+    },
+    {
+      "name": "Service chassis",
+      "material": "Graphite_Chassis"
+    },
+    {
+      "name": "Service plus horizontal",
+      "material": "Marking_White"
+    },
+    {
+      "name": "Service plus horizontal.001",
+      "material": "Marking_White"
+    },
+    {
+      "name": "Service plus vertical",
+      "material": "Marking_White"
+    },
+    {
+      "name": "Service plus vertical.001",
+      "material": "Marking_White"
+    },
+    {
+      "name": "Supply deck",
+      "material": "Ceramic_Armor"
+    },
+    {
+      "name": "Team side rail",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Team side rail.001",
+      "material": "TeamAccent"
+    },
+    {
+      "name": "Wheel hub",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Wheel hub.001",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Wheel hub.002",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Wheel hub.003",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Wheel hub.004",
+      "material": "Machined_Metal"
+    },
+    {
+      "name": "Wheel hub.005",
+      "material": "Machined_Metal"
+    }
+  ]
+}
