@@ -65,14 +65,14 @@
             <ui:VisualElement class="action-icon battle-icon" picking-mode="Ignore" />
             <ui:Label text="战斗" class="action-caption" picking-mode="Ignore" />
         </ui:Button>
-        <ui:Button name="armyAction" class="action-tile army-action ui-blocker" tooltip="军队功能后续接入">
+        <ui:Button name="armyAction" class="action-tile army-action ui-blocker" tooltip="配置军队与地图部署">
             <ui:VisualElement class="action-icon army-icon" picking-mode="Ignore" />
             <ui:Label text="军队" class="action-caption" picking-mode="Ignore" />
         </ui:Button>
         <ui:VisualElement class="bottom-dock ui-blocker">
             <ui:VisualElement class="selected-summary">
                 <ui:Label name="selectedSummary" text="尚未选择单位" class="selected-title" />
-                <ui:Label text="单击选择 · 拖动平移 · F 跟随" class="muted" />
+                <ui:Label text="单击选择 · Shift 点击移动 · F 跟随" class="muted" />
             </ui:VisualElement>
             <ui:Button name="unitsButton" text="单位" />
             <ui:Button name="tasksButton" text="任务" />

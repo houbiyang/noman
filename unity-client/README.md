@@ -16,13 +16,13 @@
 
 使用 Blender 5.2 原创建立十五类米制原型，当前实际布置 1,769 栋建筑与 25,507 株树木，按两公里空间块及材质合并为 637 个网格分块，共 1,572,765 个三角形，数量包含远景。原型涵盖板楼、塔楼、办公楼、四档住宅、仓库、机库、货运棚、储罐、塔台、掩体、兵营与变电设施。道路数据为 144 个节点、243 条边与 3 座桥；它是静态连通图，未实现权威寻路。统计与同源哈希见 `MapPreview/Strategic12km/map-build-summary.json`。
 
-参考用户提供的《断箭》图像，使用深灰沥青、灰白与暖砖色墙面、低饱和绿地、密集林冠、米制平铺底色和法线、斜射日光、阴影及 ACES 色调映射。保持既有全屏 HUD 与角色入口；设置、战斗、军队按钮的业务功能仍待定义。Blender 离线渲染与实际网页截图分别提供，当前模型属于可运行策略地图首版，不声称达到参考游戏的美术精度。
+参考用户提供的《断箭》图像，使用深灰沥青、灰白与暖砖色墙面、低饱和绿地、密集林冠、米制平铺底色和法线、斜射日光、阴影及 ACES 色调映射。保持既有全屏 HUD 与角色入口；军队按钮已接入本机编制配置和地图部署，设置、战斗入口仍待接入。Blender 离线渲染与实际网页截图分别提供，当前模型属于可运行策略地图首版，不声称达到参考游戏的美术精度。
 
-当前资源与重建方法见 [十二公里地图说明](MapPreview/Strategic12km/README.md)。旧演示及存档字段保留，业务坐标 120×80 在显示层映射为 12,000×12,000 米；单位模型维持米制尺寸。初始相机显示中央城市与河流通路，滚轮缩小可观察全图，`R` 返回初始观察位置。地表、建筑、植被和云仍仅参与显示；未接入实际测绘、GIS、遮蔽裁决或动态摧毁。
+当前资源与重建方法见 [十二公里地图说明](MapPreview/Strategic12km/README.md)。旧演示及存档字段保留，业务坐标 120×80 在显示层映射为 12,000×12,000 米；单位模型维持米制尺寸。初始相机显示中央城市与河流通路，滚轮缩小可观察全图，`R` 返回初始观察位置。水面、桥梁及建筑占地供本机单位演示寻路使用；尚未接入正式后端通行、实际测绘、GIS、遮蔽裁决或动态摧毁。
 
 | 功能 | 源码实现范围 |
 | --- | --- |
-| 三维场景 | 固定虚构地形、河流、道路、桥梁、建筑、树木、双方兵营和三个任务点；六个简化三维单位 |
+| 三维场景 | 固定虚构地图、双方兵营及任务点；侦察无人机、履带地面单元和六轮保障车模型，每方每类可配置 1–10 个 |
 | 总览相机 | 平移、旋转、缩放、定位和重置；相机动作不推进仿真 |
 | 单位跟随 | 仅绑定当前可见单位；切角色、恢复快照和目标失效时清理旧目标 |
 | 单位面板 | 当前角色可见列表、搜索、详情、坐标、定位和跟随 |
@@ -65,6 +65,22 @@
 编辑器位置不同时可通过 `-EditorPath` 指定实际 `Unity.exe`。批处理日志放在仓库根目录 `.local/unity/`，不纳入 Git。脚本不会自动关闭已有编辑器，也不会安装或激活软件。
 
 Windows 构建成功后的入口为 `Builds/Windows/QiongtuSandbox.exe`；当前没有可宣称已经生成和验收的可执行文件。
+
+## macOS 启动
+
+Apple Silicon Mac 使用与工程一致的 `6000.6.7f1` ARM64 编辑器。网页构建需要 Web Build Support；在 Mac 上构建本工程的 Windows Mono 客户端还需要 Windows Build Support (Mono)。
+
+编辑器安装并激活后，可双击本目录 `start-unity.command` 生成场景并进入 Play Mode，或在终端中选择操作：
+
+```sh
+./start-unity.command Open          # 打开工程
+./start-unity.command Run           # 生成场景并运行（默认）
+./start-unity.command Prepare       # 关闭编辑器后，以批处理生成场景
+./start-unity.command BuildWeb      # 关闭编辑器后，构建网页
+./start-unity.command BuildWindows  # 关闭编辑器后，构建 Windows Mono 客户端
+```
+
+脚本从 `ProjectSettings/ProjectVersion.txt` 读取版本，默认使用 `/Applications/Unity/Hub/Editor/<版本>/Unity.app`。若编辑器安装在其他目录，设置 `UNITY_EDITOR_PATH` 为该应用内 `Contents/MacOS/Unity` 的完整路径。日志保存在仓库根目录 `.local/unity/`。Windows `.exe` 需要在 Windows 环境中运行。
 
 ## 网页构建与打开
 
@@ -143,3 +159,15 @@ node .\Verification\check-web-build.cjs
 本机前端存档位于 `Application.persistentDataPath/FrontendSandboxSaves/`。它与旧后端 `.local/` 数据库、旧 Vue 页面存档及正式游戏存档格式均独立。
 
 实现核对采用 [Unity 6000.6 命令行参数](https://docs.unity.com/en-us/engine/6000.6/manual/unity-editor/command-line-arguments/editor)、[运行时 UI 配置](https://docs.unity.com/en-us/engine/6000.6/manual/uitoolkits/uielements/uie-support-for-runtime-ui/uie-render-runtime-ui)与[主题样式表规范](https://docs.unity.com/en-us/engine/6000.6/manual/uitoolkits/uielements/uie-uss/uie-tss)。实际 API 兼容性仍以目标编辑器编译和运行结果为准。
+
+## 军队配置与地图部署（2026-11-03）
+
+地图右侧「军队」打开 Unity 原生军队配置页面。三个卡片分别展示从 `sandbox-units.blend` 导入并由 Unity 渲染的侦察无人机、履带地面单元和六轮保障车；模型也以 Unity 预制体放置在实际地图中。
+
+- 每类使用加减按钮选择 1–10 个单位，每方最多 30 个。「应用编队」调整当前编制，「选点部署」后单击地图重新放置同类编队。
+- 选择单位后，按 Shift 单击地图设置移动目标，或从底部「单位」面板点击「地图移动」。F 跟随单位，R 返回总览，Esc 取消待部署或待移动操作。
+- 地面单位避开地图水面与静态建筑，经桥梁通行；无人机飞往目标。模型具有加速、转向、旋翼或车轮转动以及轻微悬挂动画。尚未实现单位之间的动态避让。
+- 红蓝双方分别保存配置，主持人可切换配置双方。编制和目标位置进入原有本机存档；恢复时放置于保存的目标位置。
+- 卡片区域在可用高度不足时可滚动，底部编队总数与应用按钮保持可用。
+
+模型重新导出与生成方式见 [模型说明](SourceModels/README.md)；本次实际构建和交互结果见 [军队配置验证记录](Verification/军队配置验证_2026-11-03.md)。

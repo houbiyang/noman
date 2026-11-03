@@ -22,6 +22,9 @@ namespace Qiongtu.Sandbox
         private Material metalMaterial;
         private static SandboxMapData mapDefinition;
         private GameObject mapRoot;
+        private SandboxArmyNavigation navigation;
+        private string selectedUnit;
+        private readonly HashSet<string> relocated = new HashSet<string>();
 
         /// <summary>当前公开的稳定地图标记。</summary>
         public SandboxMapPoint[] MapPoints => Definition.points;
@@ -77,14 +80,24 @@ namespace Qiongtu.Sandbox
                     view = BuildUnit(unit);
                     unitViews.Add(unit.id, view);
                 }
-                Vector2 displayPosition = ProjectBusinessPosition(unit.x, unit.z);
-                Vector3 position = Surface(displayPosition.x, displayPosition.y);
-                view.transform.position = position + Vector3.up * (unit.type == SandboxUnitType.Recon ? 5 : 0.6f);
+                Vector3 position = ArmyPosition(unit.x, unit.z, unit.type);
+                if (relocated.Remove(unit.id)) view.Relocate(position);
+                else if (!view.HasTarget(position))
+                {
+                    if (!view.HasPosition || unit.type == SandboxUnitType.Recon) view.SetTarget(position);
+                    else
+                    {
+                        List<Vector3> path = Navigation.FindPath(view.transform.position, position);
+                        // An unreachable demo target must not produce a straight line through water or buildings.
+                        if (path != null) view.SetTarget(position, path);
+                    }
+                }
             }
             foreach (string unitId in new List<string>(unitViews.Keys))
             {
                 if (allowed.Contains(unitId)) continue;
                 // 立即禁用命中与渲染，再在帧末销毁，避免角色切换时泄露旧对象。
+                unitViews[unitId].HideRoute();
                 unitViews[unitId].gameObject.SetActive(false);
                 Destroy(unitViews[unitId].gameObject);
                 unitViews.Remove(unitId);
@@ -96,11 +109,13 @@ namespace Qiongtu.Sandbox
         {
             foreach (SandboxUnitView view in unitViews.Values)
             {
+                view.HideRoute();
                 view.gameObject.SetActive(false);
                 Destroy(view.gameObject);
             }
             unitViews.Clear();
             selectionRing.gameObject.SetActive(false);
+            selectedUnit = null; relocated.Clear();
         }
 
         /// <summary>查找当前允许显示的单位变换。</summary>
@@ -112,6 +127,8 @@ namespace Qiongtu.Sandbox
         /// <param name="unitId">当前选中单位。</param>
         public void Select(string unitId)
         {
+            selectedUnit = unitId;
+            foreach (var entry in unitViews) entry.Value.ShowRoute(entry.Key == unitId);
             Transform target = FindUnit(unitId);
             selectionRing.gameObject.SetActive(target != null);
             if (target == null) return;
@@ -162,30 +179,53 @@ namespace Qiongtu.Sandbox
         {
             var root = new GameObject(unit.id);
             root.transform.SetParent(unitRoot, false);
-            SandboxUnitView view = root.AddComponent<SandboxUnitView>();
-            view.Initialize(unit.id);
-            Material color = unit.side == SandboxRole.Red ? redMaterial : blueMaterial;
-            if (unit.type == SandboxUnitType.Recon)
-            {
-                CreateBox("DroneBody", root.transform, Vector3.zero, new Vector3(1.8f, 0.55f, 1.1f), color);
-                CreateBox("CrossArm", root.transform, Vector3.zero, new Vector3(3.8f, 0.15f, 0.2f), metalMaterial);
-                CreateBox("LongArm", root.transform, Vector3.zero, new Vector3(0.2f, 0.15f, 3.4f), metalMaterial);
-                foreach (Vector3 offset in new[] { Vector3.left * 1.9f, Vector3.right * 1.9f, Vector3.forward * 1.7f, Vector3.back * 1.7f })
-                    CreateCylinder("Rotor", root.transform, offset, new Vector3(1.35f, 0.055f, 1.35f), darkMaterial);
-            }
-            else
-            {
-                CreateBox("Chassis", root.transform, Vector3.zero, new Vector3(2.9f, 0.8f, 1.7f), color);
-                CreateBox("Cabin", root.transform, new Vector3(0.25f, 0.7f, 0), new Vector3(1.65f, 0.8f, 1.4f), unit.type == SandboxUnitType.Support ? metalMaterial : color);
-                foreach (float positionX in new[] { -0.9f, 0.9f })
-                    foreach (float positionZ in new[] { -0.9f, 0.9f })
-                        CreatePrimitive("Wheel", PrimitiveType.Sphere, root.transform, new Vector3(positionX, -0.3f, positionZ), Vector3.one * 0.7f, darkMaterial, false);
-                if (unit.type == SandboxUnitType.Support)
-                    CreateBox("SupplyCrate", root.transform, new Vector3(-0.55f, 0.75f, 0), new Vector3(1.15f, 0.9f, 1.25f), color);
-            }
-            BoxCollider selectionCollider = root.AddComponent<BoxCollider>();
-            selectionCollider.size = new Vector3(4.2f, 2.8f, 3.6f);
+            var visual = new GameObject("AnimatedModel"); visual.transform.SetParent(root.transform, false);
+            GameObject prefab = Resources.Load<GameObject>("Army/" + DemoSandboxViewSource.ArmyKey(unit.type));
+            if (prefab == null) throw new InvalidOperationException("缺少已导入军队模型，请执行军队资源生成");
+            GameObject model = Instantiate(prefab, visual.transform, false);
+            // Preserve baked mesh dimensions and put the lowest point on the sampled terrain.
+            Bounds bounds = new Bounds(); bool first = true;
+            foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>())
+            { if (first) { bounds = renderer.bounds; first = false; } else bounds.Encapsulate(renderer.bounds); }
+            model.transform.localPosition = new Vector3(0, -bounds.min.y, 0);
+            var collider = root.AddComponent<BoxCollider>();
+            collider.center = new Vector3(bounds.center.x, bounds.size.y / 2, bounds.center.z);
+            collider.size = Vector3.Max(bounds.size, new Vector3(3, 1.8f, 3));
+            var view = root.AddComponent<SandboxUnitView>();
+            view.Initialize(unit.id, unit.type, visual.transform, unit.side == SandboxRole.Red ? redMaterial.color : blueMaterial.color);
+            var line = CreateLine("MovementRoute", unitRoot, new Vector3[0], 0.13f, new Color(0.88f, 0.77f, 0.35f));
+            line.gameObject.SetActive(false); view.AttachRoute(line);
             return view;
+        }
+
+        private SandboxArmyNavigation Navigation => navigation ?? (navigation = new SandboxArmyNavigation(mapRoot, Definition));
+        public static Vector3 ArmyPosition(float x, float z, SandboxUnitType type)
+        {
+            Vector2 mapped = ProjectBusinessPosition(x, z);
+            return Surface(mapped.x, mapped.y) + Vector3.up * (type == SandboxUnitType.Recon ? 6 : 0.08f);
+        }
+        public bool CanPlace(float x, float z, SandboxUnitType type) => x >= 0 && x <= 120 && z >= 0 && z <= 80 && (type == SandboxUnitType.Recon || Navigation.IsWalkable(ArmyPosition(x, z, type)));
+        public bool CanMove(string id, float x, float z, SandboxUnitType type)
+        {
+            Transform unit = FindUnit(id);
+            return unit != null && CanPlace(x, z, type) && (type == SandboxUnitType.Recon || Navigation.FindPath(unit.position, ArmyPosition(x, z, type)) != null);
+        }
+        public void RelocateOnRefresh(IEnumerable<string> ids) { foreach (string id in ids) relocated.Add(id); }
+
+        /// <summary>将十二公里地图上的选点还原为旧存档使用的业务坐标。</summary>
+        /// <param name="point">地图中的米制世界位置。</param>
+        /// <param name="business">还原后的 120×80 业务坐标。</param>
+        /// <returns>位置有限且位于可操作范围内时返回真。</returns>
+        public bool TryBusinessPosition(Vector3 point, out Vector2 business)
+        {
+            business = new Vector2(point.x / 100f, point.z / 150f);
+            return business.x >= 0 && business.x <= 120 && business.y >= 0 && business.y <= 80;
+        }
+        private void LateUpdate()
+        {
+            Transform target = FindUnit(selectedUnit);
+            selectionRing.gameObject.SetActive(target != null);
+            if (target != null) selectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * 0.3f, 2.5f));
         }
 
         /// <summary>创建归属于场景的 URP 兼容材质。</summary>

@@ -87,8 +87,43 @@ internal static class DomainChecks
         valid = new DemoSandboxViewSource().Current;
         valid.records[0].step = 61;
         Check(DemoSandboxViewSource.ValidateSession(valid).Length > 0, "超出当前步的时间线被拒绝");
+        CheckArmy();
         Console.WriteLine("前端状态检查通过：" + checks + " 项。此结果不代表 Unity 运行或画面验收。");
         return 0;
+    }
+
+    private static void CheckArmy()
+    {
+        var source = new DemoSandboxViewSource();
+        int revision = source.Current.revision;
+        Check(!source.TryConfigureArmy(SandboxRole.Red, SandboxRole.Blue, new[] { 2, 2, 2 }, out _), "不能配置对方军队");
+        foreach (int count in new[] { 0, 11, -1 })
+            Check(!source.TryConfigureArmy(SandboxRole.Red, SandboxRole.Red, new[] { count, 1, 1 }, out _), "拒绝越界数量 " + count);
+        Check(source.Current.revision == revision, "失败配置不改变修订");
+        Check(source.TryConfigureArmy(SandboxRole.Red, SandboxRole.Red, new[] { 10, 10, 10 }, out _), "本方扩展到30个单位");
+        Check(source.GetProjection(SandboxRole.Red).units.Length == 30, "红方投影30单位");
+        Check(source.GetProjection(SandboxRole.Blue).units.Length == 3, "蓝方编制不受影响");
+        Check(source.TryConfigureArmy(SandboxRole.Host, SandboxRole.Blue, new[] { 10, 10, 10 }, out _), "主持人扩展蓝方编制");
+        Check(source.Current.units.Length == 60 && source.Current.units.Select(u => u.id).Distinct().Count() == 60, "60个独立身份");
+        Check(DemoSandboxViewSource.ValidateSession(source.Current) == "", "扩展编制可存档");
+        revision = source.Current.revision;
+        Check(!source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 10, 0, 79, out _), "整队越界部署被拒绝");
+        Check(source.Current.revision == revision && source.Current.units.Length == 60, "部署失败无部分修改");
+        Check(!source.TryDeployArmy(SandboxRole.Red, SandboxRole.Blue, SandboxUnitType.Recon, 2, 40, 40, out _), "拒绝对方部署");
+        Check(source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 5, 40, 40, out _), "五个地面单位部署成功");
+        Check(source.Current.units.Count(u => u.side == SandboxRole.Red && u.type == SandboxUnitType.Ground) == 5, "部署同步同类数量");
+        Check(source.Current.units.Where(u => u.side == SandboxRole.Red && u.type == SandboxUnitType.Ground).Select(u => u.x + "," + u.z).Distinct().Count() == 5, "编队位置不重叠");
+        Check(!source.TryMoveArmyUnit(SandboxRole.Blue, "R-G01", 30, 30, out _), "不能移动对方单位");
+        Check(!source.TryMoveArmyUnit(SandboxRole.Red, "R-G01", float.NaN, 30, out _), "拒绝非数目标");
+        Check(!source.TryMoveArmyUnit(SandboxRole.Red, "R-G01", 121, 30, out _), "拒绝地图外目标");
+        Check(source.TryMoveArmyUnit(SandboxRole.Red, "R-G01", 119.9f, 30, out _), "有效机动目标");
+        var restored = new DemoSandboxViewSource();
+        Check(restored.TryRestore(source.Current, out _), "可恢复扩展编制");
+        Check(restored.Current.units.Length == 55, "恢复保持55个单位");
+        Check(source.TryConfigureArmy(SandboxRole.Red, SandboxRole.Red, new[] { 1, 1, 1 }, out _), "允许缩编");
+        Check(source.Current.units.First(u => u.id == "R-G01").x == 119.9f, "缩编保留已有单位目标");
+        var data = restored.Current; data.units[0].id = "B-U11";
+        Check(DemoSandboxViewSource.ValidateSession(data) != "", "拒绝11号单位身份");
     }
 
     /// <summary>核对一项独立预期，失败时返回明确位置。</summary>

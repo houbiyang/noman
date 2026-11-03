@@ -21,6 +21,7 @@ namespace Qiongtu.Sandbox.Editor
             if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             string directory = Path.GetDirectoryName(ScenePath);
             if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
+            SandboxArmyAssets.Prepare();
             ConfigureBattlefieldShadows();
             const string cloudPath = "Assets/Sandbox/Resources/Sandbox/Cloud.mat";
             Material cloud = SandboxCloudLayer.CreateCloudMaterial();
