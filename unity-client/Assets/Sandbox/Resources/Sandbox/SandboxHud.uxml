@@ -65,7 +65,7 @@
             <ui:VisualElement class="action-icon battle-icon" picking-mode="Ignore" />
             <ui:Label text="战斗" class="action-caption" picking-mode="Ignore" />
         </ui:Button>
-        <ui:Button name="armyAction" class="action-tile army-action ui-blocker" tooltip="配置军队与地图部署">
+        <ui:Button name="armyAction" class="action-tile army-action ui-blocker" tooltip="建造兵营与生成单位">
             <ui:VisualElement class="action-icon army-icon" picking-mode="Ignore" />
             <ui:Label text="军队" class="action-caption" picking-mode="Ignore" />
         </ui:Button>

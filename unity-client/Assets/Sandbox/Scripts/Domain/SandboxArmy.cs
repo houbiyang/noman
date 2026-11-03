@@ -4,6 +4,16 @@ using System.Linq;
 
 namespace Qiongtu.Sandbox
 {
+    [Serializable]
+    public sealed class SandboxBarracksData
+    {
+        public string id;
+        public SandboxRole side;
+        public SandboxUnitType type;
+        public float x, z;
+        public SandboxBarracksData Copy() => (SandboxBarracksData)MemberwiseClone();
+    }
+
     public sealed partial class DemoSandboxViewSource
     {
         public const int MaxArmyUnits = 10;
@@ -52,6 +62,80 @@ namespace Qiongtu.Sandbox
             AddRecord("地图追加部署", ArmyName(type) + " × " + quantity + "，原有单位保留", side, false, false);
             message = "已新增 " + ArmyName(type) + " × " + quantity + "，地图总计 " + session.units.Length + " / " + MaxArmyUnits;
             return true;
+        }
+
+        public static string BarracksName(SandboxUnitType type) => type == SandboxUnitType.Recon ? "无人机机库" : type == SandboxUnitType.Ground ? "履带单元兵营" : "保障车兵营";
+        public static string BarracksId(SandboxRole side, SandboxUnitType type) => (side == SandboxRole.Red ? "R" : "B") + "-CAMP-" + ArmyKey(type);
+        public static float RallyX(float x, int index, int quantity) => x + (index % 4 - Math.Min(quantity, 4) / 2f + .5f) * 2.1f;
+        public static float RallyZ(float z, int index) => z + 6 + index / 4 * 2.1f;
+
+        // One persistent barracks per side/type. Repositioning never moves existing troops.
+        public bool TryPlaceBarracks(SandboxRole actor, SandboxRole side, SandboxUnitType type, int quantity, float x, float z, out string message)
+        {
+            message = "兵营角色、数量或位置无效";
+            if ((side != SandboxRole.Red && side != SandboxRole.Blue) || actor != SandboxRole.Host && actor != side
+                || !Enum.IsDefined(typeof(SandboxUnitType), type) || quantity < 1 || quantity > MaxArmyUnits
+                || !ValidArmyPosition(x - 4, z - 4) || !ValidArmyPosition(x + 4, RallyZ(z, 9))) return false;
+            string id = BarracksId(side, type);
+            bool relocating = session.barracks.Any(camp => camp.id == id);
+            if (session.barracks.Any(camp => camp.id != id && Math.Abs(camp.x - x) < 9 && Math.Abs(camp.z - z) < 12))
+            { message = "兵营之间需要留出建筑与出兵空间"; return false; }
+            var camps = session.barracks.Where(camp => camp.id != id).ToList();
+            camps.Add(new SandboxBarracksData { id = id, side = side, type = type, x = x, z = z });
+            session.barracks = camps.ToArray();
+            int spawned = !relocating && quantity <= ArmyCapacityRemaining ? quantity : 0;
+            if (spawned > 0) SpawnFromBarracks(camps.Last(), spawned);
+            AddRecord(relocating ? "兵营重新选址" : "建造兵营", BarracksName(type) + "，生成 " + spawned + " 个单位", side, false, false);
+            message = "已" + (relocating ? "移动" : "放置") + BarracksName(type) + (spawned > 0 ? "，从兵营生成 " + spawned + " 个单位" : relocating ? "，原有单位保持位置" : "；名额不足，可释放名额后在此生成单位");
+            return true;
+        }
+
+        public bool TrySpawnArmy(SandboxRole actor, SandboxRole side, SandboxUnitType type, int quantity, out string message)
+        {
+            message = "只能操作本方兵营，主持人可以操作双方";
+            if ((side != SandboxRole.Red && side != SandboxRole.Blue) || actor != SandboxRole.Host && actor != side || !Enum.IsDefined(typeof(SandboxUnitType), type)) return false;
+            message = "请先在地图放置该兵种的兵营";
+            var camp = session.barracks.FirstOrDefault(item => item.id == BarracksId(side, type));
+            if (camp == null) return false;
+            message = "生成数量须为 1–10";
+            if (quantity < 1 || quantity > MaxArmyUnits) return false;
+            if (!HasArmyCapacity(quantity, out message)) return false;
+            SpawnFromBarracks(camp, quantity);
+            AddRecord("兵营生成单位", BarracksName(type) + "生成 " + quantity + " 个单位", side, false, false);
+            message = "已从" + BarracksName(type) + "生成 " + quantity + " 个单位 · 总计 " + session.units.Length + " / 10";
+            return true;
+        }
+
+        private void SpawnFromBarracks(SandboxBarracksData camp, int quantity)
+        {
+            var units = session.units.ToList();
+            int start = units.Count;
+            AddFormation(units, camp.side, camp.type, quantity, camp.x, camp.z + 6);
+            for (int i = start; i < units.Count; i++)
+            {
+                int slot = int.Parse(units[i].id.Substring(3)) - 1;
+                units[i].x = RallyX(camp.x, slot, 10); units[i].z = RallyZ(camp.z, slot);
+                units[i].barracksId = camp.id; units[i].status = "兵营出发 · 待命";
+            }
+            session.units = units.ToArray();
+        }
+
+        private static string ValidateBarracks(SandboxSessionData data)
+        {
+            var camps = data.barracks ?? new SandboxBarracksData[0];
+            if (camps.Length > 6) return "每方每种兵种只能有一个兵营";
+            var ids = new HashSet<string>();
+            foreach (var camp in camps)
+            {
+                if (camp == null || (camp.side != SandboxRole.Red && camp.side != SandboxRole.Blue)
+                    || !Enum.IsDefined(typeof(SandboxUnitType), camp.type) || camp.id != BarracksId(camp.side, camp.type) || !ids.Add(camp.id)
+                    || !ValidArmyPosition(camp.x - 4, camp.z - 4) || !ValidArmyPosition(camp.x + 4, RallyZ(camp.z, 9))) return "存档兵营身份或坐标无效";
+            }
+            for (int i = 0; i < camps.Length; i++) for (int j = i + 1; j < camps.Length; j++)
+                if (Math.Abs(camps[i].x - camps[j].x) < 9 && Math.Abs(camps[i].z - camps[j].z) < 12) return "存档兵营相互重叠";
+            foreach (var unit in data.units)
+                if (unit != null && !string.IsNullOrEmpty(unit.barracksId) && !camps.Any(camp => camp.id == unit.barracksId && camp.side == unit.side && camp.type == unit.type)) return "存档单位与兵营归属不匹配";
+            return string.Empty;
         }
 
         private bool HasArmyCapacity(int quantity, out string message)

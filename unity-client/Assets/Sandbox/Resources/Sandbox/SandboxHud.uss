@@ -71,7 +71,7 @@
 .action-tile:active { background-color: #3d5848; }
 .action-icon { width: 72px; height: 70px; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: #d1d9c9; }
 .battle-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Battle.png"); }
-.army-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Army.png"); }
+.army-icon { background-image: url("project://database/Assets/Sandbox/Resources/Army/infantry-barracks-card.png"); }
 .settings-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Settings.png"); }
 .action-caption { color: #e4ead8; font-size: 16px; -unity-font-style: bold; -unity-text-align: middle-center; }
 .settings-action { right: 24px; top: 104px; }

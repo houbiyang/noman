@@ -39,14 +39,14 @@ namespace Qiongtu.Sandbox
         public bool HasPosition => initialized;
         public bool HasTarget(Vector3 next) => initialized && (destination - next).sqrMagnitude < 0.01f;
 
-        public void SetTarget(Vector3 next, List<Vector3> waypoints = null)
+        public void SetTarget(Vector3 next, List<Vector3> waypoints = null, bool force = false)
         {
             if (!initialized)
             {
                 destination = next; transform.position = next; initialized = true;
                 transform.rotation = Quaternion.Euler(0, UnitId.StartsWith("R") ? 75 : -75, 0); return;
             }
-            if ((destination - next).sqrMagnitude < 0.01f) return;
+            if (!force && (destination - next).sqrMagnitude < 0.01f) return;
             destination = next; path.Clear();
             if (waypoints != null) foreach (Vector3 point in waypoints) path.Enqueue(point);
             if (path.Count == 0) path.Enqueue(next);
@@ -55,6 +55,13 @@ namespace Qiongtu.Sandbox
         public void Relocate(Vector3 position)
         {
             path.Clear(); destination = position; transform.position = position; speed = 0; initialized = true; spawnAt = Time.time;
+        }
+
+        public void HoldPosition() { path.Clear(); }
+
+        public void SpawnAt(Vector3 origin, float delay)
+        {
+            Relocate(origin); spawnAt = Time.time + delay; visual.localScale = Vector3.zero;
         }
 
         private void OnDestroy() => ReleaseRoute();
@@ -77,6 +84,7 @@ namespace Qiongtu.Sandbox
 
         private void Update()
         {
+            if (Time.time < spawnAt) return;
             float dt = Time.deltaTime;
             bool moving = path.Count > 0;
             speed = Mathf.MoveTowards(speed, moving ? (type == SandboxUnitType.Recon ? 15 : type == SandboxUnitType.Ground ? 8 : 6) : 0, dt * 12);

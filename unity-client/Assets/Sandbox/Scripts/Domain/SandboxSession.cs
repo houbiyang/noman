@@ -24,6 +24,7 @@ namespace Qiongtu.Sandbox
         public float x;
         public float z;
         public string status;
+        public string barracksId; // Optional for pre-barracks saves and initial demo units.
 
         /// <summary>创建无共享引用的单位显示副本。</summary>
         /// <returns>可供角色投影使用的新单位对象。</returns>
@@ -75,6 +76,7 @@ namespace Qiongtu.Sandbox
         public int step;
         public int revision = 1;
         public string taskType;
+        public SandboxBarracksData[] barracks = new SandboxBarracksData[0];
         public SandboxUnitData[] units;
         public SandboxPlanData redPlan;
         public SandboxPlanData bluePlan;
@@ -89,6 +91,7 @@ namespace Qiongtu.Sandbox
         public int step;
         public int revision;
         public string taskType;
+        public SandboxBarracksData[] barracks = new SandboxBarracksData[0];
         public SandboxUnitData[] units;
         public SandboxPlanData ownPlan;
         public string waitingSummary;
@@ -139,6 +142,7 @@ namespace Qiongtu.Sandbox
                 step = session.step,
                 revision = session.revision,
                 taskType = session.taskType,
+                barracks = session.barracks.Where(camp => role == SandboxRole.Host || camp.side == role).Select(camp => camp.Copy()).ToArray(),
                 units = session.units.Where(unit => role == SandboxRole.Host || unit.side == role).Select(unit => unit.Copy()).ToArray(),
                 ownPlan = role == SandboxRole.Host ? null : GetPlan(role).Copy(),
                 waitingSummary = GetWaitingSummary(),
@@ -291,6 +295,8 @@ namespace Qiongtu.Sandbox
             if (!Guid.TryParse(data.sessionId, out _) || !ValidText(data.title, 60) || !TaskTypes.Contains(data.taskType)) return "存档标识或任务字段无效";
             if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || data.records == null) return "存档状态不完整";
             if (data.units.Length > MaxArmyUnits) return "红蓝双方地图总计最多 10 个单位，存档超出当前部署上限";
+            string barracksError = ValidateBarracks(data);
+            if (barracksError.Length > 0) return barracksError;
             var identities = new HashSet<string>();
             foreach (SandboxUnitData unit in data.units)
             {
@@ -357,6 +363,7 @@ namespace Qiongtu.Sandbox
             {
                 schemaVersion = data.schemaVersion, sessionId = data.sessionId, title = data.title,
                 step = data.step, revision = data.revision, taskType = data.taskType,
+                barracks = (data.barracks ?? new SandboxBarracksData[0]).Select(camp => camp.Copy()).ToArray(),
                 units = data.units.Select(unit => unit.Copy()).ToArray(), redPlan = data.redPlan.Copy(), bluePlan = data.bluePlan.Copy(),
                 records = data.records.Select(record => record.Copy()).ToList()
             };

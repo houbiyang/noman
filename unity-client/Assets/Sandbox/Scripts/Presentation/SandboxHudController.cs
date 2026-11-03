@@ -72,7 +72,10 @@ namespace Qiongtu.Sandbox
             cameraRig.MapClicked += HandleArmyMapClick;
             root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxArmy"));
             BindButton("armyAction", OpenArmy);
-            root.Q<Button>("armyAction").tooltip = "配置军队、调整数量与地图部署";
+            var barracksIcon = root.Q<VisualElement>(className: "army-icon");
+            barracksIcon.style.backgroundImage = new StyleBackground(Resources.Load<Texture2D>("Army/infantry-barracks-card"));
+            barracksIcon.style.unityBackgroundImageTintColor = Color.white;
+            root.Q<Button>("armyAction").tooltip = "选择兵种建造兵营，从兵营生成单位";
             cameraRig.UnitSelected += SelectUnit;
             cameraRig.ViewChanged += UpdateCameraButton;
             BindButton("redRole", () => ChangeRole(SandboxRole.Red));
@@ -576,7 +579,7 @@ namespace Qiongtu.Sandbox
             if (keyboard == null) return;
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
-                if (armyOverlay != null) CloseArmy();
+                if (armyOverlay != null) { CloseArmy(); CancelArmyCommand(); }
                 else if (pendingArmyType.HasValue || pendingMoveId != null) CancelArmyCommand();
                 else if (modalAction != null) CloseModal();
                 else if (activePanel != null) ClosePanel();

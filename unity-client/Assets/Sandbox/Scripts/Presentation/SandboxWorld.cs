@@ -12,6 +12,11 @@ namespace Qiongtu.Sandbox
         private readonly List<Material> ownedMaterials = new List<Material>();
         private readonly List<Mesh> ownedMeshes = new List<Mesh>();
         private Transform unitRoot;
+        private readonly Dictionary<string, GameObject> barracksViews = new Dictionary<string, GameObject>();
+        private SandboxBarracksData[] visibleBarracks = new SandboxBarracksData[0];
+        private readonly HashSet<string> spawnFromBarracks = new HashSet<string>();
+        public Transform FindBarracks(string id) => barracksViews.TryGetValue(id, out var camp) ? camp.transform : null;
+        public void AnimateBarracksSpawns(IEnumerable<string> ids) { foreach (string id in ids) spawnFromBarracks.Add(id); }
         private GameObject routes;
         private GameObject grid;
         private GameObject facilities;
@@ -71,7 +76,9 @@ namespace Qiongtu.Sandbox
         /// <param name="projection">当前有效的角色投影。</param>
         public void ApplyProjection(SandboxProjection projection)
         {
+            bool layoutChanged = ApplyBarracks(projection.barracks ?? new SandboxBarracksData[0]);
             var allowed = new HashSet<string>();
+            int spawnIndex = 0;
             foreach (SandboxUnitData unit in projection.units)
             {
                 allowed.Add(unit.id);
@@ -79,17 +86,23 @@ namespace Qiongtu.Sandbox
                 {
                     view = BuildUnit(unit);
                     unitViews.Add(unit.id, view);
+                    if (spawnFromBarracks.Remove(unit.id))
+                    {
+                        var camp = System.Array.Find(visibleBarracks, item => item.id == unit.barracksId);
+                        if (camp != null) view.SpawnAt(ArmyPosition(camp.x, camp.z + 3.5f, unit.type), spawnIndex++ * .45f);
+                    }
                 }
                 Vector3 position = ArmyPosition(unit.x, unit.z, unit.type);
                 if (relocated.Remove(unit.id)) view.Relocate(position);
-                else if (!view.HasTarget(position))
+                else if (!view.HasTarget(position) || layoutChanged && unit.type != SandboxUnitType.Recon)
                 {
                     if (!view.HasPosition || unit.type == SandboxUnitType.Recon) view.SetTarget(position);
                     else
                     {
                         List<Vector3> path = Navigation.FindPath(view.transform.position, position);
                         // An unreachable demo target must not produce a straight line through water or buildings.
-                        if (path != null) view.SetTarget(position, path);
+                        if (path != null) view.SetTarget(position, path, layoutChanged);
+                        else if (layoutChanged) view.HoldPosition();
                     }
                 }
             }
@@ -104,6 +117,58 @@ namespace Qiongtu.Sandbox
             }
         }
 
+        private bool ApplyBarracks(SandboxBarracksData[] camps)
+        {
+            bool changed = camps.Length != visibleBarracks.Length || System.Array.Exists(camps, camp => !System.Array.Exists(visibleBarracks, old => old.id == camp.id && old.x == camp.x && old.z == camp.z));
+            visibleBarracks = camps;
+            var allowed = new HashSet<string>(); var footprints = new List<Bounds>();
+            foreach (var camp in camps)
+            {
+                allowed.Add(camp.id);
+                if (!barracksViews.TryGetValue(camp.id, out var model))
+                {
+                    model = SandboxBarracksModel.Build(camp.type, camp.side == SandboxRole.Red ? redMaterial : blueMaterial, metalMaterial, darkMaterial, metalMaterial);
+                    model.name = camp.id; model.transform.SetParent(unitRoot, false); barracksViews.Add(camp.id, model);
+                }
+                Vector3 position = ArmyPosition(camp.x, camp.z, SandboxUnitType.Ground);
+                model.transform.position = position;
+                footprints.Add(new Bounds(position + new Vector3(0, 2, -1), new Vector3(14, 8, 9)));
+            }
+            foreach (string id in new List<string>(barracksViews.Keys))
+                if (!allowed.Contains(id)) { barracksViews[id].SetActive(false); ReleaseUnitObject(barracksViews[id]); barracksViews.Remove(id); }
+            Navigation.SetBarracks(footprints);
+            return changed;
+        }
+
+        // Test terrain and the complete ten-slot rally area even for aerial units: buildings need dry ground.
+        public bool CanPlaceBarracks(SandboxUnitType type, SandboxRole side, float x, float z, out string message)
+        {
+            message = "请选择平坦空地，避开水面、建筑、单位和地图边界";
+            if (x < 4 || x > 116 || z < 4 || z + 10.2f > 80) return false;
+            string own = DemoSandboxViewSource.BarracksId(side, type);
+            Vector3 center = ArmyPosition(x, z, SandboxUnitType.Ground);
+            foreach (var camp in visibleBarracks)
+                if (camp.id != own && Mathf.Abs(camp.x - x) < 9 && Mathf.Abs(camp.z - z) < 12) return false;
+            for (float dx = -3; dx <= 3; dx += 1.5f) for (float dz = -3; dz <= 3; dz += 1.5f)
+            {
+                Vector3 p = ArmyPosition(x + dx, z + dz, SandboxUnitType.Ground);
+                if (!Navigation.IsTerrainWalkable(p) || Mathf.Abs(p.y - center.y) > 2.8f) return false;
+            }
+            foreach (var unit in unitViews.Values)
+            {
+                Vector3 delta = unit.transform.position - center;
+                if (Mathf.Abs(delta.x) < 9 && Mathf.Abs(delta.z + 1) < 6) return false;
+            }
+            Vector3 exit = ArmyPosition(x, z + 3.5f, SandboxUnitType.Ground);
+            if (!Navigation.IsTerrainWalkable(exit)) return false;
+            for (int i = 0; i < 10; i++)
+            {
+                Vector3 rally = ArmyPosition(DemoSandboxViewSource.RallyX(x, i, 10), DemoSandboxViewSource.RallyZ(z, i), SandboxUnitType.Ground);
+                if (!Navigation.IsTerrainWalkable(rally) || type != SandboxUnitType.Recon && Navigation.FindPath(exit, rally) == null) return false;
+            }
+            message = ""; return true;
+        }
+
         /// <summary>清除旧角色的对象引用及选中标记。</summary>
         public void ClearProjection()
         {
@@ -114,6 +179,9 @@ namespace Qiongtu.Sandbox
                 ReleaseUnitObject(view.gameObject);
             }
             unitViews.Clear();
+            foreach (var camp in barracksViews.Values) { camp.SetActive(false); ReleaseUnitObject(camp); }
+            barracksViews.Clear(); visibleBarracks = new SandboxBarracksData[0]; spawnFromBarracks.Clear();
+            Navigation.SetBarracks(new List<Bounds>());
             selectionRing.gameObject.SetActive(false);
             selectedUnit = null; relocated.Clear();
         }

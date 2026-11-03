@@ -88,9 +88,46 @@ namespace Qiongtu.Sandbox.Editor
             Check(source.TryDeployArmy(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Recon, 10, 90, 40, out _), "redeploy ten models after clearing map");
             world.ApplyProjection(source.GetProjection(SandboxRole.Host));
             Check(root.GetComponentsInChildren<SandboxUnitView>(true).Length == 10, "all ten redeployed models appear");
+            CheckBarracks(world, root);
             // Nothing in this read-only validation is saved back to the source scene.
             Debug.Log("[ArmyChecks] PASS " + checks + " checks; route " + crossing.Count + " nodes; blocked samples=" + water);
         }
+        private static void CheckBarracks(SandboxWorld world, GameObject root)
+        {
+            world.ClearProjection();
+            var source = new DemoSandboxViewSource();
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            var originals = source.Current.units.ToDictionary(unit => unit.id, unit => world.FindUnit(unit.id));
+            Check(!world.CanPlaceBarracks(SandboxUnitType.Recon, SandboxRole.Red, 1, 1, out _), "barracks boundary rejection even for aircraft");
+            Vector2 place = Vector2.zero; bool found = false;
+            for (int z = 8; z < 65 && !found; z += 4) for (int x = 8; x < 110 && !found; x += 4)
+                if (world.CanPlaceBarracks(SandboxUnitType.Ground, SandboxRole.Red, x, z, out _)) { place = new Vector2(x, z); found = true; }
+            Check(found, "find dry flat building footprint and ten valid rally slots");
+            Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 2, place.x, place.y, out _), "place ground barracks");
+            world.AnimateBarracksSpawns(new[] { "R-G02", "R-G03" });
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            string campId = DemoSandboxViewSource.BarracksId(SandboxRole.Red, SandboxUnitType.Ground);
+            Transform camp = world.FindBarracks(campId);
+            Check(camp != null && camp.GetComponentsInChildren<Renderer>().Length > 12, "map barracks is a real rendered building");
+            Check(originals.All(pair => world.FindUnit(pair.Key) == pair.Value), "barracks creation preserves existing model instances");
+            var unit = world.FindUnit("R-G02");
+            Check(Vector3.Distance(unit.position, SandboxWorld.ArmyPosition(place.x, place.y + 3.5f, SandboxUnitType.Ground)) < .01f, "new ground unit starts at barracks exit");
+            Check(unit.GetComponent<SandboxUnitView>().IsMoving, "spawned unit has a path from exit to rally point");
+            Check(!world.CanPlace(place.x, place.y, SandboxUnitType.Ground), "ground navigation blocks barracks building");
+            Check(world.CanPlaceBarracks(SandboxUnitType.Ground, SandboxRole.Red, place.x, place.y, out _), "own camp can be selected again for relocation");
+            foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
+                Check(Resources.Load<Texture2D>("Army/" + DemoSandboxViewSource.ArmyKey(type) + "-barracks-card")?.width == 780, type + " barracks card rendered from Unity model");
+            var serialized = JsonUtility.FromJson<SandboxSessionData>(JsonUtility.ToJson(source.Current));
+            Check(DemoSandboxViewSource.ValidateSession(serialized) == "" && serialized.barracks.Length == 1 && serialized.units.Single(item => item.id == "R-G02").barracksId == campId, "Unity JSON round-trip preserves barracks and unit association");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Blue));
+            Check(world.FindBarracks(campId) == null && world.FindUnit("R-G02") == null, "role switch removes opposite camp and troops");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            Check(world.FindBarracks(campId) != null && world.FindUnit("R-G02").position == SandboxWorld.ArmyPosition(source.Current.units.Single(item => item.id == "R-G02").x, source.Current.units.Single(item => item.id == "R-G02").z, SandboxUnitType.Ground), "role switch does not replay spawning");
+            world.ClearProjection();
+            Check(world.FindBarracks(campId) == null && root.GetComponentsInChildren<SandboxUnitView>(true).Length == 0, "clear removes buildings and troops");
+            Debug.Log("[BarracksChecks] validated placement " + place);
+        }
+
         private static Vector3 Nearest(SandboxArmyNavigation navigation, SandboxMapPoint point)
         {
             for (int radius = 0; radius <= 12; radius += 3) for (int z = -radius; z <= radius; z += 3) for (int x = -radius; x <= radius; x += 3)

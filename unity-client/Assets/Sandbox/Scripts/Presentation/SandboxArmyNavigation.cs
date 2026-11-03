@@ -10,6 +10,17 @@ namespace Qiongtu.Sandbox
         private const float Cell = 3;
         private readonly int columns, rows;
         private readonly bool[] blocked;
+        private List<Bounds> barracks = new List<Bounds>();
+        public void SetBarracks(List<Bounds> bounds) => barracks = bounds;
+        private bool IsBlocked(int index)
+        {
+            if (blocked[index]) return true;
+            Vector3 p = Point(index);
+            foreach (var bounds in barracks)
+                if (Mathf.Abs(p.x - bounds.center.x) <= bounds.extents.x && Mathf.Abs(p.z - bounds.center.z) <= bounds.extents.z) return true;
+            return false;
+        }
+        public bool IsTerrainWalkable(Vector3 point) { int index = Index(point); return index >= 0 && !blocked[index]; }
         private readonly SandboxMapData definition;
         public SandboxArmyNavigation(GameObject map, SandboxMapData data)
         {
@@ -65,10 +76,10 @@ namespace Qiongtu.Sandbox
         private static float Cross(Vector3 a,Vector3 b,Vector3 p)=>(b.x-a.x)*(p.z-a.z)-(b.z-a.z)*(p.x-a.x);
         private int Index(Vector3 p)=>p.x<0||p.z<0||p.x>=columns*Cell||p.z>=rows*Cell?-1:(int)(p.z/Cell)*columns+(int)(p.x/Cell);
         private Vector3 Point(int index)=>SandboxWorld.Surface((index%columns+.5f)*Cell,(index/columns+.5f)*Cell)+Vector3.up*.08f;
-        public bool IsWalkable(Vector3 point) { int index=Index(point);return index>=0&&!blocked[index]; }
+        public bool IsWalkable(Vector3 point) { int index=Index(point);return index>=0&&!IsBlocked(index); }
         public List<Vector3> FindPath(Vector3 start, Vector3 end)
         {
-            int from=Index(start),to=Index(end); if(from<0||to<0||blocked[to])return null;
+            int from=Index(start),to=Index(end); if(from<0||to<0||IsBlocked(to))return null;
             var cost=new float[blocked.Length];var parent=new int[blocked.Length];var closed=new bool[blocked.Length];
             for(int i=0;i<cost.Length;i++){cost[i]=float.PositiveInfinity;parent[i]=-1;}
             cost[from]=0;var open=new List<int>{from};
@@ -82,7 +93,7 @@ namespace Qiongtu.Sandbox
                 for(int i=0;i<8;i++)
                 {
                     int nx=x+dx[i],nz=z+dz[i];if(nx<0||nx>=columns||nz<0||nz>=rows)continue;int next=nz*columns+nx;
-                    if(closed[next]||blocked[next]||(dx[i]!=0&&dz[i]!=0&&(blocked[z*columns+nx]||blocked[nz*columns+x])))continue;
+                    if(closed[next]||IsBlocked(next)||(dx[i]!=0&&dz[i]!=0&&(IsBlocked(z*columns+nx)||IsBlocked(nz*columns+x))))continue;
                     float value=cost[current]+(dx[i]!=0&&dz[i]!=0?1.414214f:1);
                     if(value>=cost[next])continue;cost[next]=value;parent[next]=current;open.Add(next);
                 }

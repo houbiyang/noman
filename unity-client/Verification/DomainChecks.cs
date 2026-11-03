@@ -89,8 +89,54 @@ internal static class DomainChecks
         Check(DemoSandboxViewSource.ValidateSession(valid).Length > 0, "超出当前步的时间线被拒绝");
         CheckArmy();
         CheckDeleteArmy();
+        CheckBarracks();
         Console.WriteLine("前端状态检查通过：" + checks + " 项。此结果不代表 Unity 运行或画面验收。");
         return 0;
+    }
+
+    private static void CheckBarracks()
+    {
+        var source = new DemoSandboxViewSource();
+        string message;
+        Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Blue, SandboxUnitType.Recon, 1, 20, 20, out message), "不能建造敌方兵营");
+        Check(!source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, out message), "没有兵营不能生成单位");
+        foreach (float x in new[] { float.NaN, float.PositiveInfinity, -1, 119 })
+            Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, x, 20, out message), "兵营拒绝无效坐标");
+        Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 11, 20, 20, out message), "兵营拒绝越界数量");
+        int revision = source.Current.revision;
+        Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 2, 20, 20, out message), "建造机库并生成两个无人机");
+        var state = source.Current;
+        Check(state.revision == revision + 1 && state.barracks.Length == 1 && state.units.Length == 8, "建造与出兵一次原子更新");
+        var spawned = state.units.Where(unit => !string.IsNullOrEmpty(unit.barracksId)).ToArray();
+        Check(spawned.Length == 2 && spawned.All(unit => unit.barracksId == state.barracks[0].id && unit.z >= 26), "新增单位归属正确兵营及出口集结区");
+        Check(state.units.First(unit => unit.id == "R-U01").x == 25, "建造保留原有单位");
+        Check(source.GetProjection(SandboxRole.Blue).barracks.Length == 0, "蓝方不能看到红方兵营");
+        Check(source.GetProjection(SandboxRole.Host).barracks.Length == 1, "主持人看到兵营");
+        state.barracks[0].x = 999;
+        var projection = source.GetProjection(SandboxRole.Red); projection.barracks[0].z = 999;
+        Check(source.Current.barracks[0].x == 20 && source.Current.barracks[0].z == 20, "兵营副本引用隔离");
+        Check(!source.TryPlaceBarracks(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Ground, 1, 21, 21, out message), "兵营不能重叠");
+        Check(source.Current.barracks.Length == 1 && source.Current.units.Length == 8, "非法兵营没有部分副作用");
+        Check(source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 2, out message), "从已有机库补充单位");
+        Check(source.ArmyCapacityRemaining == 0 && !source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, out message), "兵营出兵遵守全局十单位上限");
+        Check(source.TryPlaceBarracks(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Support, 1, 90, 30, out message), "满员时仍可放置敌方保障兵营");
+        Check(source.Current.units.Length == 10 && source.Current.barracks.Length == 2, "兵营不占单位数量且不会超额生成");
+        var before = source.Current.units.Select(unit => unit.x + ":" + unit.z).ToArray();
+        Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, 35, 20, out message), "同兵种重新选址");
+        Check(source.Current.barracks.Length == 2 && before.SequenceEqual(source.Current.units.Select(unit => unit.x + ":" + unit.z)), "重新选址不复制兵营也不移动已有单位");
+        Check(source.TryDeleteArmyUnit(SandboxRole.Red, "R-U02", out message), "删除兵营生成的单位");
+        Check(source.TrySpawnArmy(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Support, 1, out message), "删除释放的名额可用于对方兵营");
+        Check(source.Current.units.Last().barracksId.StartsWith("B-") && source.Current.units.Last().z == 36, "新单位来自本兵种新兵营");
+        var saved = source.Current;
+        Check(DemoSandboxViewSource.ValidateSession(saved) == "", "兵营存档有效");
+        var restored = new DemoSandboxViewSource();
+        Check(restored.TryRestore(saved, out message) && restored.Current.barracks.Length == 2, "兵营与单位归属保存恢复");
+        saved.barracks[0].x = float.NaN;
+        Check(!restored.TryRestore(saved, out message), "篡改兵营坐标被拒绝");
+        saved = source.Current; saved.units.Last().barracksId = saved.barracks.First(camp => camp.side == SandboxRole.Red).id;
+        Check(DemoSandboxViewSource.ValidateSession(saved).Length > 0, "拒绝跨阵营兵营归属");
+        var legacy = new DemoSandboxViewSource().Current; legacy.barracks = null;
+        Check(restored.TryRestore(legacy, out message) && restored.Current.barracks.Length == 0, "兼容没有兵营字段的旧存档");
     }
 
     private static void CheckArmy()
