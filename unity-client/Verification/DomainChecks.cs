@@ -88,6 +88,7 @@ internal static class DomainChecks
         valid.records[0].step = 61;
         Check(DemoSandboxViewSource.ValidateSession(valid).Length > 0, "超出当前步的时间线被拒绝");
         CheckArmy();
+        CheckDeleteArmy();
         Console.WriteLine("前端状态检查通过：" + checks + " 项。此结果不代表 Unity 运行或画面验收。");
         return 0;
     }
@@ -165,6 +166,48 @@ internal static class DomainChecks
         Check(overflow.Current.units.Length == 6 && overflow.Current.revision == revision, "超额请求不会缩减数量或自动删除旧模型");
         Check(overflow.TryDeployArmy(SandboxRole.Host, SandboxRole.Red, SandboxUnitType.Recon, 4, 40, 40, out _), "一次可用完剩余四名额");
         Check(overflow.Current.units.Count(u => u.side == SandboxRole.Red && u.type == SandboxUnitType.Recon) == 5, "追加四架后保留初始侦察机");
+    }
+
+    private static void CheckDeleteArmy()
+    {
+        var source = new DemoSandboxViewSource();
+        Check(source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 4, 40, 40, out _), "删除检查先填满地图");
+        Check(source.TryMoveArmyUnit(SandboxRole.Red, "R-U02", 55, 45, out _), "删除检查包含移动中的单位");
+        var before = source.Current;
+        Check(!source.TryDeleteArmyUnit(SandboxRole.Blue, "R-U02", out _), "蓝方不能删除红方单位");
+        Check(!source.TryDeleteArmyUnit(SandboxRole.Red, "B-S01", out _), "红方不能删除蓝方单位");
+        Check(!source.TryDeleteArmyUnit((SandboxRole)99, "R-U02", out _), "未知角色不能删除");
+        foreach (string id in new[] { null, "", "missing" })
+            Check(!source.TryDeleteArmyUnit(SandboxRole.Host, id, out _), "无效单位删除被拒绝");
+        Check(source.Current.revision == before.revision && source.Current.records.Count == before.records.Count && source.Current.units.Length == 10, "拒绝删除不改变任何状态");
+        Check(source.TryDeleteArmyUnit(SandboxRole.Red, "R-U02", out string message), "可以删除本方移动中的新增单位");
+        Check(source.Current.units.Length == 9 && source.ArmyCapacityRemaining == 1 && message.Contains("剩余 1"), "删除立即释放共享名额");
+        Check(!source.Current.units.Any(u => u.id == "R-U02"), "删除移除指定身份");
+        Check(before.units.Where(u => u.id != "R-U02").All(old => source.Current.units.Any(u => u.id == old.id && u.x == old.x && u.z == old.z && u.status == old.status)), "删除不修改其他单位");
+        Check(source.Current.revision == before.revision + 1 && source.Current.records.Count == before.records.Count + 1 && source.Current.records.Last().side == SandboxRole.Red, "成功删除产生本方时间线和修订");
+        Check(!source.GetProjection(SandboxRole.Blue).records.Any(r => r.title == "已删除部署单位"), "本方删除记录不泄露给对方");
+        int revision = source.Current.revision;
+        Check(!source.TryDeleteArmyUnit(SandboxRole.Red, "R-U02", out _) && source.Current.revision == revision && source.ArmyCapacityRemaining == 1, "重复删除不重复释放名额");
+        Check(!source.TryMoveArmyUnit(SandboxRole.Red, "R-U02", 20, 20, out _), "已删除单位不能继续移动");
+        Check(source.TryDeployArmy(SandboxRole.Blue, SandboxRole.Blue, SandboxUnitType.Support, 1, 90, 40, out _) && source.Current.units.Length == 10, "蓝方可使用红方删除释放的名额");
+        Check(!source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, 40, 40, out _), "重新满额后仍限制为十个");
+        Check(source.TryDeleteArmyUnit(SandboxRole.Blue, "B-S01", out _), "可以删除初始单位");
+        Check(source.TryDeleteArmyUnit(SandboxRole.Blue, "B-S02", out _), "可以删除本方某类型的最后一个单位");
+        Check(DemoSandboxViewSource.ValidateSession(source.Current) == "", "缺少某类型单位的快照仍有效");
+        var restored = new DemoSandboxViewSource();
+        Check(restored.TryRestore(source.Current, out _) && !restored.Current.units.Any(u => u.id == "R-U02" || u.type == SandboxUnitType.Support && u.side == SandboxRole.Blue), "恢复后被删除单位不会复活");
+        foreach (var unit in source.Current.units)
+            Check(source.TryDeleteArmyUnit(SandboxRole.Host, unit.id, out _), "主持人可删除双方单位 " + unit.id);
+        Check(source.Current.units.Length == 0 && source.ArmyCapacityRemaining == 10, "全部删除后恢复十个名额");
+        Check(source.GetProjection(SandboxRole.Red).units.Length == 0 && source.GetProjection(SandboxRole.Host).units.Length == 0, "空地图投影有效");
+        Check(DemoSandboxViewSource.ValidateSession(source.Current) == "" && restored.TryRestore(source.Current, out _), "空地图可以保存恢复");
+        var invalid = source.Current; invalid.units = null;
+        Check(DemoSandboxViewSource.ValidateSession(invalid) != "", "缺失单位数组仍被拒绝");
+        Check(source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 10, 40, 40, out _), "清空地图后可重新部署十个同类单位");
+        Check(source.Current.units.Length == 10 && source.Current.units.Select(u => u.id).Distinct().Count() == 10 && DemoSandboxViewSource.ValidateSession(source.Current) == "", "重新部署身份唯一且快照有效");
+        Check(source.TryDeleteArmyUnit(SandboxRole.Host, "R-G05", out _) && source.TryDeployArmy(SandboxRole.Host, SandboxRole.Red, SandboxUnitType.Ground, 1, 50, 40, out _), "删除后可以重新部署并复用空闲编号");
+        Check(source.Current.units.Single(u => u.id == "R-G05").x == 50 && source.ArmyCapacityRemaining == 0, "复用编号使用新部署位置且总数正确");
+        Check(restored.Current.units.Length == 0 && restored.TryConfigureArmy(SandboxRole.Host, SandboxRole.Blue, new[] { 1, 1, 1 }, out _), "空地图恢复后仍可通过集结区部署");
     }
 
     /// <summary>核对一项独立预期，失败时返回明确位置。</summary>

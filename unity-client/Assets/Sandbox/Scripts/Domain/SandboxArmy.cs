@@ -75,6 +75,17 @@ namespace Qiongtu.Sandbox
             }
         }
 
+        public bool TryDeleteArmyUnit(SandboxRole actor, string id, out string message)
+        {
+            SandboxUnitData unit = session.units.FirstOrDefault(candidate => candidate.id == id);
+            message = "只能删除本方已部署单位，主持人可以删除双方单位";
+            if (unit == null || actor != SandboxRole.Host && actor != unit.side) return false;
+            session.units = session.units.Where(candidate => candidate.id != id).ToArray();
+            AddRecord("已删除部署单位", unit.id + " · " + unit.name, unit.side, false, false);
+            message = "已删除 " + unit.id + "，地图总计 " + session.units.Length + " / " + MaxArmyUnits + "，剩余 " + ArmyCapacityRemaining + " 个名额";
+            return true;
+        }
+
         public bool TryMoveArmyUnit(SandboxRole actor, string id, float x, float z, out string message)
         {
             SandboxUnitData unit = session.units.FirstOrDefault(candidate => candidate.id == id);

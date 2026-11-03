@@ -289,7 +289,7 @@ namespace Qiongtu.Sandbox
         {
             if (data == null || data.schemaVersion != 1) return "不支持的前端存档版本";
             if (!Guid.TryParse(data.sessionId, out _) || !ValidText(data.title, 60) || !TaskTypes.Contains(data.taskType)) return "存档标识或任务字段无效";
-            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || data.units.Length < 6 || data.records == null) return "存档状态不完整";
+            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || data.records == null) return "存档状态不完整";
             if (data.units.Length > MaxArmyUnits) return "红蓝双方地图总计最多 10 个单位，存档超出当前部署上限";
             var identities = new HashSet<string>();
             foreach (SandboxUnitData unit in data.units)
@@ -303,11 +303,6 @@ namespace Qiongtu.Sandbox
             }
             foreach (SandboxRole side in new[] { SandboxRole.Red, SandboxRole.Blue })
             {
-                foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
-                {
-                    int count = data.units.Count(unit => unit.side == side && unit.type == type);
-                    if (count < 1 || count > 10) return "每方每类单位须为 1–10 个";
-                }
                 SandboxPlanData plan = side == SandboxRole.Red ? data.redPlan : data.bluePlan;
                 if (plan == null || plan.side != side || plan.version < 1 || !Enum.IsDefined(typeof(SandboxPlanStatus), plan.status)
                     || plan.resourceAllowance < 0 || plan.resourceAllowance > 20 || !ValidText(plan.priority, 120)

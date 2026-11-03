@@ -100,6 +100,8 @@ Button:disabled { opacity: 0.42; }
 .primary-button { background-color: #c0d0ac; border-color: #d8e1c3; color: #1c2d28; -unity-font-style: bold; }
 .primary-button:hover { background-color: #d8e2c5; color: #14241e; }
 .accent-button { background-color: #d6c394; color: #28352c; border-color: #dfcfa5; }
+Button.danger-button { background-color: #593a34; color: #ffe0d4; border-color: #9b6354; }
+Button.danger-button:hover { background-color: #754b40; border-color: #d59c85; }
 .text-button { border-width: 0; background-color: rgba(0, 0, 0, 0); color: #d2dfc4; padding-left: 0; -unity-text-align: middle-left; margin-left: 0; }
 .selected-role { border-color: #d6d7a3; background-color: #415340; color: #f0efce; }
 .drawer { position: absolute; right: 18px; top: 104px; bottom: 136px; width: 398px; background-color: #16282a; border-width: 1px; border-color: #52665a; border-radius: 8px; }

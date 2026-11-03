@@ -205,7 +205,7 @@ namespace Qiongtu.Sandbox
         private void BuildUnitsPanel()
         {
             SetText("drawerTitle", "单位与观察");
-            AddText(drawerContent, "只展示当前角色投影中的单位。点选与跟随均不下达行动命令。", "body-text");
+            AddText(drawerContent, "可定位、移动或删除当前可见单位。删除后释放一个部署名额。", "body-text");
             var searchField = new TextField("查找单位") { value = unitSearch, maxLength = 60 };
             searchField.AddToClassList("field");
             drawerContent.Add(searchField);
@@ -232,6 +232,7 @@ namespace Qiongtu.Sandbox
                     AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id); RefreshProjection(); render?.Invoke(); });
                     AddButton(actions, "地图移动", () => BeginMove(unit.id));
                     AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection(); render?.Invoke(); });
+                    AddButton(actions, "删除单位", () => OpenDeleteArmyUnitModal(unit), "danger-button");
                 }
             };
             searchField.RegisterValueChangedCallback(change => { unitSearch = change.newValue; render(); });
@@ -317,6 +318,7 @@ namespace Qiongtu.Sandbox
         {
             SetText("drawerTitle", "事件预览与登记");
             if (role != SandboxRole.Host) { AddText(drawerContent, "只有主持人可以注入事件。", "body-text"); return; }
+            if (projection.units.Length == 0) { AddText(drawerContent, "地图暂无已部署单位，请先在军队配置中部署单位，再登记事件。", "empty-message"); return; }
             var eventType = new DropdownField("事件类型", DemoSandboxViewSource.EventTypes.ToList(), 0);
             var target = new DropdownField("影响单位", projection.units.Select(unit => unit.id).ToList(), 0);
             eventType.AddToClassList("field");

@@ -51,6 +51,7 @@ namespace Qiongtu.Sandbox
             if (role == SandboxRole.Host)
                 AddButton(toolbar, armySide == SandboxRole.Red ? "切换为蓝方" : "切换为红方", () => { armySide = armySide == SandboxRole.Red ? SandboxRole.Blue : SandboxRole.Red; ReadArmyQuantities(); RenderArmy(); }, "army-switch");
             var capacity = AddText(toolbar, "红蓝共享 10 个名额（含初始单位）", "army-capacity"); capacity.style.flexGrow = 1;
+            AddButton(toolbar, "管理已部署单位", () => ShowPanel("units"), "army-switch");
             var scroll = new ScrollView(ScrollViewMode.Vertical); scroll.AddToClassList("army-scroll"); panel.Add(scroll);
             var cards = new VisualElement(); cards.AddToClassList("army-cards"); scroll.Add(cards);
             for (int i = 0; i < 3; i++) BuildArmyCard(cards, i);
@@ -102,6 +103,27 @@ namespace Qiongtu.Sandbox
         {
             if (!source.TryConfigureArmy(role, armySide, armyQuantities, out string message)) { Notify(message); return; }
             CloseArmy(); RefreshProjection(); Notify(message);
+        }
+        private void OpenDeleteArmyUnitModal(SandboxUnitData unit)
+        {
+            PausePlayback();
+            SetText("modalTitle", "删除已部署单位？");
+            SetText("modalMessage", unit.id + " · " + unit.name + "\n确认后移除地图模型、移动路径和当前部署，释放 1 个名额。其他单位保持不变，可重新选择数量部署。");
+            SetText("confirmModalButton", "确认删除单位");
+            modalAction = () =>
+            {
+                if (source.TryDeleteArmyUnit(role, unit.id, out string message))
+                {
+                    if (selectedId == unit.id && cameraRig.IsFollowing) cameraRig.ReturnToOverview();
+                    CancelArmyCommand();
+                    RefreshProjection();
+                    drawerContent.Clear();
+                    BuildUnitsPanel();
+                }
+                Notify(message);
+            };
+            root.Q("modalBackdrop").RemoveFromClassList("hidden");
+            root.Q<Button>("cancelModalButton").Focus();
         }
         private void BeginDeploy(SandboxUnitType type, int count)
         {

@@ -97,9 +97,9 @@ namespace Qiongtu.Sandbox
             {
                 if (allowed.Contains(unitId)) continue;
                 // 立即禁用命中与渲染，再在帧末销毁，避免角色切换时泄露旧对象。
-                unitViews[unitId].HideRoute();
+                unitViews[unitId].ReleaseRoute();
                 unitViews[unitId].gameObject.SetActive(false);
-                Destroy(unitViews[unitId].gameObject);
+                ReleaseUnitObject(unitViews[unitId].gameObject);
                 unitViews.Remove(unitId);
             }
         }
@@ -109,13 +109,21 @@ namespace Qiongtu.Sandbox
         {
             foreach (SandboxUnitView view in unitViews.Values)
             {
-                view.HideRoute();
+                view.ReleaseRoute();
                 view.gameObject.SetActive(false);
-                Destroy(view.gameObject);
+                ReleaseUnitObject(view.gameObject);
             }
             unitViews.Clear();
             selectionRing.gameObject.SetActive(false);
             selectedUnit = null; relocated.Clear();
+        }
+
+        private static void ReleaseUnitObject(GameObject unit)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying) { DestroyImmediate(unit); return; }
+#endif
+            Destroy(unit);
         }
 
         /// <summary>查找当前允许显示的单位变换。</summary>

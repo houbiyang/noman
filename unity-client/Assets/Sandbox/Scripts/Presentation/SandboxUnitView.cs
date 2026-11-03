@@ -57,7 +57,19 @@ namespace Qiongtu.Sandbox
             path.Clear(); destination = position; transform.position = position; speed = 0; initialized = true; spawnAt = Time.time;
         }
 
-        private void OnDestroy() { if (route != null) Destroy(route.gameObject); }
+        private void OnDestroy() => ReleaseRoute();
+
+        public void ReleaseRoute()
+        {
+            if (route == null) return;
+            GameObject line = route.gameObject;
+            route = null;
+            line.SetActive(false);
+#if UNITY_EDITOR
+            if (!Application.isPlaying) { DestroyImmediate(line); return; }
+#endif
+            Destroy(line);
+        }
 
         public void AttachRoute(LineRenderer line) => route = line;
         public void HideRoute() { if (route != null) route.gameObject.SetActive(false); }

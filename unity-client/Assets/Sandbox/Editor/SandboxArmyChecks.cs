@@ -69,6 +69,25 @@ namespace Qiongtu.Sandbox.Editor
             Check(world.FindUnit("R-G02") == firstNew && firstNew.position == firstNewPosition, "second batch does not relocate previous batch");
             Check(originals.All(pair => world.FindUnit(pair.Key) == pair.Value) && drone.IsMoving, "second batch preserves old models and movement");
             Check(world.FindUnit("R-G04") != null && world.FindUnit("R-G04") != firstNew, "new batch creates separate model");
+            int routesBeforeDelete = root.GetComponentsInChildren<LineRenderer>(true).Count(line => line.name == "MovementRoute");
+            world.Select("R-U01");
+            Check(source.TryDeleteArmyUnit(SandboxRole.Red, "R-U01", out _), "delete moving drone");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            world.Select(null);
+            Check(world.FindUnit("R-U01") == null && drone == null, "deleted model is removed from map and lookup");
+            Check(root.GetComponentsInChildren<LineRenderer>(true).Count(line => line.name == "MovementRoute") == routesBeforeDelete - 1, "deleted movement route is destroyed");
+            Check(world.FindUnit("R-G02") == firstNew && firstNew.position == firstNewPosition, "deletion preserves other model instances and positions");
+            Check(source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, 45, 45, out _), "redeploy deleted identity");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            Check(world.FindUnit("R-U01") != null && world.FindUnit("R-U01").GetComponent<SandboxUnitView>().HasTarget(SandboxWorld.ArmyPosition(45, 45, SandboxUnitType.Recon)), "redeployed identity has new model at new target");
+            foreach (var unit in source.Current.units) source.TryDeleteArmyUnit(SandboxRole.Host, unit.id, out _);
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host)); world.Select(null);
+            Check(root.GetComponentsInChildren<SandboxUnitView>(true).Length == 0, "empty map has no remaining unit models");
+            Check(root.GetComponentsInChildren<LineRenderer>(true).All(line => line.name != "MovementRoute"), "empty map has no remaining movement routes");
+            Check(!root.GetComponentsInChildren<LineRenderer>(true).Single(line => line.name == "SelectionRing").gameObject.activeSelf, "empty map clears selection ring");
+            Check(source.TryDeployArmy(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Recon, 10, 90, 40, out _), "redeploy ten models after clearing map");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            Check(root.GetComponentsInChildren<SandboxUnitView>(true).Length == 10, "all ten redeployed models appear");
             // Nothing in this read-only validation is saved back to the source scene.
             Debug.Log("[ArmyChecks] PASS " + checks + " checks; route " + crossing.Count + " nodes; blocked samples=" + water);
         }
