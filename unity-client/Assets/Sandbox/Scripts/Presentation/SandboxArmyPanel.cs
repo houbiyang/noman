@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -16,6 +17,7 @@ namespace Qiongtu.Sandbox
         private SandboxRole pendingArmySide;
         private string pendingMoveId;
         private Label armyTotal;
+        private Button armyCampDeploy;
         private readonly string[] armyDescriptions = {
             "空中侦察 · 光电感知\n四旋翼平台，适合快速观察与地图巡航。",
             "地面机动 · 履带底盘\n低重心装甲平台，沿可通行地形移动。",
@@ -30,7 +32,7 @@ namespace Qiongtu.Sandbox
         }
         private void ReadArmyQuantities()
         {
-            for (int i = 0; i < 3; i++) armyQuantities[i] = source.Current.units.Count(unit => unit.side == armySide && (int)unit.type == i);
+            for (int i = 0; i < 3; i++) armyQuantities[i] = Mathf.Clamp(armyQuantities[i], 1, Math.Max(1, source.ArmyCapacityRemaining));
         }
         private void RenderArmy()
         {
@@ -48,16 +50,17 @@ namespace Qiongtu.Sandbox
             AddText(toolbar, SideLabel(armySide) + "编队", "army-side");
             if (role == SandboxRole.Host)
                 AddButton(toolbar, armySide == SandboxRole.Red ? "切换为蓝方" : "切换为红方", () => { armySide = armySide == SandboxRole.Red ? SandboxRole.Blue : SandboxRole.Red; ReadArmyQuantities(); RenderArmy(); }, "army-switch");
-            var capacity = AddText(toolbar, "每类 1–10 个  /  每方最多 30 个", "army-capacity"); capacity.style.flexGrow = 1;
+            var capacity = AddText(toolbar, "红蓝共享 10 个名额（含初始单位）", "army-capacity"); capacity.style.flexGrow = 1;
             var scroll = new ScrollView(ScrollViewMode.Vertical); scroll.AddToClassList("army-scroll"); panel.Add(scroll);
             var cards = new VisualElement(); cards.AddToClassList("army-cards"); scroll.Add(cards);
             for (int i = 0; i < 3; i++) BuildArmyCard(cards, i);
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); panel.Add(footer);
             var summary = new VisualElement(); summary.style.flexGrow = 1; footer.Add(summary);
             armyTotal = AddText(summary, "", "army-total"); UpdateArmyTotal();
-            AddText(summary, "应用数量后在集结区补充单位；选点部署可重新布置同类编队。", "army-footnote");
+            AddText(summary, "数量代表本次新增；选点部署或集结区部署均保留已部署单位。", "army-footnote");
             AddButton(footer, "返回沙盘", CloseArmy, "army-secondary");
-            AddButton(footer, "应用编队  →", ApplyArmy, "army-primary");
+            armyCampDeploy = AddButton(footer, "集结区部署", ApplyArmy, "army-primary");
+            UpdateArmyTotal();
         }
         private void BuildArmyCard(VisualElement parent, int index)
         {
@@ -71,20 +74,30 @@ namespace Qiongtu.Sandbox
             image.AddToClassList("army-model"); stage.Add(image);
             AddText(stage, new[] { "四旋翼平台", "履带底盘", "6 × 6 运输平台" }[index], "army-model-caption");
             AddText(card, armyDescriptions[index], "army-description");
-            AddText(card, "当前编制  " + source.Current.units.Count(unit => unit.side == armySide && unit.type == type).ToString("00") + "  个单位", "army-current");
+            AddText(card, "本方已部署  " + source.Current.units.Count(unit => unit.side == armySide && unit.type == type).ToString("00") + "  个单位", "army-current");
             var quantity = new VisualElement(); quantity.AddToClassList("army-quantity"); card.Add(quantity);
             Button minus = null, plus = null; Label number = null;
-            Action update = () => { number.text = armyQuantities[index].ToString("00"); minus.SetEnabled(armyQuantities[index] > 1); plus.SetEnabled(armyQuantities[index] < 10); UpdateArmyTotal(); };
+            Action update = () => { number.text = armyQuantities[index].ToString("00"); minus.SetEnabled(source.ArmyCapacityRemaining > 0 && armyQuantities[index] > 1); plus.SetEnabled(armyQuantities[index] < source.ArmyCapacityRemaining); UpdateArmyTotal(); };
             minus = AddButton(quantity, "−", () => { armyQuantities[index]--; update(); }, "army-stepper");
             var value = new VisualElement(); value.AddToClassList("army-quantity-value"); quantity.Add(value);
             number = AddText(value, armyQuantities[index].ToString("00"), "army-number");
-            AddText(value, "部署数量 / 10", "army-number-hint");
+            AddText(value, "本次新增数量", "army-number-hint");
             plus = AddButton(quantity, "+", () => { armyQuantities[index]++; update(); }, "army-stepper");
-            minus.SetEnabled(armyQuantities[index] > 1); plus.SetEnabled(armyQuantities[index] < 10);
-            AddButton(card, "选点部署  ↗", () => BeginDeploy(type, armyQuantities[index]), "army-deploy");
+            minus.SetEnabled(source.ArmyCapacityRemaining > 0 && armyQuantities[index] > 1); plus.SetEnabled(armyQuantities[index] < source.ArmyCapacityRemaining);
+            var deploy = AddButton(card, source.ArmyCapacityRemaining == 0 ? "地图名额已满" : "选点追加部署  ↗", () => BeginDeploy(type, armyQuantities[index]), "army-deploy");
+            deploy.SetEnabled(source.ArmyCapacityRemaining > 0);
         }
-        private void UpdateArmyTotal() { if (armyTotal != null) armyTotal.text = "编队总数   " + armyQuantities.Sum().ToString("00") + " / 30"; }
-        private void CloseArmy() { armyOverlay?.RemoveFromHierarchy(); armyOverlay = null; armyTotal = null; }
+        private void UpdateArmyTotal()
+        {
+            if (armyTotal != null) armyTotal.text = "地图已部署 " + source.Current.units.Length.ToString("00") + " / " + DemoSandboxViewSource.MaxArmyUnits + " · 剩余 " + source.ArmyCapacityRemaining;
+            if (armyCampDeploy != null)
+            {
+                int quantity = armyQuantities.Sum();
+                armyCampDeploy.text = "集结区部署 " + quantity + " 个";
+                armyCampDeploy.SetEnabled(quantity <= source.ArmyCapacityRemaining);
+            }
+        }
+        private void CloseArmy() { armyOverlay?.RemoveFromHierarchy(); armyOverlay = null; armyTotal = null; armyCampDeploy = null; }
         private void ApplyArmy()
         {
             if (!source.TryConfigureArmy(role, armySide, armyQuantities, out string message)) { Notify(message); return; }
@@ -92,9 +105,10 @@ namespace Qiongtu.Sandbox
         }
         private void BeginDeploy(SandboxUnitType type, int count)
         {
+            if (count > source.ArmyCapacityRemaining) { Notify("地图名额不足，红蓝双方合计最多 10 个单位"); return; }
             pendingArmyType = type; pendingArmyQuantity = count; pendingArmySide = armySide; pendingMoveId = null;
             CloseArmy(); ClosePanel();
-            ShowArmyCommand("部署 " + DemoSandboxViewSource.ArmyName(type) + " × " + count, "单击地图布置编队 · 拖动平移 · 滚轮缩放 · Esc 取消");
+            ShowArmyCommand("追加部署 " + DemoSandboxViewSource.ArmyName(type) + " × " + count, "单击地图布置编队 · 拖动平移 · 滚轮缩放 · Esc 取消");
         }
         private void BeginMove(string id)
         {
@@ -121,9 +135,9 @@ namespace Qiongtu.Sandbox
                     float x = position.x + (i % 4 - Math.Min(pendingArmyQuantity, 4) / 2f + 0.5f) * 2.1f, z = position.y + i / 4 * 2.1f;
                     if (!world.CanPlace(x, z, type)) { Notify("编队位置不可用，请避开水面、建筑与地图边界"); return; }
                 }
+                var previousIds = new HashSet<string>(source.Current.units.Select(unit => unit.id));
                 if (!source.TryDeployArmy(role, pendingArmySide, type, pendingArmyQuantity, position.x, position.y, out string message)) { Notify(message); return; }
-                world.RelocateOnRefresh(source.Current.units.Where(unit => unit.side == pendingArmySide && unit.type == type).Select(unit => unit.id));
-                string first = source.Current.units.First(unit => unit.side == pendingArmySide && unit.type == type).id;
+                string first = source.Current.units.First(unit => !previousIds.Contains(unit.id)).id;
                 CancelArmyCommand(); selectedId = first; RefreshProjection(); cameraRig.Locate(first); Notify(message);
             }
             else

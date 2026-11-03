@@ -289,7 +289,8 @@ namespace Qiongtu.Sandbox
         {
             if (data == null || data.schemaVersion != 1) return "不支持的前端存档版本";
             if (!Guid.TryParse(data.sessionId, out _) || !ValidText(data.title, 60) || !TaskTypes.Contains(data.taskType)) return "存档标识或任务字段无效";
-            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || (data.units.Length < 6 || data.units.Length > 60) || data.records == null) return "存档状态不完整";
+            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || data.units.Length < 6 || data.records == null) return "存档状态不完整";
+            if (data.units.Length > MaxArmyUnits) return "红蓝双方地图总计最多 10 个单位，存档超出当前部署上限";
             var identities = new HashSet<string>();
             foreach (SandboxUnitData unit in data.units)
             {

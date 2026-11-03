@@ -6,6 +6,9 @@ namespace Qiongtu.Sandbox
 {
     public sealed partial class DemoSandboxViewSource
     {
+        public const int MaxArmyUnits = 10;
+        public int ArmyCapacityRemaining => Math.Max(0, MaxArmyUnits - session.units.Length);
+
         public static string ArmyName(SandboxUnitType type) => type == SandboxUnitType.Recon ? "侦察无人机" : type == SandboxUnitType.Ground ? "履带地面单元" : "六轮保障车";
         public static string ArmyKey(SandboxUnitType type) => type == SandboxUnitType.Recon ? "recon" : type == SandboxUnitType.Ground ? "infantry" : "support";
         private static string ArmyId(SandboxRole side, SandboxUnitType type, int number) =>
@@ -19,16 +22,17 @@ namespace Qiongtu.Sandbox
 
         public bool TryConfigureArmy(SandboxRole actor, SandboxRole side, int[] quantities, out string message)
         {
-            message = "只能配置本方军队，主持人可以配置双方";
+            message = "只能部署本方军队，主持人可以部署双方";
             if ((side != SandboxRole.Red && side != SandboxRole.Blue) || actor != SandboxRole.Host && actor != side) return false;
-            message = "每种单位数量须为 1–10";
-            if (quantities == null || quantities.Length != 3 || quantities.Any(count => count < 1 || count > 10)) return false;
-            var units = session.units.Where(unit => unit.side != side).ToList();
+            message = "每种单位的本次部署数量须为 1–10";
+            if (quantities == null || quantities.Length != 3 || quantities.Any(count => count < 1 || count > MaxArmyUnits)) return false;
+            if (!HasArmyCapacity(quantities.Sum(), out message)) return false;
+            var units = session.units.ToList();
             foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
-                AddFormation(units, side, type, quantities[(int)type], side == SandboxRole.Red ? 23 : 97, 32 + (int)type * 7, false);
+                AddFormation(units, side, type, quantities[(int)type], side == SandboxRole.Red ? 23 : 97, 32 + (int)type * 7);
             session.units = units.ToArray();
-            AddRecord("军队编制已更新", string.Join("、", quantities.Select((count, index) => ArmyName((SandboxUnitType)index) + " × " + count)), side, false, false);
-            message = "编队已应用，新单位已在本方集结区就位";
+            AddRecord("集结区新增部署", string.Join("、", quantities.Select((count, index) => ArmyName((SandboxUnitType)index) + " × " + count)), side, false, false);
+            message = "已在本方集结区追加单位，原有单位保持不变";
             return true;
         }
 
@@ -36,28 +40,35 @@ namespace Qiongtu.Sandbox
         {
             message = "部署数量、角色或位置无效";
             if ((side != SandboxRole.Red && side != SandboxRole.Blue) || actor != SandboxRole.Host && actor != side
-                || !Enum.IsDefined(typeof(SandboxUnitType), type) || quantity < 1 || quantity > 10 || !ValidArmyPosition(x, z)) return false;
-            // Validate every formation offset before changing the roster; never leave a partial deployment.
+                || !Enum.IsDefined(typeof(SandboxUnitType), type) || quantity < 1 || quantity > MaxArmyUnits || !ValidArmyPosition(x, z)) return false;
+            if (!HasArmyCapacity(quantity, out message)) return false;
+            // Validate the entire batch before appending; never change an existing unit or partially deploy.
             for (int i = 0; i < quantity; i++)
                 if (!ValidArmyPosition(x + (i % 4 - Math.Min(quantity, 4) / 2f + 0.5f) * 2.1f, z + (i / 4) * 2.1f))
                 { message = "编队超出地图范围，请选择更靠内的位置"; return false; }
-            var units = session.units.Where(unit => unit.side != side || unit.type != type).ToList();
-            AddFormation(units, side, type, quantity, x, z, true);
+            var units = session.units.ToList();
+            AddFormation(units, side, type, quantity, x, z);
             session.units = units.ToArray();
-            AddRecord("地图编队部署", ArmyName(type) + " × " + quantity + "，本机部署完成", side, false, false);
-            message = ArmyName(type) + " × " + quantity + " 已部署，可选择单位后移动或跟随";
+            AddRecord("地图追加部署", ArmyName(type) + " × " + quantity + "，原有单位保留", side, false, false);
+            message = "已新增 " + ArmyName(type) + " × " + quantity + "，地图总计 " + session.units.Length + " / " + MaxArmyUnits;
             return true;
         }
 
-        private void AddFormation(List<SandboxUnitData> units, SandboxRole side, SandboxUnitType type, int quantity, float x, float z, bool relocate)
+        private bool HasArmyCapacity(int quantity, out string message)
+        {
+            message = "红蓝双方地图总计最多 " + MaxArmyUnits + " 个单位，当前剩余 " + ArmyCapacityRemaining + " 个名额";
+            return quantity <= ArmyCapacityRemaining;
+        }
+
+        private static void AddFormation(List<SandboxUnitData> units, SandboxRole side, SandboxUnitType type, int quantity, float x, float z)
         {
             for (int i = 0; i < quantity; i++)
             {
-                string id = ArmyId(side, type, i + 1);
-                SandboxUnitData existing = session.units.FirstOrDefault(unit => unit.id == id);
-                units.Add(!relocate && existing != null ? existing : new SandboxUnitData
+                int number = Enumerable.Range(1, MaxArmyUnits).First(candidate => !units.Any(unit => unit.id == ArmyId(side, type, candidate)));
+                string id = ArmyId(side, type, number);
+                units.Add(new SandboxUnitData
                 {
-                    id = id, name = ArmyName(type) + " " + (i + 1).ToString("00"), side = side, type = type,
+                    id = id, name = ArmyName(type) + " " + number.ToString("00"), side = side, type = type,
                     x = x + (i % 4 - Math.Min(quantity, 4) / 2f + 0.5f) * 2.1f, z = z + (i / 4) * 2.1f,
                     status = "已部署 · 待命"
                 });

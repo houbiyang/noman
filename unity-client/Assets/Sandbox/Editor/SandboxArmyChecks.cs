@@ -53,6 +53,22 @@ namespace Qiongtu.Sandbox.Editor
                 Check(world.TryBusinessPosition(p, out Vector2 business) && Vector2.Distance(business, new Vector2(x, z)) < .02f, "inverse coordinates " + x + "," + z);
             }
             Check(!world.TryBusinessPosition(new Vector3(-10, 0, -10), out _), "off-map inverse rejected");
+            var source = new DemoSandboxViewSource();
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            var originals = source.Current.units.ToDictionary(unit => unit.id, unit => world.FindUnit(unit.id));
+            Check(source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 2, 40, 40, out _), "first append batch");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            Transform firstNew = world.FindUnit("R-G02"); Vector3 firstNewPosition = firstNew.position;
+            Check(originals.All(pair => world.FindUnit(pair.Key) == pair.Value), "first batch preserves existing model instances");
+            Check(source.TryMoveArmyUnit(SandboxRole.Red, "R-U01", 45, 35, out _), "set original drone motion");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            var drone = world.FindUnit("R-U01").GetComponent<SandboxUnitView>();
+            Check(drone.IsMoving, "original drone has active motion");
+            Check(source.TryDeployArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 1, 70, 50, out _), "second append batch");
+            world.ApplyProjection(source.GetProjection(SandboxRole.Host));
+            Check(world.FindUnit("R-G02") == firstNew && firstNew.position == firstNewPosition, "second batch does not relocate previous batch");
+            Check(originals.All(pair => world.FindUnit(pair.Key) == pair.Value) && drone.IsMoving, "second batch preserves old models and movement");
+            Check(world.FindUnit("R-G04") != null && world.FindUnit("R-G04") != firstNew, "new batch creates separate model");
             // Nothing in this read-only validation is saved back to the source scene.
             Debug.Log("[ArmyChecks] PASS " + checks + " checks; route " + crossing.Count + " nodes; blocked samples=" + water);
         }
