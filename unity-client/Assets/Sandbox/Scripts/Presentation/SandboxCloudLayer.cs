@@ -43,15 +43,15 @@ namespace Qiongtu.Sandbox
             {
                 var group = new GameObject("Cloud_" + index);
                 group.transform.SetParent(transform, false);
-                group.transform.position = new Vector3(25 + index * 79 % (int)(size.x - 50), 80 + index % 3 * 13, 18 + index * 53 % (int)(size.y - 36));
+                group.transform.position = new Vector3(250 + index * 791 % (int)(size.x - 500), 600 + index % 3 * 130, 180 + index * 533 % (int)(size.y - 360));
                 clouds[index] = group.transform;
                 for (int puff = 0; puff < 5; puff++)
                 {
                     GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                     sphere.name = "CloudPuff_" + puff;
                     sphere.transform.SetParent(group.transform, false);
-                    sphere.transform.localPosition = new Vector3((puff - 2) * 5, puff % 2 * 1.5f, (puff % 3 - 1) * 3);
-                    sphere.transform.localScale = new Vector3(19 + puff % 2 * 5, 2 + puff % 3, 13 + puff % 2 * 4);
+                    sphere.transform.localPosition = new Vector3((puff - 2) * 55, puff % 2 * 18f, (puff % 3 - 1) * 32);
+                    sphere.transform.localScale = new Vector3(190 + puff % 2 * 50, 24 + puff % 3 * 12, 130 + puff % 2 * 40);
                     Destroy(sphere.GetComponent<Collider>());
                     Renderer renderer = sphere.GetComponent<Renderer>();
                     renderer.sharedMaterial = cloudMaterial;
@@ -68,8 +68,8 @@ namespace Qiongtu.Sandbox
             {
                 if (cloud == null) continue;
                 cloud.position += new Vector3(0.35f, 0, 0.08f) * Time.deltaTime;
-                if (cloud.position.x > mapSize.x + 25)
-                    cloud.position = new Vector3(-25, cloud.position.y, cloud.position.z);
+                if (cloud.position.x > mapSize.x + 250)
+                    cloud.position = new Vector3(-250, cloud.position.y, cloud.position.z);
             }
         }
 

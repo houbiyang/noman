@@ -56,8 +56,8 @@ namespace Qiongtu.Sandbox
             viewCamera = gameObject.AddComponent<Camera>();
             gameObject.tag = "MainCamera";
             viewCamera.fieldOfView = 46;
-            viewCamera.nearClipPlane = 0.15f;
-            viewCamera.farClipPlane = 1600;
+            viewCamera.nearClipPlane = 1f;
+            viewCamera.farClipPlane = 30000;
             viewCamera.clearFlags = CameraClearFlags.SolidColor;
             viewCamera.backgroundColor = new Color(0.58f, 0.61f, 0.61f);
             viewCamera.allowHDR = true;
@@ -70,7 +70,7 @@ namespace Qiongtu.Sandbox
         public string PickUnit(Vector2 screenPosition)
         {
             Ray ray = viewCamera.ScreenPointToRay(screenPosition);
-            if (!Physics.Raycast(ray, out RaycastHit hit, 500)) return null;
+            if (!Physics.Raycast(ray, out RaycastHit hit, 30000)) return null;
             SandboxUnitView unit = hit.collider.GetComponentInParent<SandboxUnitView>();
             return unit != null && world.FindUnit(unit.UnitId) != null ? unit.UnitId : null;
         }
@@ -134,14 +134,14 @@ namespace Qiongtu.Sandbox
             ViewChanged?.Invoke();
         }
 
-        /// <summary>回到固定地图的初始总览。</summary>
+        /// <summary>回到中央城市与跨河通路的初始总览；滚轮可继续缩小查看全图。</summary>
         public void ResetOverview()
         {
             CancelPointerGesture();
             followedId = null;
             focus = new Vector3(world.MapSize.x / 2, 0, world.MapSize.y / 2);
-            distance = world.MapSize.x * 0.94f;
-            pitch = 53;
+            distance = world.MapSize.x * 0.28f;
+            pitch = 48;
             yaw = 0;
             ApplyCamera(false);
             ViewChanged?.Invoke();
@@ -293,6 +293,9 @@ namespace Qiongtu.Sandbox
         /// <summary>根据当前观察参数平滑设置相机。</summary>
         private void ApplyCamera(bool smooth)
         {
+            // 公里尺度下的观察中心随地形抬升，避免在高地放大时穿入地表。
+            if (!IsFollowing) focus.y = SandboxWorld.Surface(focus.x, focus.z).y;
+            viewCamera.nearClipPlane = Mathf.Clamp(distance * 0.004f, 0.3f, 80);
             Quaternion rotation = Quaternion.Euler(pitch, yaw, 0);
             Vector3 position = focus - rotation * Vector3.forward * distance;
             float blend = smooth ? 1 - Mathf.Exp(-Time.unscaledDeltaTime * 9) : 1;

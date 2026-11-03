@@ -143,16 +143,16 @@ namespace Qiongtu.Sandbox
         /// <returns>仅用于显示的三维位置。</returns>
         public static Vector3 Surface(float positionX, float positionZ) => new Vector3(positionX, Definition.SampleSurfaceHeight(positionX, positionZ), positionZ);
 
-        /// <summary>将旧演示与存档坐标投影到非对称自然河谷，与生成器共用相同公式。</summary>
+        /// <summary>将保留的旧演示坐标投影到新的十二公里米制地图。</summary>
         /// <param name="positionX">原业务横坐标。</param>
         /// <param name="positionZ">原业务纵坐标。</param>
         /// <returns>实际显示地图上的平面坐标。</returns>
         private static Vector2 ProjectBusinessPosition(float positionX, float positionZ)
         {
-            float mappedX = positionX + Mathf.Sin(Mathf.PI * positionX / 120) *
-                (6 * Mathf.Sin(positionZ * 0.065f + 0.8f) + 2 * Mathf.Sin(positionX * 0.15f + positionZ * 0.12f));
-            float mappedZ = positionZ + Mathf.Sin(Mathf.PI * positionZ / 80) * 4 * Mathf.Sin(positionX * 0.055f + 0.4f);
-            return new Vector2(mappedX, mappedZ) * Definition.displayScale;
+            // 旧业务坐标范围为 120×80；按米制新地图等比例铺开，不改变存档字段。
+            float mappedX = Mathf.Clamp(positionX * 100, 0, Definition.width);
+            float mappedZ = Mathf.Clamp(positionZ * 150, 0, Definition.length);
+            return new Vector2(mappedX, mappedZ);
         }
 
         /// <summary>构建当前角色可见的简化三维单位。</summary>

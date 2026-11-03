@@ -55,23 +55,23 @@ namespace Qiongtu.Sandbox
         private void CreateLighting()
         {
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.46f, 0.49f, 0.52f);
-            RenderSettings.ambientEquatorColor = new Color(0.3f, 0.31f, 0.29f);
-            RenderSettings.ambientGroundColor = new Color(0.17f, 0.16f, 0.14f);
+            RenderSettings.ambientSkyColor = new Color(0.48f, 0.54f, 0.61f);
+            RenderSettings.ambientEquatorColor = new Color(0.36f, 0.39f, 0.4f);
+            RenderSettings.ambientGroundColor = new Color(0.22f, 0.23f, 0.21f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.58f, 0.61f, 0.61f);
-            RenderSettings.fogStartDistance = 400;
-            RenderSettings.fogEndDistance = 1000;
+            RenderSettings.fogStartDistance = 18000;
+            RenderSettings.fogEndDistance = 35000;
             var sun = new GameObject("SandboxSun");
             sun.transform.SetParent(transform, false);
-            sun.transform.rotation = Quaternion.Euler(35, -38, 0);
+            sun.transform.rotation = Quaternion.Euler(29, -38, 0);
             Light light = sun.AddComponent<Light>();
             light.type = LightType.Directional;
             light.color = new Color(1, 0.95f, 0.86f);
-            light.intensity = 1.45f;
+            light.intensity = 1.7f;
             light.shadows = LightShadows.Soft;
-            light.shadowStrength = 0.78f;
+            light.shadowStrength = 0.68f;
             var volumeObject = new GameObject("SandboxGlobalVolume");
             volumeObject.transform.SetParent(transform, false);
             Volume volume = volumeObject.AddComponent<Volume>();
@@ -80,11 +80,15 @@ namespace Qiongtu.Sandbox
             ownedProfile = ScriptableObject.CreateInstance<VolumeProfile>();
             Tonemapping tonemapping = ownedProfile.Add<Tonemapping>(true);
             tonemapping.mode.Override(TonemappingMode.ACES);
+            ColorAdjustments grading = ownedProfile.Add<ColorAdjustments>(true);
+            grading.postExposure.Override(0.35f);
+            grading.contrast.Override(7);
+            grading.saturation.Override(-8);
             Bloom bloom = ownedProfile.Add<Bloom>(true);
-            bloom.intensity.Override(0.18f);
+            bloom.intensity.Override(0.06f);
             bloom.threshold.Override(1.1f);
             Vignette vignette = ownedProfile.Add<Vignette>(true);
-            vignette.intensity.Override(0.17f);
+            vignette.intensity.Override(0.1f);
             volume.sharedProfile = ownedProfile;
         }
 

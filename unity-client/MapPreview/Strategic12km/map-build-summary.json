@@ -1,0 +1,88 @@
+{
+  "mapId": "qinglan-strategic-v6",
+  "contentHash": "e1cbdc2f56670e2334ab931b15a22f90516195aec1d152b5e42be4bb14a2ab75",
+  "sizeMeters": [
+    12000,
+    12000
+  ],
+  "areaSquareKm": 144,
+  "seed": 20261102,
+  "coordinateUnit": "meter",
+  "buildingsBaked": true,
+  "meshParts": 637,
+  "triangles": 1572765,
+  "buildings": 1769,
+  "modelCounts": {
+    "Strategic_House_3": 38,
+    "Strategic_House_0": 755,
+    "Strategic_House_1": 273,
+    "Strategic_House_2": 88,
+    "Strategic_Office": 174,
+    "Strategic_Apartment_Tower": 45,
+    "Strategic_Apartment_Slab": 308,
+    "Strategic_Warehouse": 46,
+    "Strategic_StorageTank": 12,
+    "Strategic_Substation": 1,
+    "Strategic_RailDepot": 7,
+    "Strategic_Hangar": 7,
+    "Strategic_ControlTower": 1,
+    "Strategic_Bunker": 4,
+    "Strategic_Barracks": 10
+  },
+  "trees": 25507,
+  "nodes": 144,
+  "roads": 243,
+  "bridges": 3,
+  "regions": [
+    {
+      "id": "CITY",
+      "name": "中央城市",
+      "x": 5100,
+      "z": 5800,
+      "radius": 1450,
+      "purpose": "街区、交叉路口与公园交错"
+    },
+    {
+      "id": "INDUSTRY",
+      "name": "东岸工业货场",
+      "x": 7800,
+      "z": 5200,
+      "radius": 1050,
+      "purpose": "仓库、铁路与罐区形成独立侧翼"
+    },
+    {
+      "id": "AIRFIELD",
+      "name": "北部机场",
+      "x": 8400,
+      "z": 9200,
+      "radius": 1600,
+      "purpose": "跑道开阔带与外围机库分离"
+    },
+    {
+      "id": "WEST_TOWN",
+      "name": "西南镇",
+      "x": 3000,
+      "z": 3200,
+      "radius": 700,
+      "purpose": "村镇与田间道路连接南部通路"
+    },
+    {
+      "id": "NORTH_TOWN",
+      "name": "北岸镇",
+      "x": 4200,
+      "z": 8700,
+      "radius": 700,
+      "purpose": "林地与北桥之间的交通节点"
+    },
+    {
+      "id": "EAST_TOWN",
+      "name": "东南村",
+      "x": 8800,
+      "z": 2900,
+      "radius": 650,
+      "purpose": "田野与东岸丘陵连接"
+    }
+  ],
+  "source": "原创 Blender 米制模型；仅参考 Broken Arrow 官方设施类型，不使用游戏提取资产",
+  "reference": "https://www.matrixgames.com/news/broken-arrow-dev-diary-11-upcoming-beta-maps-and-tools"
+}

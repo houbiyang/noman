@@ -11,7 +11,7 @@
             <ui:Label name="roleCaption" class="role-caption" />
         </ui:VisualElement>
         <ui:VisualElement class="mission-heading" picking-mode="Ignore">
-            <ui:Label text="QINGLAN VALLEY  /  01" class="eyebrow" />
+            <ui:Label text="QINGLAN  /  12 × 12 km" class="eyebrow" />
             <ui:Label name="sessionTitle" class="mission-title" />
             <ui:Label text="三维沙盘总览 · 红蓝协同 · 人工确认" class="muted" />
             <ui:Label name="sourceLabel" text="本地演示数据 · 未连接仿真服务" class="source-note" />

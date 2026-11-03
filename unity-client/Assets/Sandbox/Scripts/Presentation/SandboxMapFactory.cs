@@ -15,7 +15,7 @@ namespace Qiongtu.Sandbox
         public static SandboxMapData LoadDefinition()
         {
             TextAsset asset = Resources.Load<TextAsset>(ResourceRoot + "map-definition");
-            if (asset == null) throw new InvalidOperationException("缺少青岚河谷地图定义，请先运行 Tools/build_qinglan_map.py");
+            if (asset == null) throw new InvalidOperationException("缺少策略地图定义，请先用 Blender 运行 Tools/build_strategic_map.py");
             SandboxMapData definition = JsonUtility.FromJson<SandboxMapData>(asset.text);
             string error = definition == null ? "地图定义不能解析" : definition.Validate();
             if (error.Length > 0) throw new InvalidOperationException(error);
@@ -96,7 +96,8 @@ namespace Qiongtu.Sandbox
                 renderer.shadowCastingMode = surfaceOverlay ? ShadowCastingMode.Off : ShadowCastingMode.On;
                 if (part.layer == "terrain") instance.AddComponent<MeshCollider>().sharedMesh = mesh;
             }
-            BuildBuildings(definition, root.transform, groups, shader, materials);
+            // 十二公里地图已从 Blender 同源模型按空间合批，不再重复实例化相同建筑。
+            if (!definition.buildingsBaked) BuildBuildings(definition, root.transform, groups, shader, materials);
             return root;
         }
 

@@ -79,6 +79,7 @@ namespace Qiongtu.Sandbox
         public float width;
         public float length;
         public float displayScale;
+        public bool buildingsBaked;
         public int heightColumns;
         public int heightRows;
         public float[] heights;
@@ -102,9 +103,9 @@ namespace Qiongtu.Sandbox
             float horizontal = column - lowerColumn;
             float vertical = row - lowerRow;
             int offset = lowerRow * heightColumns + lowerColumn;
-            float lower = heights[offset] * (1 - horizontal) + heights[offset + 1] * horizontal;
-            float upper = heights[offset + heightColumns] * (1 - horizontal) + heights[offset + heightColumns + 1] * horizontal;
-            return lower * (1 - vertical) + upper * vertical;
+            return vertical >= horizontal
+                ? heights[offset] * (1 - vertical) + heights[offset + heightColumns] * (vertical - horizontal) + heights[offset + heightColumns + 1] * horizontal
+                : heights[offset] * (1 - horizontal) + heights[offset + 1] * (horizontal - vertical) + heights[offset + heightColumns + 1] * vertical;
         }
 
         /// <summary>为显示对象提供桥面或地表高度，不决定路径是否合法。</summary>
@@ -132,8 +133,8 @@ namespace Qiongtu.Sandbox
         /// <returns>空字符串表示字段与拓扑检查通过，不代表四任务业务验收。</returns>
         public string Validate()
         {
-            if (schemaVersion != 1 || mapId != "qinglan-valley-v5" || string.IsNullOrWhiteSpace(name) || contentHash == null || contentHash.Length != 64) return "地图身份或版本无效";
-            if (width != 360 || length != 240 || displayScale != 3 || coordinateUnit != "scene-unit" || heightColumns < 2 || heightRows < 2
+            if (schemaVersion != 2 || mapId != "qinglan-strategic-v6" || string.IsNullOrWhiteSpace(name) || contentHash == null || contentHash.Length != 64) return "地图身份或版本无效";
+            if (width != 12000 || length != 12000 || displayScale != 1 || coordinateUnit != "meter" || heightColumns < 2 || heightRows < 2
                 || heights == null || heights.Length != heightColumns * heightRows || heights.Any(value => float.IsNaN(value) || float.IsInfinity(value))) return "地图尺寸或高度数据无效";
             if (nodes == null || nodes.Length == 0 || roads == null || points == null || materials == null || deploymentZones == null) return "地图对象不完整";
             var nodeIds = new HashSet<string>();
@@ -145,7 +146,9 @@ namespace Qiongtu.Sandbox
             {
                 if (road == null || string.IsNullOrWhiteSpace(road.id) || !roadIds.Add(road.id) || road.startId == null || road.endId == null
                     || !nodeIds.Contains(road.startId) || !nodeIds.Contains(road.endId) || road.startId == road.endId
-                    || !Finite(road.width) || road.width <= 0 || !Finite(road.surfaceHeight)) return "道路引用或身份无效";
+                    || !Finite(road.width) || road.width <= 0 || !Finite(road.surfaceHeight)
+                    || nodes.First(node => node.id == road.startId).x == nodes.First(node => node.id == road.endId).x
+                    && nodes.First(node => node.id == road.startId).z == nodes.First(node => node.id == road.endId).z) return "道路引用或身份无效";
                 adjacency[road.startId].Add(road.endId);
                 adjacency[road.endId].Add(road.startId);
             }
@@ -169,13 +172,24 @@ namespace Qiongtu.Sandbox
             if (buildings == null || buildings.Length == 0 || buildings.Any(building => building == null
                 || string.IsNullOrWhiteSpace(building.id) || !buildingIds.Add(building.id)
                 || !new[] { "settlement", "village", "central_village" }.Contains(building.layer)
-                || building.damage < 0 || building.damage > 3 || building.model != "House_" + building.damage
+                || building.damage < 0 || building.damage > 3 || !ValidBuildingModel(building.model)
                 || !Finite(building.x) || !Finite(building.y) || !Finite(building.z) || !Finite(building.yaw)
                 || building.x < 0 || building.x > width || building.z < 0 || building.z > length
                 || !Finite(building.scaleX) || !Finite(building.scaleY) || !Finite(building.scaleZ)
                 || building.scaleX <= 0 || building.scaleY <= 0 || building.scaleZ <= 0)) return "战损建筑模型或放置参数无效";
             return string.Empty;
         }
+
+        /// <summary>限制原创模型库身份，避免错误名称被静态合批掩盖。</summary>
+        /// <param name="identifier">Blender 导出的模型稳定名称。</param>
+        /// <returns>是否属于本地图明确支持的模型库。</returns>
+        private static bool ValidBuildingModel(string identifier) => new[]
+        {
+            "Strategic_Apartment_Slab", "Strategic_Apartment_Tower", "Strategic_Office",
+            "Strategic_House_0", "Strategic_House_1", "Strategic_House_2", "Strategic_House_3",
+            "Strategic_Warehouse", "Strategic_Hangar", "Strategic_RailDepot", "Strategic_StorageTank",
+            "Strategic_ControlTower", "Strategic_Bunker", "Strategic_Barracks", "Strategic_Substation"
+        }.Contains(identifier);
 
         /// <summary>校验公开对象坐标，不将未知或无限值当作零。</summary>
         private bool ValidPoint(SandboxMapPoint point) => point != null && !string.IsNullOrWhiteSpace(point.id) && !string.IsNullOrWhiteSpace(point.name)

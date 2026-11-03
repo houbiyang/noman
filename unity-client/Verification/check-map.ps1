@@ -21,27 +21,21 @@ function Assert-MapCheck {
 }
 Assert-MapCheck ($map.Validate() -eq '') '真实导出布局通过校验'
 Assert-MapCheck ($geometry.Validate($map) -eq '') '真实导出网格与布局匹配'
-Assert-MapCheck ($map.nodes.Count -eq 30 -and $map.roads.Count -eq 31) '扩展地图包含 30 节点与 31 条道路'
-Assert-MapCheck ($map.width -eq 360 -and $map.length -eq 240 -and $map.displayScale -eq 3) '显示范围扩大为三百六十乘二百四十'
-Assert-MapCheck (@($map.roads | Where-Object isBridge).Count -eq 3) '南中北有三处桥接'
-Assert-MapCheck ($map.points.Count -eq 11) '十一处地图对象身份完整'
-Assert-MapCheck ($geometry.parts.Count -eq 54) '桥头示范区地表合并为五十四个网格分块'
-Assert-MapCheck ($map.buildings.Count -eq 64) '六十四栋 Blender 建筑使用同源显示布局'
-Assert-MapCheck (@($map.buildings.damage | Sort-Object -Unique).Count -eq 4) '完整、轻损、重损和坍塌四档模型均已布置'
-Assert-MapCheck (@($map.buildings | Where-Object layer -eq 'central_village').Count -eq 15) '桥头街区包含十五栋独立布置的住宅'
+Assert-MapCheck ($map.nodes.Count -ge 80 -and $map.roads.Count -ge 120) '十二公里策略地图具有完整道路拓扑'
+Assert-MapCheck ($map.width -eq 12000 -and $map.length -eq 12000 -and $map.displayScale -eq 1 -and $map.coordinateUnit -eq 'meter') '地图为一万二千米米制范围'
+Assert-MapCheck (@($map.roads | Where-Object isBridge).Count -eq 3) '北中南三处跨河桥接'
+Assert-MapCheck ($map.points.Count -eq 11) '十一处部署与任务标记身份完整'
+Assert-MapCheck ($geometry.parts.Count -ge 300) '地形、城市、机场、货场与植被按空间块导出'
+Assert-MapCheck ($map.buildings.Count -ge 900 -and $map.buildingsBaked) '建筑由 Blender 同源几何合批入图'
+Assert-MapCheck (@($map.buildings.model | Sort-Object -Unique).Count -ge 12) '住宅、公寓、工业、机场和保障模型均已布置'
+Assert-MapCheck (@($map.buildings | Where-Object model -like 'Strategic_House_*').Count -ge 300) '村镇包含可辨认的原创住宅层级'
 foreach ($surface in @('Asphalt','Paving','Gravel','Grass')) {
     Assert-MapCheck (@($geometry.parts | Where-Object material -eq $surface).Count -gt 0) ('桥头道路和地表包含：'+$surface)
 }
-foreach ($layer in @('riverbanks','farmland','ditches','village','logistics','ponds','scrub','central_village','landscape','damage')) {
+foreach ($layer in @('terrain','water','routes','facilities','farmland','village','logistics','environment','grid','settlement')) {
     Assert-MapCheck (@($geometry.parts | Where-Object layer -eq $layer).Count -gt 0) ('包含环境图层：' + $layer)
 }
-$centralBridge = $map.points | Where-Object id -eq 'TASK_B'
-Assert-MapCheck ([Math]::Abs($map.SampleSurfaceHeight($centralBridge.x,$centralBridge.z) - 3.75) -lt 0.001) '曲流中央桥面高度有效'
-Assert-MapCheck ($map.SampleHeight($centralBridge.x,$centralBridge.z) -lt 0) '桥面与河床高度不混用'
-Assert-MapCheck ([Math]::Abs($map.SampleHeight(57,216)-$map.SampleHeight(303,24)) -gt 0.1) '两岸地形不再中心对称'
-$westExit=$map.nodes | Where-Object id -eq 'R_EXIT'
-$eastExit=$map.nodes | Where-Object id -eq 'B_EXIT'
-Assert-MapCheck ([Math]::Abs($westExit.x+$eastExit.x-360)+[Math]::Abs($westExit.z+$eastExit.z-240) -gt 0.1) '道路坐标不再镜像'
+Assert-MapCheck (($map.SampleHeight(1000,1000) -ne $map.SampleHeight(11000,11000)) -and ($map.SampleHeight(1000,1000) -lt 300)) '外围丘陵与河谷地形非镜像且高程有限'
 foreach ($marker in $map.points) {
     $height=$map.SampleSurfaceHeight($marker.x,$marker.z)
     Assert-MapCheck (-not [float]::IsNaN($height) -and -not [float]::IsInfinity($height)) ('地图标记具有有效地表：'+$marker.id)
