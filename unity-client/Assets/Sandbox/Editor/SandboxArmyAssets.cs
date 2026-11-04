@@ -13,9 +13,9 @@ namespace Qiongtu.Sandbox.Editor
     public static class SandboxArmyAssets
     {
         private const string Folder = "Assets/Sandbox/Resources/Army";
-        [Serializable] private class MaterialList { public MaterialEntry[] materials; public PartEntry[] parts; }
-        [Serializable] private class PartEntry { public string name; public string material; }
-        [Serializable] private class MaterialEntry { public string name; public float[] color; public float metallic; public float roughness; }
+        [Serializable] private class MaterialList { public MaterialEntry[] materials = null; public PartEntry[] parts = null; }
+        [Serializable] private class PartEntry { public string name = null; public string material = null; }
+        [Serializable] private class MaterialEntry { public string name = null; public float[] color = null; public float metallic = 0; public float roughness = 0; }
 
         [MenuItem("穹图/军队/导入模型与渲染卡牌")]
         public static void Prepare()
@@ -175,7 +175,7 @@ namespace Qiongtu.Sandbox.Editor
             RenderSettings.ambientMode = AmbientMode.Flat; RenderSettings.ambientLight = new Color(0.3f, 0.34f, 0.36f); RenderSettings.ambientIntensity = 0.7f;
             const int layer = 30;
             foreach (Transform child in model.GetComponentsInChildren<Transform>()) child.gameObject.layer = layer;
-            Light[] sceneLights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None).Where(item => item.enabled).ToArray();
+            Light[] sceneLights = UnityEngine.Object.FindObjectsByType<Light>().Where(item => item.enabled).ToArray();
             foreach (Light sceneLight in sceneLights) sceneLight.enabled = false;
             Light previousSun = RenderSettings.sun;
             var rig = new GameObject("ArmyCardRender");

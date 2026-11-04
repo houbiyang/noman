@@ -1,0 +1,51 @@
+[
+  {
+    "surface": "Ground",
+    "asset": "Grass004",
+    "source": "https://ambientcg.com/view?id=Grass004",
+    "license": "CC0-1.0",
+    "archiveSha256": "9BDB8A28536F437E910824096DD8A3D8276D5186A27AD067DEA4E2E762A6981B"
+  },
+  {
+    "surface": "Road",
+    "asset": "Asphalt012",
+    "source": "https://ambientcg.com/view?id=Asphalt012",
+    "license": "CC0-1.0",
+    "archiveSha256": "01AB792AE88EE7BB9710DF916E2B09AE6067F0D8ADD4BC22B112B2625BD785CE"
+  },
+  {
+    "surface": "Brick",
+    "asset": "Bricks075A",
+    "source": "https://ambientcg.com/view?id=Bricks075A",
+    "license": "CC0-1.0",
+    "archiveSha256": "030DA42AEEF76E07E6015C3D8EC830537832D61578EA233AA2617770695422A1"
+  },
+  {
+    "surface": "Concrete",
+    "asset": "Concrete034",
+    "source": "https://ambientcg.com/view?id=Concrete034",
+    "license": "CC0-1.0",
+    "archiveSha256": "D79CBBA91FA35BCD491400BAF69E4428F60C33522E0221E17B2C0431025D0ECC"
+  },
+  {
+    "surface": "Plaster",
+    "asset": "Plaster001",
+    "source": "https://ambientcg.com/view?id=Plaster001",
+    "license": "CC0-1.0",
+    "archiveSha256": "080F62F6A8B052E4963DFBDAED8B6DA86C002D5B1AEEA7F82DC27A9A11400ABA"
+  },
+  {
+    "surface": "Metal",
+    "asset": "Metal032",
+    "source": "https://ambientcg.com/view?id=Metal032",
+    "license": "CC0-1.0",
+    "archiveSha256": "25ACBC15CD3557801C7A45392796B5570E41799A80FB569DB0301587EA91292F"
+  },
+  {
+    "surface": "Timber",
+    "asset": "Wood051",
+    "source": "https://ambientcg.com/view?id=Wood051",
+    "license": "CC0-1.0",
+    "archiveSha256": "F3209B19271484C5055A25C818AB3AD2C7B839FAD3106E9B18B38E20B2F03EA4"
+  }
+]

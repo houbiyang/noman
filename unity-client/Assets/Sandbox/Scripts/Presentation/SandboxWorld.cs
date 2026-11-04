@@ -89,7 +89,7 @@ namespace Qiongtu.Sandbox
                     if (spawnFromBarracks.Remove(unit.id))
                     {
                         var camp = System.Array.Find(visibleBarracks, item => item.id == unit.barracksId);
-                        if (camp != null) view.SpawnAt(ArmyPosition(camp.x, camp.z + 3.5f, unit.type), spawnIndex++ * .45f);
+                        if (camp != null) view.SpawnAt(ArmyPosition(camp.x, SandboxArmyLayout.ExitZ(camp.z), unit.type), spawnIndex++ * .45f);
                     }
                 }
                 Vector3 position = ArmyPosition(unit.x, unit.z, unit.type);
@@ -144,22 +144,22 @@ namespace Qiongtu.Sandbox
         public bool CanPlaceBarracks(SandboxUnitType type, SandboxRole side, float x, float z, out string message)
         {
             message = "请选择平坦空地，避开水面、建筑、单位和地图边界";
-            if (x < 4 || x > 116 || z < 4 || z + 10.2f > 80) return false;
+            if (!SandboxArmyLayout.Contains(x, z)) return false;
             string own = DemoSandboxViewSource.BarracksId(side, type);
             Vector3 center = ArmyPosition(x, z, SandboxUnitType.Ground);
             foreach (var camp in visibleBarracks)
-                if (camp.id != own && Mathf.Abs(camp.x - x) < 9 && Mathf.Abs(camp.z - z) < 12) return false;
-            for (float dx = -3; dx <= 3; dx += 1.5f) for (float dz = -3; dz <= 3; dz += 1.5f)
+                if (camp.id != own && SandboxArmyLayout.Overlaps(x, z, camp.x, camp.z)) return false;
+            for (float dx = -10; dx <= 10; dx += 2.5f) for (float dz = -10; dz <= 10; dz += 2.5f)
             {
-                Vector3 p = ArmyPosition(x + dx, z + dz, SandboxUnitType.Ground);
+                Vector3 p = ArmyPosition(x + dx / SandboxArmyLayout.MetersPerX, z + dz / SandboxArmyLayout.MetersPerZ, SandboxUnitType.Ground);
                 if (!Navigation.IsTerrainWalkable(p) || Mathf.Abs(p.y - center.y) > 2.8f) return false;
             }
             foreach (var unit in unitViews.Values)
             {
                 Vector3 delta = unit.transform.position - center;
-                if (Mathf.Abs(delta.x) < 9 && Mathf.Abs(delta.z + 1) < 6) return false;
+                if (Mathf.Abs(delta.x) < 10 && Mathf.Abs(delta.z) < 10) return false;
             }
-            Vector3 exit = ArmyPosition(x, z + 3.5f, SandboxUnitType.Ground);
+            Vector3 exit = ArmyPosition(x, SandboxArmyLayout.ExitZ(z), SandboxUnitType.Ground);
             if (!Navigation.IsTerrainWalkable(exit)) return false;
             for (int i = 0; i < 10; i++)
             {
@@ -236,16 +236,16 @@ namespace Qiongtu.Sandbox
         /// <returns>仅用于显示的三维位置。</returns>
         public static Vector3 Surface(float positionX, float positionZ) => new Vector3(positionX, Definition.SampleSurfaceHeight(positionX, positionZ), positionZ);
 
-        /// <summary>将旧演示与存档坐标投影到非对称自然河谷，与生成器共用相同公式。</summary>
+        /// <summary>将保留的旧演示坐标投影到新的十二公里米制地图。</summary>
         /// <param name="positionX">原业务横坐标。</param>
         /// <param name="positionZ">原业务纵坐标。</param>
         /// <returns>实际显示地图上的平面坐标。</returns>
         private static Vector2 ProjectBusinessPosition(float positionX, float positionZ)
         {
-            float mappedX = positionX + Mathf.Sin(Mathf.PI * positionX / 120) *
-                (6 * Mathf.Sin(positionZ * 0.065f + 0.8f) + 2 * Mathf.Sin(positionX * 0.15f + positionZ * 0.12f));
-            float mappedZ = positionZ + Mathf.Sin(Mathf.PI * positionZ / 80) * 4 * Mathf.Sin(positionX * 0.055f + 0.4f);
-            return new Vector2(mappedX, mappedZ) * Definition.displayScale;
+            // 旧业务坐标范围为 120×80；按米制新地图等比例铺开，不改变存档字段。
+            float mappedX = Mathf.Clamp(positionX * SandboxArmyLayout.MetersPerX, 0, Definition.width);
+            float mappedZ = Mathf.Clamp(positionZ * SandboxArmyLayout.MetersPerZ, 0, Definition.length);
+            return new Vector2(mappedX, mappedZ);
         }
 
         /// <summary>构建当前角色可见的简化三维单位。</summary>
@@ -287,19 +287,14 @@ namespace Qiongtu.Sandbox
             return unit != null && CanPlace(x, z, type) && (type == SandboxUnitType.Recon || Navigation.FindPath(unit.position, ArmyPosition(x, z, type)) != null);
         }
         public void RelocateOnRefresh(IEnumerable<string> ids) { foreach (string id in ids) relocated.Add(id); }
+
+        /// <summary>将十二公里地图上的选点还原为旧存档使用的业务坐标。</summary>
+        /// <param name="point">地图中的米制世界位置。</param>
+        /// <param name="business">还原后的 120×80 业务坐标。</param>
+        /// <returns>位置有限且位于可操作范围内时返回真。</returns>
         public bool TryBusinessPosition(Vector3 point, out Vector2 business)
         {
-            business = new Vector2(point.x, point.z) / Definition.displayScale;
-            for (int i = 0; i < 12; i++)
-            {
-                Vector2 actual = ProjectBusinessPosition(business.x, business.y), error = actual - new Vector2(point.x, point.z);
-                if (error.sqrMagnitude < 0.0001f) break;
-                Vector2 dx = (ProjectBusinessPosition(business.x + 0.01f, business.y) - actual) / 0.01f;
-                Vector2 dz = (ProjectBusinessPosition(business.x, business.y + 0.01f) - actual) / 0.01f;
-                float determinant = dx.x * dz.y - dx.y * dz.x;
-                if (Mathf.Abs(determinant) < 0.001f) return false;
-                business -= new Vector2((error.x * dz.y - error.y * dz.x) / determinant, (dx.x * error.y - dx.y * error.x) / determinant);
-            }
+            business = new Vector2(point.x / SandboxArmyLayout.MetersPerX, point.z / SandboxArmyLayout.MetersPerZ);
             return business.x >= 0 && business.x <= 120 && business.y >= 0 && business.y <= 80;
         }
         private void LateUpdate()

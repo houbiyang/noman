@@ -54,6 +54,32 @@ namespace Qiongtu.Sandbox.Editor
         /// <param name="definition">当前同源建筑布局。</param>
         private static void ValidateImportedBuildings(GameObject root, SandboxMapData definition)
         {
+            if (definition.buildingsBaked)
+            {
+                var checkedModels = new HashSet<string>();
+                foreach (SandboxMapBuilding building in definition.buildings)
+                {
+                    if (!checkedModels.Add(building.model)) continue;
+                    GameObject prototype = Resources.Load<GameObject>("Battlefield/Models/" + building.model);
+                    if (prototype == null) throw new System.InvalidOperationException("缺少原创 Blender 原型：" + building.model);
+                    MeshFilter[] filters = prototype.GetComponentsInChildren<MeshFilter>();
+                    if (filters.Length == 0) throw new System.InvalidOperationException("原创模型没有网格：" + building.model);
+                    foreach (MeshFilter filter in filters)
+                    {
+                        Mesh mesh = filter.sharedMesh;
+                        if (mesh == null || mesh.vertexCount == 0 || !AssetDatabase.Contains(mesh)
+                            || !mesh.HasVertexAttribute(UnityEngine.Rendering.VertexAttribute.TexCoord0)
+                            || !mesh.HasVertexAttribute(UnityEngine.Rendering.VertexAttribute.Normal)
+                            || mesh.bounds.size.y < 2 || mesh.bounds.size.y > 80)
+                            throw new System.InvalidOperationException("原创模型比例、竖轴或 UV 无效：" + building.model);
+                    }
+                }
+                Transform buildings = root.transform.Find("settlement");
+                if (buildings == null || buildings.GetComponentsInChildren<MeshRenderer>().Length == 0)
+                    throw new System.InvalidOperationException("策略地图缺少实际合批建筑");
+                Debug.Log("[穹图] 十二公里 Blender 地图检查通过：" + checkedModels.Count + " 类原型，" + definition.buildings.Length + " 栋合批建筑");
+                return;
+            }
             foreach (SandboxMapBuilding building in definition.buildings)
             {
                 Transform instance = root.transform.Find(building.layer + "/" + building.id + "_" + building.model);

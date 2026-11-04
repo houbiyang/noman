@@ -15,7 +15,7 @@ namespace Qiongtu.Sandbox
         private bool IsBlocked(int index)
         {
             if (blocked[index]) return true;
-            Vector3 p = Point(index);
+            Vector3 p = new Vector3((index % columns + .5f) * Cell, 0, (index / columns + .5f) * Cell);
             foreach (var bounds in barracks)
                 if (Mathf.Abs(p.x - bounds.center.x) <= bounds.extents.x && Mathf.Abs(p.z - bounds.center.z) <= bounds.extents.z) return true;
             return false;
@@ -47,7 +47,7 @@ namespace Qiongtu.Sandbox
                     }
                 }
             }
-            // Mark entire building footprints, regardless of the names of their component meshes.
+            // 按完整建筑占地阻挡，保持独立模型与合批地图采用相同的占地来源。
             foreach (Transform building in map.GetComponentsInChildren<Transform>(true))
             {
                 if (!building.name.StartsWith("BUILDING_")) continue;
@@ -55,16 +55,42 @@ namespace Qiongtu.Sandbox
                 if (parts.Length == 0) continue;
                 Bounds bounds = parts[0].bounds;
                 foreach (Renderer part in parts) bounds.Encapsulate(part.bounds);
-                bounds.Expand(new Vector3(2.4f, 0, 2.4f));
-                for (int z = Mathf.Max(0, (int)(bounds.min.z / Cell)); z <= Mathf.Min(rows - 1, (int)(bounds.max.z / Cell)); z++)
-                    for (int x = Mathf.Max(0, (int)(bounds.min.x / Cell)); x <= Mathf.Min(columns - 1, (int)(bounds.max.x / Cell)); x++) blocked[z * columns + x] = true;
+                BlockBuilding(bounds);
+            }
+            if (data.buildingsBaked)
+            {
+                var modelBounds = new Dictionary<string, Bounds>();
+                foreach (SandboxMapBuilding building in data.buildings)
+                {
+                    if (!modelBounds.TryGetValue(building.model, out Bounds bounds))
+                    {
+                        GameObject model = Resources.Load<GameObject>("Battlefield/Models/" + building.model);
+                        if (model == null) throw new InvalidOperationException("缺少建筑导航占地模型：" + building.model);
+                        bool first = true;
+                        foreach (MeshFilter filter in model.GetComponentsInChildren<MeshFilter>(true))
+                        {
+                            Bounds partBounds = TransformBounds(filter.sharedMesh.bounds, model.transform.worldToLocalMatrix * filter.transform.localToWorldMatrix);
+                            if (first) { bounds = partBounds; first = false; }
+                            else bounds.Encapsulate(partBounds);
+                        }
+                        if (first) throw new InvalidOperationException("建筑导航模型没有网格：" + building.model);
+                        modelBounds.Add(building.model, bounds);
+                    }
+                    Matrix4x4 placement = Matrix4x4.TRS(new Vector3(building.x, building.y, building.z),
+                        Quaternion.Euler(0, building.yaw, 0), new Vector3(building.scaleX, building.scaleY, building.scaleZ));
+                    BlockBuilding(TransformBounds(bounds, placement));
+                }
             }
             foreach (SandboxMapRoad road in data.roads)
             {
                 if (!road.isBridge) continue;
                 SandboxMapPoint a = Array.Find(data.nodes, n => n.id == road.startId), b = Array.Find(data.nodes, n => n.id == road.endId);
                 Vector2 start = new Vector2(a.x, a.z), end = new Vector2(b.x, b.z), direction = end - start;
-                for (int z = 0; z < rows; z++) for (int x = 0; x < columns; x++)
+                int minX = Mathf.Max(0, (int)((Mathf.Min(a.x, b.x) - road.width) / Cell));
+                int maxX = Mathf.Min(columns - 1, (int)((Mathf.Max(a.x, b.x) + road.width) / Cell));
+                int minZ = Mathf.Max(0, (int)((Mathf.Min(a.z, b.z) - road.width) / Cell));
+                int maxZ = Mathf.Min(rows - 1, (int)((Mathf.Max(a.z, b.z) + road.width) / Cell));
+                for (int z = minZ; z <= maxZ; z++) for (int x = minX; x <= maxX; x++)
                 {
                     Vector2 point = new Vector2((x + .5f) * Cell, (z + .5f) * Cell);
                     float t = Vector2.Dot(point - start, direction) / direction.sqrMagnitude;
@@ -73,6 +99,30 @@ namespace Qiongtu.Sandbox
                 }
             }
         }
+
+        /// <summary>将建筑包围盒及原有安全余量写入导航阻挡网格。</summary>
+        /// <param name="bounds">地图世界坐标中的建筑包围盒。</param>
+        private void BlockBuilding(Bounds bounds)
+        {
+            bounds.Expand(new Vector3(2.4f, 0, 2.4f));
+            for (int z = Mathf.Max(0, (int)(bounds.min.z / Cell)); z <= Mathf.Min(rows - 1, (int)(bounds.max.z / Cell)); z++)
+                for (int x = Mathf.Max(0, (int)(bounds.min.x / Cell)); x <= Mathf.Min(columns - 1, (int)(bounds.max.x / Cell)); x++) blocked[z * columns + x] = true;
+        }
+
+        /// <summary>按模型或实例变换计算轴对齐包围盒，不创建重复建筑对象。</summary>
+        /// <param name="bounds">变换前的局部包围盒。</param>
+        /// <param name="matrix">模型局部坐标到目标坐标的变换。</param>
+        /// <returns>包含旋转和缩放后全部顶点的目标包围盒。</returns>
+        private static Bounds TransformBounds(Bounds bounds, Matrix4x4 matrix)
+        {
+            Vector3 extentX = matrix.MultiplyVector(Vector3.right * bounds.extents.x);
+            Vector3 extentY = matrix.MultiplyVector(Vector3.up * bounds.extents.y);
+            Vector3 extentZ = matrix.MultiplyVector(Vector3.forward * bounds.extents.z);
+            var extents = new Vector3(Mathf.Abs(extentX.x) + Mathf.Abs(extentY.x) + Mathf.Abs(extentZ.x),
+                Mathf.Abs(extentX.y) + Mathf.Abs(extentY.y) + Mathf.Abs(extentZ.y),
+                Mathf.Abs(extentX.z) + Mathf.Abs(extentY.z) + Mathf.Abs(extentZ.z));
+            return new Bounds(matrix.MultiplyPoint3x4(bounds.center), extents * 2);
+        }
         private static float Cross(Vector3 a,Vector3 b,Vector3 p)=>(b.x-a.x)*(p.z-a.z)-(b.z-a.z)*(p.x-a.x);
         private int Index(Vector3 p)=>p.x<0||p.z<0||p.x>=columns*Cell||p.z>=rows*Cell?-1:(int)(p.z/Cell)*columns+(int)(p.x/Cell);
         private Vector3 Point(int index)=>SandboxWorld.Surface((index%columns+.5f)*Cell,(index/columns+.5f)*Cell)+Vector3.up*.08f;
@@ -80,27 +130,27 @@ namespace Qiongtu.Sandbox
         public List<Vector3> FindPath(Vector3 start, Vector3 end)
         {
             int from=Index(start),to=Index(end); if(from<0||to<0||IsBlocked(to))return null;
-            var cost=new float[blocked.Length];var parent=new int[blocked.Length];var closed=new bool[blocked.Length];
-            for(int i=0;i<cost.Length;i++){cost[i]=float.PositiveInfinity;parent[i]=-1;}
+            // 十二公里地图有 1600 万格；短程兵营出兵只记录实际搜索过的格子。
+            var cost=new Dictionary<int,float>();var parent=new Dictionary<int,int>();var closed=new HashSet<int>();
             cost[from]=0;var open=new List<int>{from};
             int[] dx={-1,0,1,-1,1,-1,0,1},dz={-1,-1,-1,0,0,1,1,1};
             while(open.Count>0)
             {
                 int best=0;float score=float.PositiveInfinity;
                 for(int i=0;i<open.Count;i++){int n=open[i];float h=cost[n]+Vector2.Distance(new Vector2(n%columns,n/columns),new Vector2(to%columns,to/columns));if(h<score){score=h;best=i;}}
-                int current=open[best];open.RemoveAt(best);if(current==to)break;if(closed[current])continue;closed[current]=true;
+                int current=open[best];open.RemoveAt(best);if(current==to)break;if(!closed.Add(current))continue;
                 int x=current%columns,z=current/columns;
                 for(int i=0;i<8;i++)
                 {
                     int nx=x+dx[i],nz=z+dz[i];if(nx<0||nx>=columns||nz<0||nz>=rows)continue;int next=nz*columns+nx;
-                    if(closed[next]||IsBlocked(next)||(dx[i]!=0&&dz[i]!=0&&(IsBlocked(z*columns+nx)||IsBlocked(nz*columns+x))))continue;
+                    if(closed.Contains(next)||IsBlocked(next)||(dx[i]!=0&&dz[i]!=0&&(IsBlocked(z*columns+nx)||IsBlocked(nz*columns+x))))continue;
                     float value=cost[current]+(dx[i]!=0&&dz[i]!=0?1.414214f:1);
-                    if(value>=cost[next])continue;cost[next]=value;parent[next]=current;open.Add(next);
+                    if(cost.TryGetValue(next,out float knownCost)&&value>=knownCost)continue;cost[next]=value;parent[next]=current;open.Add(next);
                 }
             }
-            if(to!=from&&parent[to]<0)return null;
+            if(to!=from&&!parent.ContainsKey(to))return null;
             var path=new List<Vector3>();int cursor=to;
-            while(cursor!=from){path.Add(Point(cursor));cursor=parent[cursor];if(cursor<0)return null;}
+            while(cursor!=from){path.Add(Point(cursor));if(!parent.TryGetValue(cursor,out cursor))return null;}
             path.Reverse();path.Add(SandboxWorld.Surface(end.x,end.z)+Vector3.up*.08f);return path;
         }
     }

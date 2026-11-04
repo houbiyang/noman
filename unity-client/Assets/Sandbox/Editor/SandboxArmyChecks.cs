@@ -27,11 +27,14 @@ namespace Qiongtu.Sandbox.Editor
             for (int z = 3; z < data.length; z += 6) for (int x = 3; x < data.width; x += 6)
             { if (navigation.IsWalkable(new Vector3(x, 0, z))) ground++; else water++; }
             Check(water > 100 && ground > 1000, "obstacle raster is nonempty and terrain remains usable");
-            Vector3 red = Nearest(navigation, data.nodes.First(n => n.id == "R_GATE"));
-            Vector3 blue = Nearest(navigation, data.nodes.First(n => n.id == "B_GATE"));
+            var crossingBridge = data.roads.First(road => road.isBridge);
+            Vector3 red = Nearest(navigation, data.nodes.First(node => node.id == crossingBridge.startId));
+            Vector3 blue = Nearest(navigation, data.nodes.First(node => node.id == crossingBridge.endId));
             var crossing = navigation.FindPath(red, blue);
             Check(crossing != null && crossing.Count > 10, "cross-river A* route");
             Check(crossing.All(navigation.IsWalkable), "path avoids blocked cells");
+            SandboxMapBuilding bakedBuilding = data.buildings.First(building => building.damage == 0 && building.model == "Strategic_House_0");
+            Check(!navigation.IsWalkable(new Vector3(bakedBuilding.x, 0, bakedBuilding.z)), "合批建筑占地被阻挡");
             foreach (var road in data.roads.Where(r => r.isBridge))
             {
                 var a = data.nodes.First(n => n.id == road.startId); var b = data.nodes.First(n => n.id == road.endId);
@@ -89,7 +92,10 @@ namespace Qiongtu.Sandbox.Editor
             world.ApplyProjection(source.GetProjection(SandboxRole.Host));
             Check(root.GetComponentsInChildren<SandboxUnitView>(true).Length == 10, "all ten redeployed models appear");
             CheckBarracks(world, root);
-            // Nothing in this read-only validation is saved back to the source scene.
+            Check(world.TryBusinessPosition(new Vector3(data.width, 0, data.length), out Vector2 corner)
+                && Vector2.Distance(corner, new Vector2(120, 80)) < .001f, "十二公里边界反算");
+            Check(!world.TryBusinessPosition(new Vector3(float.NaN, 0, 0), out _), "非有限选点被拒绝");
+            // 本检查不将临时验证对象写回源场景。
             Debug.Log("[ArmyChecks] PASS " + checks + " checks; route " + crossing.Count + " nodes; blocked samples=" + water);
         }
         private static void CheckBarracks(SandboxWorld world, GameObject root)
@@ -98,7 +104,7 @@ namespace Qiongtu.Sandbox.Editor
             var source = new DemoSandboxViewSource();
             world.ApplyProjection(source.GetProjection(SandboxRole.Host));
             var originals = source.Current.units.ToDictionary(unit => unit.id, unit => world.FindUnit(unit.id));
-            Check(!world.CanPlaceBarracks(SandboxUnitType.Recon, SandboxRole.Red, 1, 1, out _), "barracks boundary rejection even for aircraft");
+            Check(!world.CanPlaceBarracks(SandboxUnitType.Recon, SandboxRole.Red, .01f, .01f, out _), "barracks boundary rejection even for aircraft");
             Vector2 place = Vector2.zero; bool found = false;
             for (int z = 8; z < 65 && !found; z += 4) for (int x = 8; x < 110 && !found; x += 4)
                 if (world.CanPlaceBarracks(SandboxUnitType.Ground, SandboxRole.Red, x, z, out _)) { place = new Vector2(x, z); found = true; }
@@ -113,7 +119,10 @@ namespace Qiongtu.Sandbox.Editor
             Check(camp != null && camp.GetComponentsInChildren<Renderer>().Length > 12, "map barracks is a real rendered building");
             Check(originals.All(pair => world.FindUnit(pair.Key) == pair.Value), "barracks creation preserves existing model instances");
             var unit = world.FindUnit("R-G02");
-            Check(Vector3.Distance(unit.position, SandboxWorld.ArmyPosition(place.x, place.y + 3.5f, SandboxUnitType.Ground)) < .01f, "new ground unit starts at barracks exit");
+            Check(Vector3.Distance(unit.position, SandboxWorld.ArmyPosition(place.x, SandboxArmyLayout.ExitZ(place.y), SandboxUnitType.Ground)) < .01f, "new ground unit starts at barracks exit");
+            Check(Mathf.Abs((unit.position.z - camp.position.z) - 10.5f) < .01f, "十二公里地图的出兵口距离兵营十点五米");
+            Check(Vector3.Distance(unit.position, SandboxWorld.ArmyPosition(source.Current.units.Single(item => item.id == "R-G02").x,
+                source.Current.units.Single(item => item.id == "R-G02").z, SandboxUnitType.Ground)) < 20, "出兵集结目标保持在兵营附近");
             Check(unit.GetComponent<SandboxUnitView>().IsMoving, "spawned unit has a path from exit to rally point");
             Check(!world.CanPlace(place.x, place.y, SandboxUnitType.Ground), "ground navigation blocks barracks building");
             Check(world.CanPlaceBarracks(SandboxUnitType.Ground, SandboxRole.Red, place.x, place.y, out _), "own camp can be selected again for relocation");

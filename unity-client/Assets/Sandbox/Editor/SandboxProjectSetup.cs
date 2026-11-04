@@ -60,7 +60,7 @@ namespace Qiongtu.Sandbox.Editor
                 settings.FindProperty("m_MainLightShadowsSupported").boolValue = true;
                 settings.FindProperty("m_SoftShadowsSupported").boolValue = true;
                 settings.ApplyModifiedPropertiesWithoutUndo();
-                pipeline.shadowDistance = 650;
+                pipeline.shadowDistance = 18000;
                 pipeline.shadowCascadeCount = 4;
                 pipeline.mainLightShadowmapResolution = 2048;
                 pipeline.msaaSampleCount = 2;

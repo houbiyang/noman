@@ -14,6 +14,29 @@ namespace Qiongtu.Sandbox
         public SandboxBarracksData Copy() => (SandboxBarracksData)MemberwiseClone();
     }
 
+    /// <summary>兵营尺寸使用世界米制，存档仍保留 120×80 业务坐标。</summary>
+    public static class SandboxArmyLayout
+    {
+        public const float MetersPerX = 100f;
+        public const float MetersPerZ = 150f;
+        public const float HalfWidth = 12f;
+        public const float RearClearance = 10.5f;
+        public const float FrontClearance = 31f;
+        public const float ExitOffset = 10.5f;
+        public const float RallyStart = 16f;
+        public const float RallySpacing = 6f;
+
+        public static float ExitZ(float z) => z + ExitOffset / MetersPerZ;
+        public static float RallyX(float x, int index, int quantity) => x + (index % 4 - Math.Min(quantity, 4) / 2f + .5f) * RallySpacing / MetersPerX;
+        public static float RallyZ(float z, int index) => z + (RallyStart + index / 4 * RallySpacing) / MetersPerZ;
+        public static bool Contains(float x, float z) =>
+            x >= HalfWidth / MetersPerX && x <= 120 - HalfWidth / MetersPerX
+            && z >= RearClearance / MetersPerZ && z <= 80 - FrontClearance / MetersPerZ;
+        public static bool Overlaps(float x, float z, float otherX, float otherZ) =>
+            Math.Abs((x - otherX) * MetersPerX) < HalfWidth * 2
+            && Math.Abs((z - otherZ) * MetersPerZ) < RearClearance + FrontClearance;
+    }
+
     public sealed partial class DemoSandboxViewSource
     {
         public const int MaxArmyUnits = 10;
@@ -66,8 +89,8 @@ namespace Qiongtu.Sandbox
 
         public static string BarracksName(SandboxUnitType type) => type == SandboxUnitType.Recon ? "无人机机库" : type == SandboxUnitType.Ground ? "履带单元兵营" : "保障车兵营";
         public static string BarracksId(SandboxRole side, SandboxUnitType type) => (side == SandboxRole.Red ? "R" : "B") + "-CAMP-" + ArmyKey(type);
-        public static float RallyX(float x, int index, int quantity) => x + (index % 4 - Math.Min(quantity, 4) / 2f + .5f) * 2.1f;
-        public static float RallyZ(float z, int index) => z + 6 + index / 4 * 2.1f;
+        public static float RallyX(float x, int index, int quantity) => SandboxArmyLayout.RallyX(x, index, quantity);
+        public static float RallyZ(float z, int index) => SandboxArmyLayout.RallyZ(z, index);
 
         // One persistent barracks per side/type. Repositioning never moves existing troops.
         public bool TryPlaceBarracks(SandboxRole actor, SandboxRole side, SandboxUnitType type, float x, float z, out string message)
@@ -75,10 +98,10 @@ namespace Qiongtu.Sandbox
             message = "兵营角色或位置无效";
             if ((side != SandboxRole.Red && side != SandboxRole.Blue) || actor != SandboxRole.Host && actor != side
                 || !Enum.IsDefined(typeof(SandboxUnitType), type)
-                || !ValidArmyPosition(x - 4, z - 4) || !ValidArmyPosition(x + 4, RallyZ(z, 9))) return false;
+                || !SandboxArmyLayout.Contains(x, z)) return false;
             string id = BarracksId(side, type);
             bool relocating = session.barracks.Any(camp => camp.id == id);
-            if (session.barracks.Any(camp => camp.id != id && Math.Abs(camp.x - x) < 9 && Math.Abs(camp.z - z) < 12))
+            if (session.barracks.Any(camp => camp.id != id && SandboxArmyLayout.Overlaps(x, z, camp.x, camp.z)))
             { message = "兵营之间需要留出建筑与出兵空间"; return false; }
             var camps = session.barracks.Where(camp => camp.id != id).ToList();
             camps.Add(new SandboxBarracksData { id = id, side = side, type = type, x = x, z = z });
@@ -108,7 +131,7 @@ namespace Qiongtu.Sandbox
         {
             var units = session.units.ToList();
             int start = units.Count;
-            AddFormation(units, camp.side, camp.type, quantity, camp.x, camp.z + 6);
+            AddFormation(units, camp.side, camp.type, quantity, camp.x, camp.z);
             for (int i = start; i < units.Count; i++)
             {
                 int slot = int.Parse(units[i].id.Substring(3)) - 1;
@@ -127,10 +150,10 @@ namespace Qiongtu.Sandbox
             {
                 if (camp == null || (camp.side != SandboxRole.Red && camp.side != SandboxRole.Blue)
                     || !Enum.IsDefined(typeof(SandboxUnitType), camp.type) || camp.id != BarracksId(camp.side, camp.type) || !ids.Add(camp.id)
-                    || !ValidArmyPosition(camp.x - 4, camp.z - 4) || !ValidArmyPosition(camp.x + 4, RallyZ(camp.z, 9))) return "存档兵营身份或坐标无效";
+                    || !SandboxArmyLayout.Contains(camp.x, camp.z)) return "存档兵营身份或坐标无效";
             }
             for (int i = 0; i < camps.Length; i++) for (int j = i + 1; j < camps.Length; j++)
-                if (Math.Abs(camps[i].x - camps[j].x) < 9 && Math.Abs(camps[i].z - camps[j].z) < 12) return "存档兵营相互重叠";
+                if (SandboxArmyLayout.Overlaps(camps[i].x, camps[i].z, camps[j].x, camps[j].z)) return "存档兵营相互重叠";
             foreach (var unit in data.units)
                 if (unit != null && !string.IsNullOrEmpty(unit.barracksId) && !camps.Any(camp => camp.id == unit.barracksId && camp.side == unit.side && camp.type == unit.type)) return "存档单位与兵营归属不匹配";
             return string.Empty;
