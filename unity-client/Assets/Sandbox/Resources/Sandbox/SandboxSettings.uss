@@ -22,7 +22,6 @@
 .settings-card-title { font-size:18px; color:rgb(230,238,245); -unity-font-style:bold; margin:0 0 8px; padding:0; white-space:normal; }
 .settings-note { font-size:12px; color:rgb(164,184,200); white-space:normal; margin:4px 0; padding:0; }
 .settings-notice { font-size:14px; color:rgb(216,225,203); background-color:rgb(37,49,45); border-left-width:2px; border-left-color:rgb(159,178,137); padding:8px; margin:8px 0; white-space:normal; }
-.settings-status { font-size:12px; color:rgb(196,212,223); margin:0 0 8px; white-space:normal; }
 .settings-fact { flex-direction:row; margin:4px 0; }
 .settings-fact-key { width:104px; flex-shrink:0; font-size:12px; color:rgb(151,175,194); white-space:normal; }
 .settings-fact-value { flex-grow:1; flex-shrink:1; min-width:0; font-size:14px; color:rgb(219,231,241); white-space:normal; }

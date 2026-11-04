@@ -60,11 +60,10 @@ namespace Qiongtu.Sandbox
             var body = SettingsGroup(settingsOverlay, "settings-body");
             var nav = SettingsGroup(body, "settings-nav"); settingsNav.Clear();
             SettingsNav(nav, "service", "01  服务连接");
-            SettingsNav(nav, "red", "02  红方 AI", role != SandboxRole.Blue);
-            SettingsNav(nav, "blue", "03  蓝方 AI", role != SandboxRole.Red);
+            SettingsNav(nav, "red", "02  红方 AI");
+            SettingsNav(nav, "blue", "03  蓝方 AI");
             SettingsNav(nav, "display", "04  沙盘显示");
-            SettingsNav(nav, "roadmap", "05  实施清单");
-            AddText(nav, "AI 配置为本机草稿\n正式启用须由后端授权", "settings-nav-note");
+            AddText(nav, "红蓝双方可直接配置\nAI 配置保存为本机草稿", "settings-nav-note");
             settingsContent = new ScrollView(ScrollViewMode.Vertical) { name = "settingsContent" };
             settingsContent.AddToClassList("settings-content"); body.Add(settingsContent);
             var footer = SettingsGroup(settingsOverlay, "settings-footer");
@@ -82,11 +81,10 @@ namespace Qiongtu.Sandbox
         {
             var element = new VisualElement(); element.AddToClassList(style); parent.Add(element); return element;
         }
-        private void SettingsNav(VisualElement parent, string key, string title, bool enabled = true)
+        private void SettingsNav(VisualElement parent, string key, string title)
         {
             var button = AddButton(parent, title, () => { settingsSection = key; RenderSettingsSection(); }, "settings-nav-item");
-            button.name = "settingsNav-" + key; button.SetEnabled(enabled);
-            if (!enabled) button.tooltip = "对方配置不在当前演示席位显示；主持人可审阅双方本机草稿";
+            button.name = "settingsNav-" + key;
             if (key == "red" || key == "blue") button.AddToClassList("settings-side-" + key);
             settingsNav[key] = button;
         }
@@ -100,7 +98,6 @@ namespace Qiongtu.Sandbox
                 case "red": BuildSideSettings(settingsDraft.red, "red", "红方"); break;
                 case "blue": BuildSideSettings(settingsDraft.blue, "blue", "蓝方"); break;
                 case "display": BuildDisplaySettings(); break;
-                default: BuildSettingsRoadmap(); break;
             }
             ShowSettingsErrors();
         }
@@ -136,7 +133,7 @@ namespace Qiongtu.Sandbox
         }
         private void BuildSideSettings(SandboxSideAiSettings side, string key, string title)
         {
-            SettingsSectionTitle(title + " AI 接口", "本方配置草稿 · 生成、向量与重排序分别设置，凭据仅填写服务端环境变量名。");
+            SettingsSectionTitle(title + " AI 接口", title + "配置草稿 · 生成、向量与重排序分别设置，凭据仅填写服务端环境变量名。");
             var roles = SettingsCard("四个逻辑智能体", "AI 总指挥 / 侦察 / 陆兵 / 保障。一个兵种智能体可管理多个单位。");
             AddText(roles, "首次方案和重大调整须人工确认。允许工具、资料范围与过期结果写入资格由后端校验。", "settings-note");
             BuildModelSettings(side.generation, key + ".generation", "建议生成", true);
@@ -183,24 +180,6 @@ namespace Qiongtu.Sandbox
             SettingsFact(rules, "出兵流程", "待接入仿真 / AI 指令后由对应兵营出发");
             SettingsFact(rules, "当前单位限制", "本地演示沿用红蓝合计 10 个，非正式契约上限");
             AddText(rules, "初始六个单位和已有存档继续保留。本次不增加自动出兵计时器。", "settings-note");
-        }
-        private void BuildSettingsRoadmap()
-        {
-            SettingsSectionTitle("实施清单", "按现行文档区分首版待完成、候选和后续能力；本页不是后台运行监控。");
-            RoadmapItem("本地已实现", "兵营与设置", "地图建造、模型与路径、前端存档；本机设置保存、输入校验、显示偏好与只读健康检测。", "本次实现 / Unity 客户端");
-            RoadmapItem("首版待接入", "角色会话与统一命令", "受控签发、角色过滤 GameView、预览令牌、幂等命令、超时结果核对。", "接口契约 §2、§4–6 / D-09");
-            RoadmapItem("首版待实现", "AI 工作流与资料证据", "双方各四智能体、首次与事件重分析、混合 RAG、重排序、原文引用和人工确认。", "PRD-04、PRD-23 / 智能体执行协议 / D-06");
-            RoadmapItem("首版待实现", "完整仿真与兵营出兵", "依据已采用方案出发，四类任务、探索、保障与统一交战结算。设置草稿不能直接写入世界。", "PRD-16–22 / 接口契约 §5.4、§7");
-            RoadmapItem("首版待实现", "服务端存档与复盘", "自动保存、多手动存档、恢复新分支并暂停、冻结历史与结果；当前仅为前端存档。", "PRD-13 / 接口契约 §8–9");
-            RoadmapItem("候选 · 待定契约", "模型配置、测试与取消", "配置版本、供应商适配、预算、脱敏失败、取消终态和晚到输出校验；路径及权限待锁定。", "PRD-30 / 接口契约 §15.3–15.4");
-            RoadmapItem("后续候选", "资产与高级工具", "编制、装备和地图编辑器、单位 Agent、导入增强、完整轨迹审计。", "PRD-24–32、PRD-34 / 实施计划 FUS");
-            RoadmapItem("后续 P2", "分析与目标平台", "冻结来源的反事实分析；鲲鹏 / OpenHarmony 适配及设备实测分别验收。", "PRD-33 / 测试与验收 / D-15");
-            AddText(settingsContent, "设计依据：04 交互与视觉设计 §5；06 接口契约 §2–15；01 产品需求；05 系统架构；09 智能体执行协议；10 实施计划与交付范围。", "settings-note");
-        }
-        private void RoadmapItem(string status, string title, string detail, string sourceRef)
-        {
-            var card = SettingsCard(title);
-            AddText(card, status, "settings-status"); AddText(card, detail, "settings-description"); AddText(card, sourceRef, "settings-note");
         }
         private static void SettingsFact(VisualElement parent, string title, string value)
         {
