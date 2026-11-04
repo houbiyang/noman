@@ -44,6 +44,23 @@ mergeInto(LibraryManager.library, {
     return QiongtuReturnString(JSON.stringify(result));
   },
 
+  $QiongtuSettingsKey: function () {
+    var pathname = window.location.pathname;
+    return "qiongtu:settings:v1:" + pathname.substring(0, pathname.lastIndexOf("/") + 1);
+  },
+  QiongtuSettingsRead__deps: ["$QiongtuSettingsKey", "$QiongtuReturnString"],
+  QiongtuSettingsRead: function () {
+    var result = { content: "", warning: "" };
+    try { result.content = window.localStorage.getItem(QiongtuSettingsKey()) || ""; }
+    catch (error) { result.warning = "无法读取本机设置，请检查浏览器站点存储权限"; }
+    return QiongtuReturnString(JSON.stringify(result));
+  },
+  QiongtuSettingsWrite__deps: ["$QiongtuSettingsKey", "$QiongtuReturnString"],
+  QiongtuSettingsWrite: function (contentPointer) {
+    try { window.localStorage.setItem(QiongtuSettingsKey(), UTF8ToString(contentPointer)); return QiongtuReturnString(""); }
+    catch (error) { return QiongtuReturnString("设置写入失败：站点存储不可用或空间不足，草稿已保留"); }
+  },
+
   QiongtuExit: function () {
     // 离开当前调用栈后再释放引擎，避免退出时仍有托管调用正在执行。
     window.setTimeout(function () { window.dispatchEvent(new Event("qiongtu-exit")); }, 0);

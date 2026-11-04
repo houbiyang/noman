@@ -67,7 +67,7 @@ namespace Qiongtu.Sandbox
             root.style.unityFontDefinition = FontDefinition.FromFont(runtimeFont);
             root.RegisterCallback<GeometryChangedEvent>(_ => root.EnableInClassList("compact", root.resolvedStyle.width < 1450));
             cameraRig.IsPointerOverUi = IsPointerOverUi;
-            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null;
+            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || settingsOverlay != null;
             cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null;
             cameraRig.MapClicked += HandleArmyMapClick;
             root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxArmy"));
@@ -75,7 +75,7 @@ namespace Qiongtu.Sandbox
             var barracksIcon = root.Q<VisualElement>(className: "army-icon");
             barracksIcon.style.backgroundImage = new StyleBackground(Resources.Load<Texture2D>("Army/infantry-barracks-card"));
             barracksIcon.style.unityBackgroundImageTintColor = Color.white;
-            root.Q<Button>("armyAction").tooltip = "选择兵种建造兵营，从兵营生成单位";
+            root.Q<Button>("armyAction").tooltip = "选择兵种并在地图上放置兵营";
             cameraRig.UnitSelected += SelectUnit;
             cameraRig.ViewChanged += UpdateCameraButton;
             BindButton("redRole", () => ChangeRole(SandboxRole.Red));
@@ -100,6 +100,7 @@ namespace Qiongtu.Sandbox
             BindButton("confirmModalButton", ConfirmModal);
             BindButton("cancelModalButton", CloseModal);
             root.RegisterCallback<KeyDownEvent>(HandleModalKeyboard, TrickleDown.TrickleDown);
+            InitializeSettings();
             RefreshProjection();
         }
 
@@ -140,6 +141,7 @@ namespace Qiongtu.Sandbox
         private void ChangeRole(SandboxRole next)
         {
             if (next == role) return;
+            if (settingsOverlay != null) { RequestCloseSettings(() => ChangeRole(next)); return; }
             CloseArmy(); CancelArmyCommand();
             PausePlayback();
             CloseModal();
@@ -156,6 +158,7 @@ namespace Qiongtu.Sandbox
         /// <summary>只允许选择当前投影内的单位。</summary>
         private void SelectUnit(string unitId)
         {
+            if (settingsOverlay != null) { RequestCloseSettings(() => SelectUnit(unitId)); return; }
             if (unitId == null || !projection.units.Any(unit => unit.id == unitId)) return;
             selectedId = unitId;
             if (cameraRig.IsFollowing) cameraRig.Follow(selectedId);
@@ -176,6 +179,7 @@ namespace Qiongtu.Sandbox
         /// <summary>创建指定功能面板并暂停本地演示播放。</summary>
         private void ShowPanel(string panel)
         {
+            if (settingsOverlay != null) { RequestCloseSettings(() => ShowPanel(panel)); return; }
             CloseArmy(); CancelArmyCommand();
             PausePlayback();
             activePanel = panel;
@@ -321,7 +325,7 @@ namespace Qiongtu.Sandbox
         {
             SetText("drawerTitle", "事件预览与登记");
             if (role != SandboxRole.Host) { AddText(drawerContent, "只有主持人可以注入事件。", "body-text"); return; }
-            if (projection.units.Length == 0) { AddText(drawerContent, "地图暂无已部署单位，请先在军队配置中部署单位，再登记事件。", "empty-message"); return; }
+            if (projection.units.Length == 0) { AddText(drawerContent, "地图暂无可选单位；等待仿真从兵营派出单位后再登记事件。", "empty-message"); return; }
             var eventType = new DropdownField("事件类型", DemoSandboxViewSource.EventTypes.ToList(), 0);
             var target = new DropdownField("影响单位", projection.units.Select(unit => unit.id).ToList(), 0);
             eventType.AddToClassList("field");
@@ -443,6 +447,7 @@ namespace Qiongtu.Sandbox
                 }
                 Notify(message);
             };
+            root.Q("modalBackdrop").BringToFront();
             root.Q("modalBackdrop").RemoveFromClassList("hidden");
             root.Q<Button>("cancelModalButton").Focus();
         }
@@ -468,6 +473,7 @@ namespace Qiongtu.Sandbox
                 Application.Quit();
 #endif
             };
+            root.Q("modalBackdrop").BringToFront();
             root.Q("modalBackdrop").RemoveFromClassList("hidden");
             root.Q<Button>("cancelModalButton").Focus();
         }
@@ -579,13 +585,14 @@ namespace Qiongtu.Sandbox
             if (keyboard == null) return;
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
-                if (armyOverlay != null) { CloseArmy(); CancelArmyCommand(); }
+                if (modalAction != null) CloseModal();
+                else if (settingsOverlay != null) RequestCloseSettings();
+                else if (armyOverlay != null) { CloseArmy(); CancelArmyCommand(); }
                 else if (pendingArmyType.HasValue || pendingMoveId != null) CancelArmyCommand();
-                else if (modalAction != null) CloseModal();
                 else if (activePanel != null) ClosePanel();
                 else cameraRig.ReturnToOverview();
             }
-            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null) ToggleFollow();
+            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null && settingsOverlay == null) ToggleFollow();
         }
 
         /// <summary>失焦后停止播放，避免后台继续推进演示。</summary>
@@ -706,6 +713,7 @@ namespace Qiongtu.Sandbox
         private void OnDestroy()
         {
             playing = false;
+            CancelHealthCheck();
             if (cameraRig != null)
             {
                 cameraRig.UnitSelected -= SelectUnit;

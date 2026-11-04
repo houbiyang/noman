@@ -103,7 +103,9 @@ namespace Qiongtu.Sandbox.Editor
             for (int z = 8; z < 65 && !found; z += 4) for (int x = 8; x < 110 && !found; x += 4)
                 if (world.CanPlaceBarracks(SandboxUnitType.Ground, SandboxRole.Red, x, z, out _)) { place = new Vector2(x, z); found = true; }
             Check(found, "find dry flat building footprint and ten valid rally slots");
-            Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 2, place.x, place.y, out _), "place ground barracks");
+            Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, place.x, place.y, out _), "place ground barracks");
+            Check(source.Current.units.Length == 6, "construction does not manually deploy units");
+            Check(source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 2, out _), "reserved simulation spawn entry");
             world.AnimateBarracksSpawns(new[] { "R-G02", "R-G03" });
             world.ApplyProjection(source.GetProjection(SandboxRole.Host));
             string campId = DemoSandboxViewSource.BarracksId(SandboxRole.Red, SandboxUnitType.Ground);

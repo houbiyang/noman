@@ -1,39 +1,25 @@
-.army-panel { position:absolute; right:18px; top:104px; bottom:136px; width:398px; max-width:90%; background-color:rgb(236,236,223); border-radius:10px; overflow:hidden; border-width:1px; border-color:rgb(150,160,137); }
-.army-header { flex-direction:row; align-items:center; flex-shrink:0; padding:14px 16px; border-bottom-width:1px; border-bottom-color:rgb(199,205,181); }
-.army-title { color:rgb(37,53,40); font-size:23px; -unity-font-style:bold; }
-.army-close { width:34px; height:34px; min-height:34px; margin:0; padding:0; border-radius:7px; background-color:rgb(216,222,201); color:rgb(56,75,48); font-size:25px; border-width:0; }
-.army-toolbar { flex-direction:row; align-items:center; flex-shrink:0; padding:8px 12px; background-color:rgb(49,65,49); }
-.army-side { color:rgb(233,238,220); font-size:14px; -unity-font-style:bold; margin-right:8px; }
-.army-switch { background-color:rgb(76,93,65); color:rgb(237,240,226); border-width:0; border-radius:5px; padding:5px 8px; margin:0; font-size:12px; min-height:30px; }
+.army-panel { position:absolute; right:18px; top:104px; bottom:136px; width:398px; max-width:90%; background-color:rgb(18,26,35); border-radius:8px; overflow:hidden; border-width:1px; border-color:rgb(66,82,97); color:rgb(231,237,242); }
+.army-header { flex-direction:row; align-items:center; flex-shrink:0; padding:12px 16px; border-bottom-width:1px; border-bottom-color:rgb(51,66,81); }
+.army-title { color:rgb(231,237,242); font-size:24px; -unity-font-style:bold; }
+.army-close { width:44px; min-height:44px; margin:0; padding:0; border-radius:6px; background-color:rgb(37,49,62); color:rgb(224,234,242); font-size:26px; border-width:1px; border-color:rgb(77,95,110); }
+.army-toolbar { flex-direction:row; align-items:center; flex-shrink:0; padding:8px 12px; background-color:rgb(25,36,47); }
+.army-side { color:rgb(215,228,240); font-size:14px; -unity-font-style:bold; margin-right:8px; }
+.army-switch { background-color:rgb(35,49,62); color:rgb(226,238,246); border-width:1px; border-color:rgb(79,104,124); border-radius:6px; padding:8px; margin:0; font-size:12px; min-height:44px; }
 .army-scroll { flex-grow:1; flex-shrink:1; min-height:0; }
-.army-cards { padding:12px 12px 2px; }
-.army-card { flex-direction:row; flex-shrink:0; margin-bottom:10px; padding:10px; background-color:rgb(248,247,235); border-radius:8px; border-width:1px; border-color:rgb(202,208,183); }
-.army-stage { width:108px; height:112px; flex-shrink:0; background-color:rgb(33,46,46); border-radius:6px; overflow:hidden; margin-right:12px; }
+.army-cards { padding:12px 12px 0; }
+.army-card { flex-direction:row; flex-shrink:0; margin-bottom:12px; padding:12px; background-color:rgb(25,36,47); border-radius:8px; border-width:1px; border-color:rgb(53,71,88); }
+.army-stage { width:104px; height:116px; flex-shrink:0; background-color:rgb(13,22,31); border-radius:6px; overflow:hidden; margin-right:12px; }
 .army-model { width:100%; height:100%; }
 .army-card-details { flex-grow:1; min-width:0; }
-.army-card-title { color:rgb(44,57,43); font-size:17px; -unity-font-style:bold; white-space:normal; margin:0; padding:0; }
-.army-current { font-size:11px; color:rgb(113,126,95); margin:3px 0 6px; padding:0; }
-.army-quantity { flex-direction:row; align-items:center; margin-bottom:6px; }
-.army-stepper { width:30px; height:30px; min-height:30px; padding:0; margin:0; font-size:20px; color:rgb(61,80,44); background-color:rgb(237,239,222); border-width:1px; border-color:rgb(192,202,166); border-radius:5px; }
-.army-stepper:disabled { opacity:0.3; }
-.army-stepper:hover, .army-secondary:hover { background-color:rgb(210,223,181); }
-.army-quantity-value { flex-grow:1; align-items:center; }
-.army-number { margin:0; padding:0; font-size:19px; color:rgb(44,63,34); -unity-font-style:bold; }
-.army-number-hint { font-size:11px; color:rgb(107,122,90); margin:0 8px 0 0; padding:0; }
-.army-deploy { min-height:32px; height:32px; margin:0; padding:3px 8px; font-size:13px; color:rgb(245,248,231); background-color:rgb(78,99,54); border-width:0; border-radius:5px; -unity-font-style:bold; }
-.army-deploy:hover, .army-primary:hover { background-color:rgb(100,127,63); }
-.army-footer { flex-shrink:0; padding:12px 16px; background-color:rgb(219,225,200); border-top-width:1px; border-top-color:rgb(190,200,165); }
-.army-total { font-size:16px; color:rgb(47,66,37); -unity-font-style:bold; }
-.army-footnote { font-size:11px; color:rgb(107,122,90); margin-top:2px; }
-.army-primary { background-color:rgb(67,91,43); border-width:0; color:rgb(245,247,229); min-height:36px; margin:10px 0 0; padding:6px 12px; border-radius:6px; font-size:14px; -unity-font-style:bold; }
-.army-command { position:absolute; top:120px; align-self:center; flex-direction:row; align-items:center; padding:15px 20px; background-color:rgb(43,61,43); border-radius:10px; border-width:1px; border-color:rgb(147,167,103); }
-.army-command-title { font-size:18px; color:rgb(236,241,217); -unity-font-style:bold; }
-.army-command-detail { font-size:12px; color:rgb(172,191,145); margin-top:5px; }
-.army-secondary { background-color:rgb(237,239,222); border-width:1px; border-color:rgb(179,192,150); color:rgb(73,93,51); padding:11px 20px; border-radius:7px; margin-left:10px; }
-
-.army-card-selected { border-color:rgb(105,137,59); border-width:2px; background-color:rgb(233,240,211); }
-.army-troop-name { font-size:11px; color:rgb(91,112,80); margin:2px 0; }
-.army-relocate { background-color:rgba(0,0,0,0); border-width:0; color:rgb(81,107,54); font-size:11px; min-height:23px; height:23px; margin:3px 0 0; padding:0; }
-.army-command { left:18px; right:434px; top:104px; padding:12px; }
-.army-command-title { font-size:16px; }
-.army-command-detail { white-space:normal; }
+.army-card-title { color:rgb(230,238,245); font-size:18px; -unity-font-style:bold; white-space:normal; margin:0; padding:0; }
+.army-troop-name { font-size:12px; color:rgb(168,188,204); margin:4px 0; white-space:normal; }
+.army-current { font-size:12px; color:rgb(181,199,211); margin:4px 0 8px; padding:0; white-space:normal; }
+.army-deploy { min-height:44px; margin:0; padding:8px; font-size:14px; color:rgb(226,238,246); background-color:rgb(35,49,62); border-width:1px; border-color:rgb(79,104,124); border-radius:6px; }
+.army-deploy:hover, .army-switch:hover, .army-secondary:hover { background-color:rgb(51,72,90); }
+.army-footer { flex-shrink:0; padding:12px 16px; background-color:rgb(21,31,41); border-top-width:1px; border-top-color:rgb(58,77,93); }
+.army-footnote { font-size:12px; color:rgb(164,184,200); margin-top:4px; white-space:normal; }
+.army-command { position:absolute; left:18px; right:434px; top:104px; flex-direction:row; align-items:center; padding:12px; background-color:rgb(21,31,41); border-radius:8px; border-width:1px; border-color:rgb(115,163,188); }
+.army-command-title { font-size:18px; color:rgb(231,237,242); -unity-font-style:bold; white-space:normal; }
+.army-command-detail { font-size:12px; color:rgb(168,188,204); margin-top:4px; white-space:normal; }
+.army-secondary { background-color:rgb(35,49,62); border-width:1px; border-color:rgb(79,104,124); color:rgb(226,238,246); min-height:44px; padding:8px 16px; border-radius:6px; margin-left:12px; }
+.army-card-selected { border-color:rgb(139,193,216); background-color:rgb(32,49,64); }

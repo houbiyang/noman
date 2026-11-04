@@ -98,15 +98,17 @@ internal static class DomainChecks
     {
         var source = new DemoSandboxViewSource();
         string message;
-        Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Blue, SandboxUnitType.Recon, 1, 20, 20, out message), "不能建造敌方兵营");
+        Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Blue, SandboxUnitType.Recon, 20, 20, out message), "不能建造敌方兵营");
         Check(!source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, out message), "没有兵营不能生成单位");
         foreach (float x in new[] { float.NaN, float.PositiveInfinity, -1, 119 })
-            Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, x, 20, out message), "兵营拒绝无效坐标");
-        Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 11, 20, 20, out message), "兵营拒绝越界数量");
+            Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, x, 20, out message), "兵营拒绝无效坐标");
+        Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, (SandboxUnitType)99, 20, 20, out message), "兵营拒绝无效兵种");
         int revision = source.Current.revision;
-        Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 2, 20, 20, out message), "建造机库并生成两个无人机");
+        Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 20, 20, out message), "只建造机库");
         var state = source.Current;
-        Check(state.revision == revision + 1 && state.barracks.Length == 1 && state.units.Length == 8, "建造与出兵一次原子更新");
+        Check(state.revision == revision + 1 && state.barracks.Length == 1 && state.units.Length == 6, "建造只更新兵营不生产单位");
+        Check(source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 2, out message), "内部仿真出兵入口");
+        state = source.Current;
         var spawned = state.units.Where(unit => !string.IsNullOrEmpty(unit.barracksId)).ToArray();
         Check(spawned.Length == 2 && spawned.All(unit => unit.barracksId == state.barracks[0].id && unit.z >= 26), "新增单位归属正确兵营及出口集结区");
         Check(state.units.First(unit => unit.id == "R-U01").x == 25, "建造保留原有单位");
@@ -115,14 +117,14 @@ internal static class DomainChecks
         state.barracks[0].x = 999;
         var projection = source.GetProjection(SandboxRole.Red); projection.barracks[0].z = 999;
         Check(source.Current.barracks[0].x == 20 && source.Current.barracks[0].z == 20, "兵营副本引用隔离");
-        Check(!source.TryPlaceBarracks(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Ground, 1, 21, 21, out message), "兵营不能重叠");
+        Check(!source.TryPlaceBarracks(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Ground, 21, 21, out message), "兵营不能重叠");
         Check(source.Current.barracks.Length == 1 && source.Current.units.Length == 8, "非法兵营没有部分副作用");
         Check(source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 2, out message), "从已有机库补充单位");
         Check(source.ArmyCapacityRemaining == 0 && !source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, out message), "兵营出兵遵守全局十单位上限");
-        Check(source.TryPlaceBarracks(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Support, 1, 90, 30, out message), "满员时仍可放置敌方保障兵营");
+        Check(source.TryPlaceBarracks(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Support, 90, 30, out message), "满员时仍可放置敌方保障兵营");
         Check(source.Current.units.Length == 10 && source.Current.barracks.Length == 2, "兵营不占单位数量且不会超额生成");
         var before = source.Current.units.Select(unit => unit.x + ":" + unit.z).ToArray();
-        Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 1, 35, 20, out message), "同兵种重新选址");
+        Check(source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 35, 20, out message), "同兵种重新选址");
         Check(source.Current.barracks.Length == 2 && before.SequenceEqual(source.Current.units.Select(unit => unit.x + ":" + unit.z)), "重新选址不复制兵营也不移动已有单位");
         Check(source.TryDeleteArmyUnit(SandboxRole.Red, "R-U02", out message), "删除兵营生成的单位");
         Check(source.TrySpawnArmy(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Support, 1, out message), "删除释放的名额可用于对方兵营");

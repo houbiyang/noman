@@ -70,11 +70,11 @@ namespace Qiongtu.Sandbox
         public static float RallyZ(float z, int index) => z + 6 + index / 4 * 2.1f;
 
         // One persistent barracks per side/type. Repositioning never moves existing troops.
-        public bool TryPlaceBarracks(SandboxRole actor, SandboxRole side, SandboxUnitType type, int quantity, float x, float z, out string message)
+        public bool TryPlaceBarracks(SandboxRole actor, SandboxRole side, SandboxUnitType type, float x, float z, out string message)
         {
-            message = "兵营角色、数量或位置无效";
+            message = "兵营角色或位置无效";
             if ((side != SandboxRole.Red && side != SandboxRole.Blue) || actor != SandboxRole.Host && actor != side
-                || !Enum.IsDefined(typeof(SandboxUnitType), type) || quantity < 1 || quantity > MaxArmyUnits
+                || !Enum.IsDefined(typeof(SandboxUnitType), type)
                 || !ValidArmyPosition(x - 4, z - 4) || !ValidArmyPosition(x + 4, RallyZ(z, 9))) return false;
             string id = BarracksId(side, type);
             bool relocating = session.barracks.Any(camp => camp.id == id);
@@ -83,10 +83,8 @@ namespace Qiongtu.Sandbox
             var camps = session.barracks.Where(camp => camp.id != id).ToList();
             camps.Add(new SandboxBarracksData { id = id, side = side, type = type, x = x, z = z });
             session.barracks = camps.ToArray();
-            int spawned = !relocating && quantity <= ArmyCapacityRemaining ? quantity : 0;
-            if (spawned > 0) SpawnFromBarracks(camps.Last(), spawned);
-            AddRecord(relocating ? "兵营重新选址" : "建造兵营", BarracksName(type) + "，生成 " + spawned + " 个单位", side, false, false);
-            message = "已" + (relocating ? "移动" : "放置") + BarracksName(type) + (spawned > 0 ? "，从兵营生成 " + spawned + " 个单位" : relocating ? "，原有单位保持位置" : "；名额不足，可释放名额后在此生成单位");
+            AddRecord(relocating ? "兵营重新选址" : "建造兵营", BarracksName(type) + "，等待仿真出兵指令", side, false, false);
+            message = "已" + (relocating ? "移动" : "放置") + BarracksName(type) + "，已有单位保持不变";
             return true;
         }
 
