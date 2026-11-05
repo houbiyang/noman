@@ -1,0 +1,14 @@
+{
+  "profile_id": "s2-spatial-test-v1",
+  "test_only": true,
+  "camp_half_extent_m": 30,
+  "building_exclusion_radius_m": 35,
+  "road_connection_max_m": 1600,
+  "road_clearance_m": 8,
+  "maximum_slope": 0.35,
+  "unit_profiles": {
+    "recon": {"speed_m_per_step": 800, "energy": 100, "supply": 0, "durability": 40, "energy_per_km": 5},
+    "ground": {"speed_m_per_step": 400, "energy": 100, "supply": 60, "durability": 100, "energy_per_km": 8},
+    "support": {"speed_m_per_step": 300, "energy": 100, "supply": 100, "durability": 80, "energy_per_km": 10}
+  }
+}

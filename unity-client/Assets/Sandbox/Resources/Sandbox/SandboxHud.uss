@@ -11,6 +11,8 @@
 .flex-spacer { flex-grow: 1; }
 .map-annotations { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
 .map-label { position: absolute; padding: 3px 7px; font-size: 11px; background-color: rgba(13, 30, 29, 0.92); border-width: 1px; border-color: #788f72; border-radius: 3px; color: #e5e6bc; }
+.map-label.capture-point { padding: 5px 9px; font-size: 13px; -unity-font-style: bold; background-color: rgba(30, 32, 23, 0.95); border-color: #e8d178; color: #f2e5ae; }
+.map-label.deployment-zone { padding: 5px 9px; font-size: 13px; -unity-font-style: bold; -unity-text-align: middle-center; border-width: 2px; white-space: normal; }
 .map-label.red-text { border-color: #c87f6b; color: #f0b49e; }
 .map-label.blue-text { border-color: #70a1c2; color: #add7ec; }
 .role-float {
@@ -27,6 +29,7 @@
 .role-switch { flex-direction: row; }
 .role-switch Button { min-height: 40px; }
 .role-caption { color: #d5ded6; font-size: 11px; margin-right: 5px; margin-bottom: 3px; }
+.connection-action { width: 118px; min-height: 30px; margin: 3px 0 0; padding: 5px 8px; font-size: 11px; }
 .red-role { border-color: #a16d63; }
 .blue-role { border-color: #6c93a8; }
 .host-role { border-color: #929b71; }
@@ -74,7 +77,7 @@
 .army-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Army.png"); }
 .settings-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Settings.png"); }
 .action-caption { color: #e4ead8; font-size: 16px; -unity-font-style: bold; -unity-text-align: middle-center; }
-.settings-action { right: 24px; top: 104px; }
+.settings-action { right: 24px; top: 142px; }
 .battle-action { left: 24px; bottom: 148px; }
 .army-action { right: 24px; bottom: 148px; }
 .bottom-dock { position: absolute; left: 24px; right: 24px; bottom: 51px; min-height: 70px; padding: 12px 16px; flex-direction: row; align-items: center; background-color: rgba(16, 31, 32, 0.97); border-width: 1px; border-color: #4c6355; border-radius: 7px; }
@@ -132,7 +135,7 @@ Button:disabled { opacity: 0.42; }
 .compact .action-tile { width: 84px; height: 94px; padding: 4px; }
 .compact .action-icon { width: 64px; height: 62px; }
 .compact .action-caption { font-size: 15px; }
-.compact .settings-action { right: 14px; top: 98px; }
+.compact .settings-action { right: 14px; top: 136px; }
 .compact .battle-action { left: 14px; bottom: 141px; }
 .compact .army-action { right: 14px; bottom: 141px; }
 .compact .mission-title { font-size: 23px; }

@@ -9,6 +9,7 @@
                 <ui:Button name="hostRole" text="主持人" class="host-role" />
             </ui:VisualElement>
             <ui:Label name="roleCaption" class="role-caption" />
+            <ui:Button name="connectionAction" text="接入状态" class="connection-action" />
         </ui:VisualElement>
         <ui:VisualElement class="mission-heading" picking-mode="Ignore">
             <ui:Label text="QINGLAN  /  12 × 12 km" class="eyebrow" />

@@ -16,6 +16,36 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$python = Get-Command python.exe -ErrorAction SilentlyContinue
+if (-not $python) { throw '未找到本机已有的 Python 3；脚本不会自动安装依赖。' }
+$logDirectory = Join-Path $projectRoot '.local\unity'
+New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+
+function Test-BackendReady {
+    # 只探测本项目固定的本机端口，不在页面传递数据库或引导凭据。
+    try { return (Invoke-RestMethod -Uri 'http://127.0.0.1:18080/api/v1/health' -TimeoutSec 2).database_ready -eq $true }
+    catch { return $false }
+}
+
+if (-not (Test-BackendReady)) {
+    Push-Location -LiteralPath $projectRoot
+    try {
+        & $python.Source -X utf8 -m backend.database status | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw '已有项目数据库未就绪，未创建或重置数据库。' }
+    } finally { Pop-Location }
+    if (-not (Test-BackendReady)) {
+        if (Get-NetTCPConnection -LocalPort 18080 -State Listen -ErrorAction SilentlyContinue) { throw '本机后端端口已占用但服务未就绪，请查看后端日志。' }
+        $backend = Start-Process -FilePath $python.Source -ArgumentList @('-X','utf8','-m','backend.main','--port','18080','--initialize') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logDirectory 'backend-auto.out.log') -RedirectStandardError (Join-Path $logDirectory 'backend-auto.err.log')
+        for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            if (Test-BackendReady) { break }
+            if ($backend.HasExited) { break }
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    if (-not (Test-BackendReady)) { throw '本机后端未能就绪，请查看 .local\unity\backend-auto.err.log。' }
+}
+
 if ($Build) {
     & (Join-Path $PSScriptRoot 'start-unity.ps1') -Action BuildWeb
 }

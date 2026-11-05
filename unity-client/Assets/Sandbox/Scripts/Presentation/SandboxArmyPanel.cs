@@ -24,13 +24,14 @@ namespace Qiongtu.Sandbox
 
         private void OpenArmy()
         {
+            if (serverMode && serverClient.View?.spatial_test == true) { ShowPanel("tasks"); return; }
             CancelArmyCommand(); ClosePanel(); CloseArmy(); PausePlayback();
             armySide = role == SandboxRole.Host ? SandboxRole.Red : role;
             ReadArmyQuantities(); RenderArmy();
         }
         private void ReadArmyQuantities()
         {
-            for (int i = 0; i < 3; i++) armyQuantities[i] = source.Current.units.Count(unit => unit.side == armySide && (int)unit.type == i);
+            for (int i = 0; i < 3; i++) armyQuantities[i] = CurrentUnits.Count(unit => unit.side == armySide && (int)unit.type == i);
         }
         private void RenderArmy()
         {
@@ -71,7 +72,7 @@ namespace Qiongtu.Sandbox
             image.AddToClassList("army-model"); stage.Add(image);
             AddText(stage, new[] { "四旋翼平台", "履带底盘", "6 × 6 运输平台" }[index], "army-model-caption");
             AddText(card, armyDescriptions[index], "army-description");
-            AddText(card, "当前编制  " + source.Current.units.Count(unit => unit.side == armySide && unit.type == type).ToString("00") + "  个单位", "army-current");
+            AddText(card, "当前编制  " + CurrentUnits.Count(unit => unit.side == armySide && unit.type == type).ToString("00") + "  个单位", "army-current");
             var quantity = new VisualElement(); quantity.AddToClassList("army-quantity"); card.Add(quantity);
             Button minus = null, plus = null; Label number = null;
             Action update = () => { number.text = armyQuantities[index].ToString("00"); minus.SetEnabled(armyQuantities[index] > 1); plus.SetEnabled(armyQuantities[index] < 10); UpdateArmyTotal(); };
@@ -87,6 +88,12 @@ namespace Qiongtu.Sandbox
         private void CloseArmy() { armyOverlay?.RemoveFromHierarchy(); armyOverlay = null; armyTotal = null; }
         private void ApplyArmy()
         {
+            if (serverMode)
+            {
+                SendServerCommand("configure_army", new SandboxServerConfigure { side = ServerSide(armySide), quantities = new SandboxServerQuantities {
+                    recon = armyQuantities[0], ground = armyQuantities[1], support = armyQuantities[2] } });
+                return;
+            }
             if (!source.TryConfigureArmy(role, armySide, armyQuantities, out string message)) { Notify(message); return; }
             CloseArmy(); RefreshProjection(); Notify(message);
         }
@@ -121,6 +128,12 @@ namespace Qiongtu.Sandbox
                     float x = position.x + (i % 4 - Math.Min(pendingArmyQuantity, 4) / 2f + 0.5f) * 2.1f, z = position.y + i / 4 * 2.1f;
                     if (!world.CanPlace(x, z, type)) { Notify("编队位置不可用，请避开水面、建筑与地图边界"); return; }
                 }
+                if (serverMode)
+                {
+                    var payload = new SandboxServerDeploy { side = ServerSide(pendingArmySide), unit_type = ServerType(type), quantity = pendingArmyQuantity,
+                        position = ServerPosition(position.x, position.y) };
+                    CancelArmyCommand(); SendServerCommand("deploy_army", payload); return;
+                }
                 if (!source.TryDeployArmy(role, pendingArmySide, type, pendingArmyQuantity, position.x, position.y, out string message)) { Notify(message); return; }
                 world.RelocateOnRefresh(source.Current.units.Where(unit => unit.side == pendingArmySide && unit.type == type).Select(unit => unit.id));
                 string first = source.Current.units.First(unit => unit.side == pendingArmySide && unit.type == type).id;
@@ -131,7 +144,11 @@ namespace Qiongtu.Sandbox
                 string id = pendingMoveId ?? selectedId;
                 SandboxUnitData unit = projection.units.FirstOrDefault(candidate => candidate.id == id);
                 if (unit == null) { Notify("请先选择单位"); return; }
-                if (!world.CanMove(id, position.x, position.y, unit.type)) { Notify("目标不可通行或没有可达路径，请另选位置"); return; }
+                if (!serverMode && !world.CanMove(id, position.x, position.y, unit.type)) { Notify("目标不可通行或没有可达路径，请另选位置"); return; }
+                if (serverMode)
+                {
+                    CancelArmyCommand(); SendServerCommand("move_unit", new SandboxServerMove { unit_id = id, position = ServerPosition(position.x, position.y) }); return;
+                }
                 if (source.TryMoveArmyUnit(role, id, position.x, position.y, out string message))
                 { CancelArmyCommand(); RefreshProjection(); world.Select(id); Notify(message); }
                 else Notify(message);
