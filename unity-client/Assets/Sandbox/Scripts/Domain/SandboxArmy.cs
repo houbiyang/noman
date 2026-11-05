@@ -19,12 +19,17 @@ namespace Qiongtu.Sandbox
     {
         public const float MetersPerX = 100f;
         public const float MetersPerZ = 150f;
-        public const float HalfWidth = 12f;
-        public const float RearClearance = 10.5f;
-        public const float FrontClearance = 31f;
-        public const float ExitOffset = 10.5f;
-        public const float RallyStart = 16f;
+        public const float ModelScale = 1.5f;
+        public const float HalfWidth = 12f * ModelScale;
+        public const float RearClearance = 10.5f * ModelScale;
+        public const float FrontClearance = 31f * ModelScale;
+        public const float ExitOffset = 10.5f * ModelScale;
+        public const float RallyStart = 16f * ModelScale;
         public const float RallySpacing = 6f;
+
+        // Same-side/type includes initial demo troops without a historical barracksId.
+        public static SandboxUnitData[] UnitsForBarracks(IEnumerable<SandboxUnitData> units, SandboxRole side, SandboxUnitType type) =>
+            units.Where(unit => unit.side == side && unit.type == type).ToArray();
 
         public static float ExitZ(float z) => z + ExitOffset / MetersPerZ;
         public static float RallyX(float x, int index, int quantity) => x + (index % 4 - Math.Min(quantity, 4) / 2f + .5f) * RallySpacing / MetersPerX;

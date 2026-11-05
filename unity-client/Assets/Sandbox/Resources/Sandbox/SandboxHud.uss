@@ -11,6 +11,7 @@
 .flex-spacer { flex-grow: 1; }
 .map-annotations { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
 .map-label { position: absolute; padding: 3px 7px; font-size: 11px; background-color: rgba(13, 30, 29, 0.92); border-width: 1px; border-color: #788f72; border-radius: 3px; color: #e5e6bc; }
+.barracks-map-label { padding: 4px 9px; font-size: 13px; -unity-font-style: bold; white-space: nowrap; background-color: rgba(13, 24, 29, 0.96); }
 .map-label.red-text { border-color: #c87f6b; color: #f0b49e; }
 .map-label.blue-text { border-color: #70a1c2; color: #add7ec; }
 .role-float {

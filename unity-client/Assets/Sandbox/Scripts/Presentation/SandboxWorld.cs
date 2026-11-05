@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -13,6 +14,7 @@ namespace Qiongtu.Sandbox
         private readonly List<Mesh> ownedMeshes = new List<Mesh>();
         private Transform unitRoot;
         private readonly Dictionary<string, GameObject> barracksViews = new Dictionary<string, GameObject>();
+        private LineRenderer barracksSelectionRing;
         private SandboxBarracksData[] visibleBarracks = new SandboxBarracksData[0];
         private readonly HashSet<string> spawnFromBarracks = new HashSet<string>();
         public Transform FindBarracks(string id) => barracksViews.TryGetValue(id, out var camp) ? camp.transform : null;
@@ -21,6 +23,7 @@ namespace Qiongtu.Sandbox
         private GameObject grid;
         private GameObject facilities;
         private LineRenderer selectionRing;
+        private LineRenderer selectionProjection;
         private Material redMaterial;
         private Material blueMaterial;
         private Material darkMaterial;
@@ -70,6 +73,10 @@ namespace Qiongtu.Sandbox
             unitRoot = NewGroup("ProjectedUnits").transform;
             selectionRing = CreateLine("SelectionRing", unitRoot, Circle(Vector3.zero, 2.1f), 0.1f, new Color(0.89f, 0.88f, 0.56f));
             selectionRing.gameObject.SetActive(false);
+            selectionProjection = CreateLine("SelectionProjection", unitRoot, new Vector3[2], .09f, new Color(.89f, .88f, .56f));
+            selectionProjection.gameObject.SetActive(false);
+            barracksSelectionRing = CreateLine("BarracksSelectionRing", unitRoot, Circle(Vector3.zero, 15), .35f, new Color(.89f, .88f, .56f));
+            barracksSelectionRing.gameObject.SetActive(false);
         }
 
         /// <summary>按新的角色投影更新场景，移除不再允许显示的对象。</summary>
@@ -129,10 +136,13 @@ namespace Qiongtu.Sandbox
                 {
                     model = SandboxBarracksModel.Build(camp.type, camp.side == SandboxRole.Red ? redMaterial : blueMaterial, metalMaterial, darkMaterial, metalMaterial);
                     model.name = camp.id; model.transform.SetParent(unitRoot, false); barracksViews.Add(camp.id, model);
+                    // One stable pick volume; decorative parts keep their colliders disabled.
+                    var pick = model.AddComponent<BoxCollider>();
+                    pick.center = new Vector3(0, 4, 0); pick.size = new Vector3(17, 8, 17);
                 }
                 Vector3 position = ArmyPosition(camp.x, camp.z, SandboxUnitType.Ground);
                 model.transform.position = position;
-                footprints.Add(new Bounds(position + new Vector3(0, 2, -1), new Vector3(14, 8, 9)));
+                footprints.Add(new Bounds(position + new Vector3(0, 2, -1) * SandboxArmyLayout.ModelScale, new Vector3(14, 8, 9) * SandboxArmyLayout.ModelScale));
             }
             foreach (string id in new List<string>(barracksViews.Keys))
                 if (!allowed.Contains(id)) { barracksViews[id].SetActive(false); ReleaseUnitObject(barracksViews[id]); barracksViews.Remove(id); }
@@ -149,7 +159,8 @@ namespace Qiongtu.Sandbox
             Vector3 center = ArmyPosition(x, z, SandboxUnitType.Ground);
             foreach (var camp in visibleBarracks)
                 if (camp.id != own && SandboxArmyLayout.Overlaps(x, z, camp.x, camp.z)) return false;
-            for (float dx = -10; dx <= 10; dx += 2.5f) for (float dz = -10; dz <= 10; dz += 2.5f)
+            float extent = 10 * SandboxArmyLayout.ModelScale;
+            for (float dx = -extent; dx <= extent; dx += 2.5f) for (float dz = -extent; dz <= extent; dz += 2.5f)
             {
                 Vector3 p = ArmyPosition(x + dx / SandboxArmyLayout.MetersPerX, z + dz / SandboxArmyLayout.MetersPerZ, SandboxUnitType.Ground);
                 if (!Navigation.IsTerrainWalkable(p) || Mathf.Abs(p.y - center.y) > 2.8f) return false;
@@ -157,7 +168,7 @@ namespace Qiongtu.Sandbox
             foreach (var unit in unitViews.Values)
             {
                 Vector3 delta = unit.transform.position - center;
-                if (Mathf.Abs(delta.x) < 10 && Mathf.Abs(delta.z) < 10) return false;
+                if (Mathf.Abs(delta.x) < extent && Mathf.Abs(delta.z) < extent) return false;
             }
             Vector3 exit = ArmyPosition(x, SandboxArmyLayout.ExitZ(z), SandboxUnitType.Ground);
             if (!Navigation.IsTerrainWalkable(exit)) return false;
@@ -183,6 +194,8 @@ namespace Qiongtu.Sandbox
             barracksViews.Clear(); visibleBarracks = new SandboxBarracksData[0]; spawnFromBarracks.Clear();
             Navigation.SetBarracks(new List<Bounds>());
             selectionRing.gameObject.SetActive(false);
+            selectionProjection.gameObject.SetActive(false);
+            SelectBarracks(null);
             selectedUnit = null; relocated.Clear();
         }
 
@@ -207,9 +220,20 @@ namespace Qiongtu.Sandbox
             foreach (var entry in unitViews) entry.Value.ShowRoute(entry.Key == unitId);
             Transform target = FindUnit(unitId);
             selectionRing.gameObject.SetActive(target != null);
+            UpdateSelectionProjection(target);
             if (target == null) return;
             Vector3 center = Surface(target.position.x, target.position.z) + Vector3.up * 0.3f;
-            selectionRing.SetPositions(Circle(center, 2.1f));
+            selectionRing.SetPositions(Circle(center, 2.1f * SandboxUnitView.ModelScale));
+        }
+
+        public string BarracksAt(Collider collider) => barracksViews.FirstOrDefault(entry => entry.Value.GetComponent<Collider>() == collider).Key;
+
+        public void SelectBarracks(string id)
+        {
+            Transform target = id != null ? FindBarracks(id) : null;
+            barracksSelectionRing.gameObject.SetActive(target != null);
+            if (target != null)
+                barracksSelectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * .5f, 15 * SandboxArmyLayout.ModelScale));
         }
 
         /// <summary>调整纯显示图层，不改变演示状态。</summary>
@@ -235,6 +259,52 @@ namespace Qiongtu.Sandbox
         /// <param name="positionZ">纵向业务坐标。</param>
         /// <returns>仅用于显示的三维位置。</returns>
         public static Vector3 Surface(float positionX, float positionZ) => new Vector3(positionX, Definition.SampleSurfaceHeight(positionX, positionZ), positionZ);
+
+        /// <summary>Find the highest triangulated terrain/bridge surface under an animated model's world bounds.</summary>
+        public static float HighestSurface(Bounds bounds)
+        {
+            float dx = Definition.width / (Definition.heightColumns - 1f);
+            float dz = Definition.length / (Definition.heightRows - 1f);
+            var xs = new List<float> { bounds.min.x, bounds.max.x };
+            var zs = new List<float> { bounds.min.z, bounds.max.z };
+            for (float x = Mathf.Ceil(bounds.min.x / dx) * dx; x < bounds.max.x; x += dx) xs.Add(x);
+            for (float z = Mathf.Ceil(bounds.min.z / dz) * dz; z < bounds.max.z; z += dz) zs.Add(z);
+            float height = float.NegativeInfinity;
+            foreach (float x in xs) foreach (float z in zs) height = Mathf.Max(height, Surface(x, z).y);
+            // A terrain triangle is planar. Its maximum inside a rectangle is at a rectangle
+            // corner, a grid vertex/edge, or where its diagonal crosses the rectangle boundary.
+            foreach (float x in new[] { bounds.min.x, bounds.max.x })
+                for (int row = Mathf.FloorToInt(bounds.min.z / dz); row <= Mathf.FloorToInt(bounds.max.z / dz); row++)
+                {
+                    float z = (row + x / dx - Mathf.Floor(x / dx)) * dz;
+                    if (z >= bounds.min.z && z <= bounds.max.z) height = Mathf.Max(height, Surface(x, z).y);
+                }
+            foreach (float z in new[] { bounds.min.z, bounds.max.z })
+                for (int col = Mathf.FloorToInt(bounds.min.x / dx); col <= Mathf.FloorToInt(bounds.max.x / dx); col++)
+                {
+                    float x = (col + z / dz - Mathf.Floor(z / dz)) * dx;
+                    if (x >= bounds.min.x && x <= bounds.max.x) height = Mathf.Max(height, Surface(x, z).y);
+                }
+            // Include bridge decks even when a narrow overlap falls between terrain sample points.
+            foreach (SandboxMapRoad road in Definition.roads)
+            {
+                if (!road.isBridge) continue;
+                var a = Array.Find(Definition.nodes, node => node.id == road.startId);
+                var b = Array.Find(Definition.nodes, node => node.id == road.endId);
+                Vector2 direction = new Vector2(b.x - a.x, b.z - a.z);
+                float halfLength = direction.magnitude * .5f; direction.Normalize();
+                Vector2 normal = new Vector2(-direction.y, direction.x);
+                Vector2 offset = new Vector2(bounds.center.x - (a.x + b.x) * .5f, bounds.center.z - (a.z + b.z) * .5f);
+                Vector2 extent = new Vector2(bounds.extents.x, bounds.extents.z);
+                float half = road.width * .5f;
+                if (Mathf.Abs(offset.x) <= extent.x + Mathf.Abs(direction.x) * halfLength + Mathf.Abs(normal.x) * half
+                    && Mathf.Abs(offset.y) <= extent.y + Mathf.Abs(direction.y) * halfLength + Mathf.Abs(normal.y) * half
+                    && Mathf.Abs(Vector2.Dot(offset, direction)) <= halfLength + extent.x * Mathf.Abs(direction.x) + extent.y * Mathf.Abs(direction.y)
+                    && Mathf.Abs(Vector2.Dot(offset, normal)) <= half + extent.x * Mathf.Abs(normal.x) + extent.y * Mathf.Abs(normal.y))
+                    height = Mathf.Max(height, road.surfaceHeight);
+            }
+            return height;
+        }
 
         /// <summary>将保留的旧演示坐标投影到新的十二公里米制地图。</summary>
         /// <param name="positionX">原业务横坐标。</param>
@@ -278,7 +348,7 @@ namespace Qiongtu.Sandbox
         public static Vector3 ArmyPosition(float x, float z, SandboxUnitType type)
         {
             Vector2 mapped = ProjectBusinessPosition(x, z);
-            return Surface(mapped.x, mapped.y) + Vector3.up * (type == SandboxUnitType.Recon ? 6 : 0.08f);
+            return Surface(mapped.x, mapped.y) + Vector3.up * (type == SandboxUnitType.Recon ? SandboxUnitView.ReconAltitude : SandboxUnitView.GroundClearance);
         }
         public bool CanPlace(float x, float z, SandboxUnitType type) => x >= 0 && x <= 120 && z >= 0 && z <= 80 && (type == SandboxUnitType.Recon || Navigation.IsWalkable(ArmyPosition(x, z, type)));
         public bool CanMove(string id, float x, float z, SandboxUnitType type)
@@ -301,7 +371,18 @@ namespace Qiongtu.Sandbox
         {
             Transform target = FindUnit(selectedUnit);
             selectionRing.gameObject.SetActive(target != null);
-            if (target != null) selectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * 0.3f, 2.5f));
+            UpdateSelectionProjection(target);
+            if (target != null) selectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * 0.3f, 2.5f * SandboxUnitView.ModelScale));
+        }
+
+        private void UpdateSelectionProjection(Transform target)
+        {
+            var view = target != null ? target.GetComponent<SandboxUnitView>() : null;
+            selectionProjection.gameObject.SetActive(view != null && view.IsAirborne);
+            if (view == null || !view.IsAirborne) return;
+            Vector3 ground = Surface(target.position.x, target.position.z) + Vector3.up * .3f;
+            selectionProjection.SetPosition(0, ground);
+            selectionProjection.SetPosition(1, new Vector3(ground.x, view.VisualBounds.min.y, ground.z));
         }
 
         /// <summary>创建归属于场景的 URP 兼容材质。</summary>

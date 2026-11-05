@@ -90,8 +90,42 @@ internal static class DomainChecks
         CheckArmy();
         CheckDeleteArmy();
         CheckBarracks();
+        CheckBarracksManagement();
         Console.WriteLine("前端状态检查通过：" + checks + " 项。此结果不代表 Unity 运行或画面验收。");
         return 0;
+    }
+
+    private static void CheckBarracksManagement()
+    {
+        var source = new DemoSandboxViewSource();
+        var all = source.GetProjection(SandboxRole.Host).units;
+        Check(Math.Abs(SandboxArmyLayout.ModelScale - 1.5f) < .001f, "兵营统一放大一档至1.5倍");
+        foreach (SandboxRole side in new[] { SandboxRole.Red, SandboxRole.Blue })
+            foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
+                Check(SandboxArmyLayout.UnitsForBarracks(all, side, type).Length == 1, "兵营只管理同阵营同兵种，兼容未关联初始单位");
+        Check(SandboxArmyLayout.UnitsForBarracks(source.GetProjection(SandboxRole.Red).units, SandboxRole.Blue, SandboxUnitType.Recon).Length == 0, "兵营管理不扩大角色投影可见范围");
+        Check(all.All(unit => unit.maxHealth == 0 && unit.health == 0), "旧演示单位血量默认未知，不推断满血");
+        var saved = source.Current;
+        saved.units[0].health = 65; saved.units[0].maxHealth = 100;
+        Check(source.TryRestore(saved, out _), "接受有效的已上报血量");
+        var units = source.GetProjection(SandboxRole.Red).units;
+        Check(units[0].health == 65 && units[0].maxHealth == 100, "血量透传到本方投影");
+        units[0].health = 1;
+        Check(source.Current.units[0].health == 65, "血量投影保持引用隔离");
+        var restored = new DemoSandboxViewSource();
+        Check(restored.TryRestore(source.Current, out _) && restored.Current.units[0].health == 65, "血量可以保存恢复");
+        saved.units[0].health = 101;
+        Check(DemoSandboxViewSource.ValidateSession(saved).Length > 0, "拒绝超出上限的血量");
+        saved.units[0].health = -1;
+        Check(DemoSandboxViewSource.ValidateSession(saved).Length > 0, "拒绝负血量");
+        saved.units[0].health = 1; saved.units[0].maxHealth = 0;
+        Check(DemoSandboxViewSource.ValidateSession(saved).Length > 0, "未知上限不接受虚构有效血量");
+        saved.units[0].health = 0; saved.units[0].maxHealth = 100;
+        Check(DemoSandboxViewSource.ValidateSession(saved) == "", "明确零血量与未知血量可区分");
+        source.TryDeleteArmyUnit(SandboxRole.Red, "R-U01", out _);
+        Check(SandboxArmyLayout.UnitsForBarracks(source.GetProjection(SandboxRole.Red).units, SandboxRole.Red, SandboxUnitType.Recon).Length == 0, "删除后兵种数量立即归零");
+        Check(SandboxArmyLayout.UnitsForBarracks(source.GetProjection(SandboxRole.Host).units, SandboxRole.Blue, SandboxUnitType.Recon).Length == 1, "删除不影响另一阵营同兵种");
+        Check(SandboxArmyLayout.Overlaps(20, 20, 20.3f, 20), "放大模型的三十米间距仍被占地检测拒绝");
     }
 
     private static void CheckBarracks()
@@ -110,7 +144,7 @@ internal static class DomainChecks
         Check(source.TrySpawnArmy(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Recon, 2, out message), "内部仿真出兵入口");
         state = source.Current;
         var spawned = state.units.Where(unit => !string.IsNullOrEmpty(unit.barracksId)).ToArray();
-        Check(spawned.Length == 2 && spawned.All(unit => unit.barracksId == state.barracks[0].id && Math.Abs((unit.z - 20) * 150 - 16) < .001f), "新增单位归属正确兵营及出口集结区");
+        Check(spawned.Length == 2 && spawned.All(unit => unit.barracksId == state.barracks[0].id && Math.Abs((unit.z - 20) * 150 - SandboxArmyLayout.RallyStart) < .001f), "新增单位归属正确兵营及出口集结区");
         Check(Math.Abs((spawned[1].x - spawned[0].x) * 100 - 6) < .001f, "新地图中相邻出兵位置间隔六米");
         Check(!source.TryPlaceBarracks(SandboxRole.Red, SandboxRole.Red, SandboxUnitType.Ground, 20, 79.95f, out message), "集结区不能超出十二公里边界");
         var nearby = new DemoSandboxViewSource();
@@ -134,7 +168,7 @@ internal static class DomainChecks
         Check(source.Current.barracks.Length == 2 && before.SequenceEqual(source.Current.units.Select(unit => unit.x + ":" + unit.z)), "重新选址不复制兵营也不移动已有单位");
         Check(source.TryDeleteArmyUnit(SandboxRole.Red, "R-U02", out message), "删除兵营生成的单位");
         Check(source.TrySpawnArmy(SandboxRole.Host, SandboxRole.Blue, SandboxUnitType.Support, 1, out message), "删除释放的名额可用于对方兵营");
-        Check(source.Current.units.Last().barracksId.StartsWith("B-") && Math.Abs((source.Current.units.Last().z - 30) * 150 - 16) < .001f, "新单位来自本兵种新兵营");
+        Check(source.Current.units.Last().barracksId.StartsWith("B-") && Math.Abs((source.Current.units.Last().z - 30) * 150 - SandboxArmyLayout.RallyStart) < .001f, "新单位来自本兵种新兵营");
         var saved = source.Current;
         Check(DemoSandboxViewSource.ValidateSession(saved) == "", "兵营存档有效");
         var restored = new DemoSandboxViewSource();

@@ -23,3 +23,24 @@
 .army-command-detail { font-size:12px; color:rgb(168,188,204); margin-top:4px; white-space:normal; }
 .army-secondary { background-color:rgb(35,49,62); border-width:1px; border-color:rgb(79,104,124); color:rgb(226,238,246); min-height:44px; padding:8px 16px; border-radius:6px; margin-left:12px; }
 .army-card-selected { border-color:rgb(139,193,216); background-color:rgb(32,49,64); }
+
+/* Camp selection and unit management share the same compact right drawer. */
+.army-manage { min-height:36px; margin:6px 0 0; border-width:1px; border-color:rgb(85,110,103); border-radius:5px; background-color:rgb(30,49,47); color:rgb(220,230,220); font-size:12px; white-space:normal; }
+.army-manager-title { font-size:21px; color:rgb(231,237,225); -unity-font-style:bold; white-space:normal; }
+.army-manager-body { padding:12px; }
+.army-summary { padding:12px; margin-bottom:12px; background-color:rgb(30,46,44); border-width:1px; border-color:rgb(87,107,91); border-radius:6px; }
+.army-summary-count { font-size:21px; color:rgb(223,226,191); -unity-font-style:bold; }
+.army-status-line { color:rgb(205,219,211); font-size:13px; margin:2px 0; white-space:normal; }
+.army-type-tab { flex-grow:1; min-height:40px; margin-left:6px; padding:5px; color:rgb(202,219,212); border-radius:5px; background-color:rgb(32,48,47); border-width:1px; border-color:rgb(65,89,81); }
+.army-active-tab { border-color:rgb(189,194,143); background-color:rgb(64,77,63); color:rgb(237,238,213); }
+.army-unit-card { flex-shrink:0; padding:12px; margin-bottom:10px; background-color:rgb(24,37,39); border-radius:6px; border-width:1px; border-color:rgb(64,84,80); }
+.army-unit-title { font-size:15px; -unity-font-style:bold; color:rgb(227,235,226); white-space:normal; }
+.army-unit-actions { flex-direction:row; flex-wrap:wrap; margin-top:8px; }
+.army-unit-action, .army-unit-delete { width:47%; min-height:38px; margin:3px; font-size:12px; border-width:1px; border-color:rgb(82,107,96); border-radius:4px; background-color:rgb(37,55,51); color:rgb(218,230,222); }
+.army-unit-delete { border-color:rgb(129,79,72); background-color:rgb(66,41,39); color:rgb(239,198,182); }
+.army-manage:hover, .army-unit-action:hover, .army-type-tab:hover { background-color:rgb(57,77,63); }
+.army-unit-delete:hover { background-color:rgb(100,50,42); }
+.army-health { height:12px; margin:0 0 6px; }
+.army-health .unity-progress-bar__background { background-color:rgb(43,58,53); border-width:0; }
+.army-health .unity-progress-bar__progress { background-color:rgb(137,170,105); }
+.army-empty { font-size:14px; color:rgb(176,195,183); white-space:normal; padding:20px 6px; }

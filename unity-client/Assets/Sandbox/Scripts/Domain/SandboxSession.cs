@@ -24,6 +24,9 @@ namespace Qiongtu.Sandbox
         public float x;
         public float z;
         public string status;
+        // maxHealth == 0 means unavailable, including old saves; never infer full health.
+        public int health;
+        public int maxHealth;
         public string barracksId; // Optional for pre-barracks saves and initial demo units.
 
         /// <summary>创建无共享引用的单位显示副本。</summary>
@@ -303,6 +306,7 @@ namespace Qiongtu.Sandbox
                 if (unit == null || !ValidText(unit.id, 40) || !identities.Add(unit.id)
                     || !ValidArmyIdentity(unit)
                     || !ValidText(unit.name, 60) || !ValidText(unit.status, 60)
+                    || unit.health < 0 || unit.maxHealth < 0 || unit.health > unit.maxHealth
                     || float.IsNaN(unit.x) || float.IsInfinity(unit.x) || unit.x < 0 || unit.x > 120
                     || float.IsNaN(unit.z) || float.IsInfinity(unit.z) || unit.z < 0 || unit.z > 80)
                     return "存档单位身份或坐标无效";

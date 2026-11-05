@@ -38,6 +38,7 @@ namespace Qiongtu.Sandbox
                 Part(root, "ServiceCrossZ", new Vector3(0, 4.66f, -1), new Vector3(1.3f, .08f, 5), metal);
                 Part(root, "SupplyTank", new Vector3(6.8f, 1.4f, -1), new Vector3(2.2f, 2.8f, 4.6f), team);
             }
+            root.transform.localScale = Vector3.one * SandboxArmyLayout.ModelScale;
             return root;
         }
         private static void Part(GameObject root, string name, Vector3 position, Vector3 size, Material material)

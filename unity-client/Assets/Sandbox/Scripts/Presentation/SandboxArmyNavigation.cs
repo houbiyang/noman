@@ -104,7 +104,7 @@ namespace Qiongtu.Sandbox
         /// <param name="bounds">地图世界坐标中的建筑包围盒。</param>
         private void BlockBuilding(Bounds bounds)
         {
-            bounds.Expand(new Vector3(2.4f, 0, 2.4f));
+            bounds.Expand(new Vector3(2.4f, 0, 2.4f) * SandboxUnitView.ModelScale);
             for (int z = Mathf.Max(0, (int)(bounds.min.z / Cell)); z <= Mathf.Min(rows - 1, (int)(bounds.max.z / Cell)); z++)
                 for (int x = Mathf.Max(0, (int)(bounds.min.x / Cell)); x <= Mathf.Min(columns - 1, (int)(bounds.max.x / Cell)); x++) blocked[z * columns + x] = true;
         }
