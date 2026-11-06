@@ -17,7 +17,7 @@
             <ui:Label text="三维沙盘总览 · 红蓝协同 · 人工确认" class="muted" />
             <ui:Label name="sourceLabel" text="本地演示数据 · 未连接仿真服务" class="source-note" />
         </ui:VisualElement>
-        <ui:Button name="settingsAction" class="action-tile settings-action ui-blocker" tooltip="设置功能后续接入">
+        <ui:Button name="settingsAction" class="action-tile settings-action ui-blocker" tooltip="服务连接、红蓝 AI 配置与沙盘显示">
             <ui:VisualElement class="action-icon settings-icon" picking-mode="Ignore" />
             <ui:Label text="设置" class="action-caption" picking-mode="Ignore" />
         </ui:Button>
@@ -66,7 +66,7 @@
             <ui:VisualElement class="action-icon battle-icon" picking-mode="Ignore" />
             <ui:Label text="战斗" class="action-caption" picking-mode="Ignore" />
         </ui:Button>
-        <ui:Button name="armyAction" class="action-tile army-action ui-blocker" tooltip="配置军队与地图部署">
+        <ui:Button name="armyAction" class="action-tile army-action ui-blocker" tooltip="选择兵种并在地图上放置兵营">
             <ui:VisualElement class="action-icon army-icon" picking-mode="Ignore" />
             <ui:Label text="军队" class="action-caption" picking-mode="Ignore" />
         </ui:Button>
