@@ -38,6 +38,7 @@ namespace Qiongtu.Sandbox
         public SandboxServerDecisions decisions;
         public SandboxServerCapabilities capabilities;
         public bool spatial_test;
+        public SandboxServerMovementPath[] movement_paths;
     }
 
     /// <summary>对局公开身份。</summary>
@@ -51,7 +52,18 @@ namespace Qiongtu.Sandbox
     /// <summary>以十进制字符串传输的业务坐标。</summary>
     [Serializable] public sealed class SandboxServerPosition { public string x, y, coordinate_system_id = "unity-demo-120x80-v1"; }
     /// <summary>经过服务端角色过滤的单位。</summary>
-    [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability; public SandboxServerPosition position; }
+    [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public SandboxServerPosition position; }
+    /// <summary>以世界米制表达的后端已确认路径点。</summary>
+    [Serializable] public sealed class SandboxServerMovementPoint { public float x, z; }
+    /// <summary>角色过滤后的移动路线、单次试走轨迹和预计成本。</summary>
+    [Serializable] public sealed class SandboxServerMovementPath
+    {
+        public string unit_id, route_id, mode, status;
+        public bool deployment_test;
+        public int trace_sequence;
+        public double estimated_steps, estimated_energy;
+        public SandboxServerMovementPoint[] points, route_points;
+    }
     /// <summary>按当前席位过滤的兵营，旧版共用兵营可省略兵种。</summary>
     [Serializable] public sealed class SandboxServerCamp { public string camp_id, side, unit_type, status; public bool deployment_validated; public SandboxServerPosition position; }
     /// <summary>任务节点的实际服务端状态。</summary>
@@ -75,6 +87,7 @@ namespace Qiongtu.Sandbox
     {
         public bool can_control_time, can_start_game, can_advance, can_review_proposal, can_set_ready, can_manage_units, can_move_unit;
         public bool can_place_barracks, can_delete_unit;
+        public bool can_test_movement;
     }
     /// <summary>可公开的稳定错误信息。</summary>
     [Serializable] public sealed class SandboxServerError { public string code, message; }
@@ -124,6 +137,15 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerCommandHead { public SandboxServerContext context; public string command_type; }
     /// <summary>单位机动输入。</summary>
     [Serializable] public sealed class SandboxServerMove { public string unit_id; public SandboxServerPosition position; }
+    /// <summary>三兵种规则移动命令，不接受客户端提供速度、资源或通行结论。</summary>
+    [Serializable] public sealed class SandboxServerMovementOrder
+    {
+        public string unit_id, mode;
+        public SandboxServerPosition position;
+        public SandboxServerPosition[] waypoints = Array.Empty<SandboxServerPosition>();
+    }
+    /// <summary>推进一个指定单位的独立部署试走步。</summary>
+    [Serializable] public sealed class SandboxServerDeploymentStep { public string unit_id; }
     /// <summary>地图选址后的单兵种兵营输入，由服务端核对完整占地和权限。</summary>
     [Serializable] public sealed class SandboxServerBarracks { public string side, unit_type; public SandboxServerPosition position; }
     /// <summary>单个单位的删除输入，服务端保留兵营及历史记录。</summary>

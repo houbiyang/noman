@@ -21,7 +21,7 @@ from backend.demo_domain import (
     new_plan, require, validate_state, waiting_sides,
 )
 from backend.runtime import Settings, ServiceError, canonical, sha256, token_digest, utcnow
-from backend import spatial
+from backend import spatial, movement
 from backend.map_catalog import current_map, asset_manifest, validate as validate_map
 
 
@@ -274,6 +274,7 @@ class SandboxService:
                                       can_manage_units=phase not in ("running", "finished"),
                                       can_move_unit=phase in ("paused", "running") if "spatial_profile" in state["manifest"] else not finished,
                                       can_place_barracks=phase == "preparing", can_delete_unit=phase not in ("running", "finished"),
+                                      can_test_movement=phase == "preparing" and "spatial_profile" in state["manifest"],
                                       authoritative_combat=False, authoritative_navigation=False),
                     resources=dict(instruction_budget=20, executed_instructions=None, source="demo_limit_only"),
                     map=dict(map_id=map_manifest()["map_id"], resource_url="/api/v1/maps/current", coordinate_system_id="unity-demo-120x80-v1",
@@ -296,6 +297,12 @@ class SandboxService:
             if result["spatial_test"]:
                 spatial.map_data(state)
                 result["routes"] = [deepcopy(route) for route in state["routes"] if route["unit_id"] in visible_units]
+                result["movement_paths"] = [dict(unit_id=route['unit_id'], route_id=route['route_id'], status=route['status'],
+                    mode=route['mode'], deployment_test=route['deployment_test'], trace_sequence=route['trace_sequence'],
+                    estimated_steps=route['estimated_steps'], estimated_energy=route['estimated_energy'],
+                    points=[dict(x=point[0],z=point[1]) for point in route.get('last_trace',[])],
+                    route_points=[dict(x=point[0],z=point[1]) for point in route['points']])
+                    for route in state['routes'] if route['unit_id'] in visible_units and route.get('movement_profile')]
             result["timeline"] = self._visible_events(connection, game_id, game["active_branch_id"],
                                                       game["snapshot_revision"], principal["role"])[-100:]
             return result
@@ -475,6 +482,22 @@ class SandboxService:
         if kind == "place_barracks":
             state, event = spatial.place_barracks(state, actor, payload)
             world_revision += 1
+        elif kind == "movement_order":
+            unit = movement.order(state, actor, payload)
+            event.update(title=unit['status'], detail='部署试走独立于对局时钟和正式能源' if state['lifecycle']['phase']=='preparing'
+                         else '按已保存的兵种移动规则执行', side=unit['side'], visibility=unit['side'])
+            world_revision += 1
+        elif kind == "advance_deployment_movement":
+            require(state['lifecycle']['phase']=='preparing', 'PHASE_CONFLICT', '试走推进仅允许在部署阶段使用')
+            unit = next((value for value in state['units'] if value['unit_id']==payload['unit_id'] and (actor=='host' or value['side']==actor)),None)
+            require(unit is not None, 'UNIT_NOT_FOUND', '单位不存在或无权操作',404)
+            active = next((route for route in state['routes'] if route['unit_id']==unit['unit_id'] and route.get('deployment_test')),None)
+            require(active is not None and active['status'] in ('queued','moving','waiting'), 'TEST_ROUTE_REQUIRED', '没有待推进的部署试走路线')
+            require(unit['durability']>0, 'UNIT_UNAVAILABLE', '单位已经失效')
+            movement.advance_unit(state,unit,active,deployment=True)
+            event.update(title=unit['status'],detail='试走步 '+str(unit.get('movement_test_steps',0))+'；对局时间与正式能源不变',
+                         side=unit['side'],visibility=unit['side'])
+            world_revision += 1
         elif kind == "delete_unit":
             state, event = delete_unit(state, actor, payload["unit_id"])
             world_revision += 1
@@ -556,6 +579,9 @@ class SandboxService:
                 if kind in ("configure_army", "deploy_army"):
                     raise ServiceError(409, "PREPARATION_REQUIRED", "测试规则仅允许在准备阶段整体提交兵营和编制")
                 if kind == "set_ready" and payload["ready"]:
+                    require(not any(route.get('deployment_test') and route['status'] in ('queued','moving','waiting')
+                            and any(unit['unit_id']==route['unit_id'] and unit['side']==actor for unit in state['units'])
+                            for route in state['routes']), 'TEST_MOVEMENT_ACTIVE', '请先停止或完成本方部署试走，再准备完成')
                     camps = {camp["camp_id"] for camp in state["camps"] if camp["side"] == actor and camp["deployment_validated"]}
                     require(camps and all(unit.get("camp_id") in camps for unit in state["units"] if unit["side"] == actor),
                             "CAMP_REQUIRED", "请先为本方各兵种配置有效兵营")

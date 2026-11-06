@@ -112,7 +112,7 @@ namespace Qiongtu.Sandbox
         {
             projection = serverMode ? ServerProjection() : source.GetProjection(role);
             if (serverMode) role = projection.role;
-            world.ApplyProjection(projection, serverMode);
+            world.ApplyProjection(projection, serverMode, serverMode ? serverClient.View?.movement_paths : null);
             RebuildMapLabels();
             if (!projection.units.Any(unit => unit.id == selectedId)) selectedId = projection.units.FirstOrDefault()?.id;
             world.Select(selectedId);
@@ -559,6 +559,7 @@ namespace Qiongtu.Sandbox
                 feedbackUntil = 0;
             }
             Keyboard keyboard = Keyboard.current;
+            UpdateDeploymentMovement();
             if (keyboard == null) return;
             if (connectionOverlay != null)
             {

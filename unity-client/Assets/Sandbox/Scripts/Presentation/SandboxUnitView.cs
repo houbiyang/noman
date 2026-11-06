@@ -26,6 +26,9 @@ namespace Qiongtu.Sandbox
         private bool initialized;
         private float phase;
         private float speed;
+        private float confirmedPlaybackSpeed;
+        private bool confirmedReverse;
+        private bool confirmedRoute;
         private MaterialPropertyBlock block;
         private LineRenderer route;
         private float spawnAt;
@@ -67,11 +70,33 @@ namespace Qiongtu.Sandbox
 
         public void Relocate(Vector3 position)
         {
+            confirmedPlaybackSpeed = 0; confirmedReverse = false; confirmedRoute = false;
             path.Clear(); destination = position; transform.position = position; speed = 0; initialized = true; spawnAt = Time.time;
             UpdateVisualPose(Time.time, false, 1);
         }
 
         public void HoldPosition() { path.Clear(); }
+
+        /// <summary>播放后端已经提交的行进轨迹，不生成下一步坐标或资源变化。</summary>
+        /// <param name="trace">本次提交经过的世界坐标点。</param>
+        /// <param name="reverse">是否保持车头朝向播放倒车。</param>
+        public void PlayConfirmedTrace(List<Vector3> trace, bool reverse)
+        {
+            if (trace == null || trace.Count < 2) return;
+            float length = 0;
+            for (int index = 1; index < trace.Count; index++) length += Vector3.Distance(trace[index - 1], trace[index]);
+            Relocate(trace[0]); confirmedReverse = reverse; confirmedPlaybackSpeed = Mathf.Max(1, length / .8f);
+            SetTarget(trace[trace.Count - 1], trace.GetRange(1, trace.Count - 1), true);
+        }
+
+        /// <summary>显示已确认的完整路线；路线线条不参与通行判定。</summary>
+        /// <param name="points">服务端米制路线转换后的显示坐标。</param>
+        public void SetConfirmedRoute(List<Vector3> points)
+        {
+            if (route == null) return;
+            confirmedRoute = true;
+            route.positionCount = points.Count; route.SetPositions(points.ToArray());
+        }
 
         public void SpawnAt(Vector3 origin, float delay)
         {
@@ -95,30 +120,33 @@ namespace Qiongtu.Sandbox
 
         public void AttachRoute(LineRenderer line) => route = line;
         public void HideRoute() { if (route != null) route.gameObject.SetActive(false); }
-        public void ShowRoute(bool selected) { if (route != null) route.gameObject.SetActive(selected && IsMoving); }
+        public void ShowRoute(bool selected) { if (route != null) route.gameObject.SetActive(selected && (confirmedRoute ? route.positionCount > 1 : IsMoving)); }
 
         private void Update()
         {
             if (Time.time < spawnAt) return;
             float dt = Time.deltaTime;
             bool moving = path.Count > 0;
-            speed = Mathf.MoveTowards(speed, moving ? (type == SandboxUnitType.Recon ? 15 : type == SandboxUnitType.Ground ? 8 : 6) : 0, dt * 12);
+            speed = confirmedPlaybackSpeed > 0 ? confirmedPlaybackSpeed : Mathf.MoveTowards(speed, moving ? (type == SandboxUnitType.Recon ? 15 : type == SandboxUnitType.Ground ? 8 : 6) : 0, dt * 12);
             float traveled = 0;
-            if (moving)
+            float frameDistance = speed * dt;
+            while (path.Count > 0 && frameDistance > 0)
             {
                 Vector3 target = path.Peek();
                 Vector3 flat = target - transform.position; flat.y = 0;
-                if (flat.sqrMagnitude > 0.02f)
+                if (flat.sqrMagnitude > 0.02f && !confirmedReverse)
                 {
                     Quaternion heading = Quaternion.LookRotation(flat);
                     transform.rotation = Quaternion.RotateTowards(transform.rotation, heading, (type == SandboxUnitType.Recon ? 200 : 110) * dt);
                 }
                 Vector3 before = transform.position;
-                transform.position = Vector3.MoveTowards(before, new Vector3(target.x, before.y, target.z), speed * dt);
+                transform.position = Vector3.MoveTowards(before, new Vector3(target.x, before.y, target.z), frameDistance);
                 // Interpolate only XZ; sample terrain/bridge each frame rather than cutting through sloping ground.
                 Vector3 position = transform.position;
-                traveled = Vector2.Distance(new Vector2(before.x, before.z), new Vector2(position.x, position.z));
+                float segmentDistance = Vector2.Distance(new Vector2(before.x, before.z), new Vector2(position.x, position.z));
+                traveled += segmentDistance; frameDistance -= segmentDistance;
                 if (Vector2.Distance(new Vector2(target.x, target.z), new Vector2(position.x, position.z)) < 0.18f) path.Dequeue();
+                else break;
             }
             // Idle, restored and moving units all use the same surface-relative altitude.
             Vector3 anchored = transform.position;
@@ -128,7 +156,7 @@ namespace Qiongtu.Sandbox
             foreach (Transform wheel in wheels) wheel.Rotate(Vector3.right, traveled * Mathf.Rad2Deg / (0.4f * ModelScale), Space.Self);
             float spawn = Mathf.Clamp01((Time.time - spawnAt) / 0.35f);
             UpdateVisualPose(Time.time, moving, spawn);
-            if (route != null && route.gameObject.activeSelf)
+            if (route != null && route.gameObject.activeSelf && !confirmedRoute)
             {
                 route.positionCount = path.Count + 1; route.SetPosition(0, transform.position + Vector3.up * 0.2f);
                 int i = 1; foreach (Vector3 point in path) route.SetPosition(i++, point + Vector3.up * 0.2f);

@@ -96,6 +96,21 @@ class MoveUnit(StrictModel):
     position: Position
 
 
+class MovementOrder(StrictModel):
+    """按版本化测试规则安排移动；部署试走使用独立资源和推进入口。"""
+
+    unit_id: str = Field(min_length=1, max_length=40)
+    mode: Literal["move", "fast_move", "reverse_move", "stop_move", "return_to_barracks", "reset_test_energy", "deploy_start"] = "move"
+    position: Position | None = None
+    waypoints: list[Position] = Field(default_factory=list, max_length=7)
+
+
+class DeploymentMovementStep(StrictModel):
+    """仅推进指定单位的部署试走，不推进对局时钟或消耗正式能源。"""
+
+    unit_id: str = Field(min_length=1, max_length=40)
+
+
 class PlaceBarracks(StrictModel):
     """保存本方指定兵种的兵营位置，已有单位保持原位置。"""
 
@@ -196,6 +211,7 @@ class ExitPayload(SavePayload):
 
 
 PAYLOAD_MODELS = {
+    "movement_order": MovementOrder, "advance_deployment_movement": DeploymentMovementStep,
     "place_barracks": PlaceBarracks, "delete_unit": DeleteUnit,
     "set_preparation": TestPreparation,
     "configure_army": ConfigureArmy, "deploy_army": DeployArmy, "move_unit": MoveUnit,

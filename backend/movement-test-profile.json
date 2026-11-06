@@ -1,0 +1,24 @@
+{
+  "profile_id": "qinglan-movement-test-v1",
+  "test_only": true,
+  "map_id": "qinglan-strategic-v6",
+  "cell_m": 5,
+  "road_access_limit_m": 150,
+  "reverse_limit_m": 100,
+  "reverse_angle_degrees": 15,
+  "safety_margin_m": 1,
+  "terrain_factors": {
+    "ground": {"open": 0.65, "field": 0.5, "sparse_forest": 0.4, "road": 1, "bridge": 1, "gravel": 0.8},
+    "support": {"open": 0.45, "field": 0.3, "road": 1, "bridge": 1, "gravel": 0.7}
+  },
+  "unit_profiles": {
+    "recon": {"speed_m_per_step": 800, "energy_per_km": 5, "radius_m": 2},
+    "ground": {"speed_m_per_step": 400, "energy_per_km": 8, "radius_m": 2},
+    "support": {"speed_m_per_step": 300, "energy_per_km": 10, "radius_m": 3}
+  },
+  "fast_speed_factor": 1.25,
+  "fast_energy_factors": {"recon": 1.25, "ground": 1.2, "support": 1.2},
+  "reverse_speed_factors": {"ground": 0.4, "support": 0.35},
+  "reverse_energy_factor": 1.1,
+  "algorithm_version": "qinglan-grid-road-v1"
+}

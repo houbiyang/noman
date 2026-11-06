@@ -200,6 +200,12 @@ def set_preparation(state: dict, actor: str, payload: dict) -> tuple[dict, dict]
 def advance(state: dict) -> None:
     """每步沿冻结路线推进并扣能源，资源耗尽后保留可恢复进度。"""
     for active in state["routes"]:
+        if active.get('movement_profile'):
+            if not active.get('deployment_test') and active['status'] in ('queued','moving','waiting'):
+                from backend.movement import advance_unit
+                unit = next(unit for unit in state['units'] if unit['unit_id']==active['unit_id'])
+                advance_unit(state,unit,active)
+            continue
         if active["status"] not in ("queued", "moving"):
             continue
         unit = next(unit for unit in state["units"] if unit["unit_id"] == active["unit_id"])
@@ -242,7 +248,8 @@ def validate(state: dict) -> None:
     for active in state["routes"]:
         require(active["unit_id"] in units and active["unit_id"] not in seen, "SNAPSHOT_INVALID", "路线单位缺失或重复")
         seen.add(active["unit_id"])
-        require(len(active["points"]) >= 2 and 0 <= active["segment_index"] < len(active["points"])
+        cursor_limit = len(active['segments'])+1 if active.get('movement_profile') else len(active['points'])
+        require(len(active["points"]) >= 2 and 0 <= active["segment_index"] < cursor_limit
                 and 0 <= active["traveled_m"] <= active["distance_m"] + 0.001, "SNAPSHOT_INVALID", "测试路线进度无效")
         for point in active["points"]:
             require(len(point) == 2 and all(math.isfinite(value) and 0 <= value <= 12000 for value in point), "SNAPSHOT_INVALID", "路线坐标无效")

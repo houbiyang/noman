@@ -236,6 +236,48 @@ class CurrentFeatureTests(unittest.TestCase):
         self.assertEqual(self.client.get(self.path + "/routes", headers=self.headers["red"],
                                          params=dict(unit_type="ground", from_node_id="UNKNOWN", to_node_id="N0_5")).status_code, 404)
 
+    def test_deployment_rule_movement_persists_without_advancing_game(self):
+        """通过真实接口验证部署试走、权限、幂等、资源隔离与读档恢复。"""
+        response = self.client.post("/api/v1/games", headers=dict(self.bootstrap, **{"Idempotency-Key": str(uuid4())}),
+                                    json=dict(title="部署试走闭环", is_demo=True, spatial_test=True))
+        self.assertEqual(response.status_code, 201, response.text)
+        self.game_id = response.json()["game_id"]
+        self.path = "/api/v1/games/" + self.game_id
+        for role in ("host", "red", "blue"):
+            seat = self.client.post(f"/api/v1/bootstrap/games/{self.game_id}/sessions", headers=self.bootstrap, json=dict(role=role)).json()
+            self.headers[role] = {"Authorization": "Bearer " + seat["access_token"]}
+        self.assertTrue(self.view("red")["capabilities"]["can_test_movement"])
+        self.command("movement_order", dict(unit_id="R-U01", mode="move", position=dict(x="35", y="44")), "red", expected=409)
+        preparation = dict(side="red", position=dict(x="10.3", y="26.2"), quantities=dict(recon=1, ground=1, support=1))
+        preview = self.client.post(self.path + "/preparation/preview", headers=self.headers["red"],
+                                   json=dict(context=self.view("red")["context"], preparation=preparation))
+        self.assertEqual(preview.status_code, 200, preview.text)
+        self.command("set_preparation", dict(preparation, preview_token=preview.json()["preview_token"]), "red")
+        self.command("movement_order", dict(unit_id="R-U01", mode="deploy_start", position=dict(x="25", y="44")), "red")
+        initial = self.view("red")
+        self.command("movement_order", dict(unit_id="R-U01", mode="move", position=dict(x="35", y="44")), "blue", expected=404)
+        self.command("movement_order", dict(unit_id="R-U01", mode="move", position=dict(x="35", y="44")), "red")
+        self.command("set_ready", dict(ready=True), "red", expected=409)
+        body = dict(context=self.view("red")["context"], command_type="advance_deployment_movement", payload=dict(unit_id="R-U01"))
+        key = str(uuid4())
+        first = self.command("advance_deployment_movement", role="red", body=body, key=key)
+        repeated = self.command("advance_deployment_movement", role="red", body=body, key=key)
+        self.assertEqual(first["command_id"], repeated["command_id"])
+        moved = self.view("red")
+        before_unit = next(unit for unit in initial["units"] if unit["unit_id"] == "R-U01")
+        moved_unit = next(unit for unit in moved["units"] if unit["unit_id"] == "R-U01")
+        self.assertNotEqual(before_unit["position"], moved_unit["position"])
+        self.assertEqual(before_unit["energy"], moved_unit["energy"])
+        self.assertEqual(initial["clock"], moved["clock"])
+        self.assertEqual(moved_unit["movement_test_steps"], 1)
+        self.assertLess(moved_unit["movement_test_energy"], moved_unit["energy"])
+        self.assertTrue(moved["movement_paths"][0]["points"])
+        saved = self.command("create_save", dict(display_name="部署试走恢复"))["result"]["save_id"]
+        self.command("advance_deployment_movement", dict(unit_id="R-U01"), "red")
+        self.command("restore_save", dict(save_id=saved))
+        restored = next(unit for unit in self.view("red")["units"] if unit["unit_id"] == "R-U01")
+        self.assertEqual(restored, moved_unit)
+
     def test_17_spatial_test_preparation_movement_and_restore(self):
         """验证独立测试规则中的完整占地、预览、逐步移动及资源恢复。"""
         response = self.client.post("/api/v1/games", headers=dict(self.bootstrap, **{"Idempotency-Key": str(uuid4())}),

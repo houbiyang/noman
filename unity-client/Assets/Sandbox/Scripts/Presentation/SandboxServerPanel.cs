@@ -37,6 +37,7 @@ namespace Qiongtu.Sandbox
         {
             if (serverClient.Busy || serverClient.HasPending) { Notify("请等待同步或先核对原命令结果"); return; }
             playing = false; serverMode = true; role = next; serverHead = null; serverBranch = null;
+            deploymentMovingUnit = null;
             Application.runInBackground = true;
             serverSaves = Array.Empty<SandboxServerSave>(); serverSavesLoaded = false; serverSavesOffset = 0;
             ClosePanel(); CloseArmy(); CancelArmyCommand(); CloseModal();
@@ -48,6 +49,7 @@ namespace Qiongtu.Sandbox
         /// <summary>后端保存退出成功后才结束当前客户端，失败时保留有效页面。</summary>
         private void OnServerCommandFinished(string commandType, bool succeeded)
         {
+            if (!succeeded && (commandType == "movement_order" || commandType == "advance_deployment_movement")) deploymentMovingUnit = null;
             if (succeeded && (commandType == "create_save" || commandType == "complete_exit")) serverSavesLoaded = false;
             if (commandType != "complete_exit" || !succeeded) return;
 #if UNITY_EDITOR
