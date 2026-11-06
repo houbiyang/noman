@@ -140,6 +140,10 @@ namespace Qiongtu.Sandbox
                 foreach (var state in units.GroupBy(unit => unit.status))
                     AddText(summary, state.Key + "  × " + state.Count(), "army-status-line");
                 AddText(summary, hasCamp ? "当前阵营同兵种单位" : "尚未建造兵营 · 可先管理已有同兵种单位", "army-footnote");
+                string moveRestriction = ArmyMoveRestriction();
+                if (moveRestriction.Length > 0) AddText(summary, moveRestriction, "army-footnote");
+                else if (serverMode && serverClient.View.spatial_test)
+                    AddText(summary, "移动目标提交后，主持人点击“单步 +1”或“继续播放”才会推进部队。", "army-footnote");
                 var filtered = units.Where(unit => (unit.id + unit.name).IndexOf(unitSearch, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
                 if (filtered.Length == 0) AddText(list, units.Length == 0 ? "暂无该兵种单位；等待后续仿真出兵。" : "没有匹配的单位。", "army-empty");
                 foreach (var unit in filtered)
@@ -163,7 +167,9 @@ namespace Qiongtu.Sandbox
                     }
                     var actions = new VisualElement(); actions.AddToClassList("army-unit-actions"); card.Add(actions);
                     AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id, UnitLocateViewport()); RefreshProjection(); }, "army-unit-action");
-                    AddButton(actions, "地图移动", () => BeginMove(unit.id), "army-unit-action");
+                    var move = AddButton(actions, "地图移动", () => BeginMove(unit.id), "army-unit-action");
+                    move.SetEnabled(moveRestriction.Length == 0);
+                    move.tooltip = moveRestriction;
                     AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection(); }, "army-unit-action");
                     AddButton(actions, "删除单位", () => OpenDeleteArmyUnitModal(unit), "army-unit-delete")
                         .SetEnabled(!serverMode || serverClient.View?.capabilities.can_delete_unit == true);
@@ -222,9 +228,31 @@ namespace Qiongtu.Sandbox
         }
         private void BeginMove(string id)
         {
+            string restriction = ArmyMoveRestriction();
+            if (restriction.Length > 0) { Notify(restriction); return; }
             PausePlayback(); pendingMoveId = id; selectedId = id; pendingArmyType = null; world.Select(id);
             ClosePanel(); CloseArmy();
-            ShowArmyCommand("移动 " + id, "单击目标位置 · 地面单位自动寻路 · Esc 取消");
+            ShowArmyCommand("移动 " + id, serverMode && serverClient.View.spatial_test
+                ? "单击目标位置排队 · 主持人推进后移动 · Esc 取消"
+                : "单击目标位置 · 地面单位自动寻路 · Esc 取消");
+        }
+
+        /// <summary>按照服务端当前阶段和移动资格说明不可移动的原因，本机演示沿用原操作。</summary>
+        /// <returns>允许选择移动目标时返回空字符串，否则返回当前阶段的操作提示。</returns>
+        private string ArmyMoveRestriction()
+        {
+            if (!serverMode) return "";
+            if (serverClient.View == null) return "正在读取部队状态，请等待同步完成。";
+            if (serverClient.View.spatial_test)
+            {
+                switch (serverClient.View.clock.phase)
+                {
+                    case "preparing": return "准备阶段不能移动：请双方完成兵营配置并准备，由主持人开始对局，再由双方采用建议。";
+                    case "awaiting_confirmation": return "等待双方采用建议后，才能安排部队移动路线。";
+                }
+            }
+            if (serverClient.View.clock.phase == "finished") return "对局已结束，不能再移动部队。";
+            return serverClient.View.capabilities.can_move_unit ? "" : "当前阶段暂不允许移动部队。";
         }
         private void ShowArmyCommand(string title, string detail)
         {
@@ -264,6 +292,8 @@ namespace Qiongtu.Sandbox
                 if (!serverMode && !world.CanMove(id, position.x, position.y, unit.type)) { Notify("目标不可通行或没有可达路径，请另选位置"); return; }
                 if (serverMode)
                 {
+                    string restriction = ArmyMoveRestriction();
+                    if (restriction.Length > 0) { Notify(restriction); return; }
                     CancelArmyCommand(); SendServerCommand("move_unit", new SandboxServerMove { unit_id = id, position = ServerPosition(position.x, position.y) }); return;
                 }
                 if (source.TryMoveArmyUnit(role, id, position.x, position.y, out string message))

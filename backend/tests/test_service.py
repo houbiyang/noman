@@ -246,6 +246,11 @@ class CurrentFeatureTests(unittest.TestCase):
         for role in ("host", "red", "blue"):
             seat = self.client.post(f"/api/v1/bootstrap/games/{self.game_id}/sessions", headers=self.bootstrap, json=dict(role=role)).json()
             self.headers[role] = {"Authorization": "Bearer " + seat["access_token"]}
+        for role in ("host", "red", "blue"):
+            self.assertFalse(self.view(role)["capabilities"]["can_move_unit"])
+        before = self.view("red")["context"]
+        self.command("move_unit", dict(unit_id="R-G01", position=dict(x="12", y="30")), "red", expected=409)
+        self.assertEqual(self.view("red")["context"], before)
         self.command("set_ready", dict(ready=True), "red", expected=409)
         for side, coordinates in (("red", ("10.3", "26.2")), ("blue", ("100.3", "50.2"))):
             payload = dict(side=side, position=dict(x=coordinates[0], y=coordinates[1]), quantities=dict(recon=1, ground=1, support=1))
@@ -261,9 +266,19 @@ class CurrentFeatureTests(unittest.TestCase):
         self.assertEqual(invalid.status_code, 409)
         self.assertEqual(invalid.json()["error"]["code"], "CAMP_FOOTPRINT_OUTSIDE")
         self.assertEqual(self.view()["context"], before)
-        self.started()
+        for role in ("red", "blue"):
+            self.command("set_ready", dict(ready=True), role)
+        self.command("start_game")
+        self.assertFalse(self.view("red")["capabilities"]["can_move_unit"])
+        self.command("move_unit", dict(unit_id="R-G01", position=dict(x="12", y="30")), "red", expected=409)
+        self.approve("red")
+        self.assertFalse(self.view("red")["capabilities"]["can_move_unit"])
+        self.approve("blue")
+        self.assertTrue(self.view("red")["capabilities"]["can_move_unit"])
         self.command("configure_army", dict(side="red", quantities=dict(recon=2, ground=1, support=1)), "red", expected=409)
+        initial_position = next(unit for unit in self.view("red")["units"] if unit["unit_id"] == "R-G01")["position"]
         self.command("move_unit", dict(unit_id="R-G01", position=dict(x="12", y="30")), "red")
+        self.assertEqual(next(unit for unit in self.view("red")["units"] if unit["unit_id"] == "R-G01")["position"], initial_position)
         self.command("move_unit", dict(unit_id="B-G01", position=dict(x="12", y="30")), "red", expected=404)
         saved = self.command("create_save", dict(display_name="S2路线资源"))["result"]["save_id"]
         initial = next(unit for unit in self.view("red")["units"] if unit["unit_id"] == "R-G01")
