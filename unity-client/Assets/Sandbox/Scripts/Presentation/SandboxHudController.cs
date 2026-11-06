@@ -140,7 +140,7 @@ namespace Qiongtu.Sandbox
                 root.Q<Button>(candidate == SandboxRole.Red ? "redRole" : candidate == SandboxRole.Blue ? "blueRole" : "hostRole").EnableInClassList("selected-role", role == candidate);
             UpdateCameraButton();
             if (serverMode) RefreshServerControls();
-            if (armyOverlay != null && managedArmyType.HasValue) RenderArmy();
+            if (!serverMode && armyOverlay != null && managedArmyType.HasValue) RenderArmy();
         }
 
         /// <summary>清理旧角色私有对象、草稿和相机目标后切换角色。</summary>
@@ -173,13 +173,13 @@ namespace Qiongtu.Sandbox
             SandboxUnitData selected = projection.units.FirstOrDefault(unit => unit.id == selectedId);
             SetText("selectedSummary", selected == null ? "尚未选择单位" : selected.id + "  ·  " + selected.name);
             UpdateCameraButton();
-            if (!serverMode) OpenArmyManagement(selected.side, selected.type);
+            OpenArmyManagement(selected.side, selected.type);
         }
 
         /// <summary>展开或关闭同一抽屉，避免同时遮挡地图。</summary>
         private void TogglePanel(string panel)
         {
-            if (panel == "units" && !serverMode) { OpenSelectedArmyManagement(); return; }
+            if (panel == "units") { OpenSelectedArmyManagement(); return; }
             if (activePanel == panel) ClosePanel();
             else ShowPanel(panel);
         }
@@ -187,7 +187,7 @@ namespace Qiongtu.Sandbox
         /// <summary>创建指定功能面板并暂停本地演示播放。</summary>
         private void ShowPanel(string panel)
         {
-            if (panel == "units" && !serverMode) { OpenSelectedArmyManagement(); return; }
+            if (panel == "units") { OpenSelectedArmyManagement(); return; }
             if (settingsOverlay != null) { RequestCloseSettings(() => ShowPanel(panel)); return; }
             CloseArmy(); CancelArmyCommand();
             PausePlayback();
@@ -197,7 +197,6 @@ namespace Qiongtu.Sandbox
             drawerContent.Clear();
             switch (panel)
             {
-                case "units": BuildUnitsPanel(); break;
                 case "tasks": BuildTasksPanel(); break;
                 case "plan": BuildPlanPanel(); break;
                 case "events": BuildEventsPanel(); break;
@@ -215,48 +214,6 @@ namespace Qiongtu.Sandbox
             root.Q("drawer").AddToClassList("hidden");
             root.RemoveFromClassList("panel-open");
             drawerContent.Clear();
-        }
-
-        /// <summary>显示单位搜索、当前选中详情与观察入口。</summary>
-        private void BuildUnitsPanel()
-        {
-            SetText("drawerTitle", "单位与观察");
-            AddText(drawerContent, "只展示当前角色投影中的单位。点选与跟随均不下达行动命令。", "body-text");
-            var searchField = new TextField("查找单位") { value = unitSearch, maxLength = 60 };
-            searchField.AddToClassList("field");
-            drawerContent.Add(searchField);
-            var list = new VisualElement();
-            drawerContent.Add(list);
-            Action render = null;
-            render = () =>
-            {
-                list.Clear();
-                SandboxUnitData[] filtered = projection.units.Where(unit => (unit.id + unit.name).IndexOf(unitSearch, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
-                if (filtered.Length == 0) AddText(list, "没有匹配的可见单位。", "empty-message");
-                foreach (SandboxUnitData unit in filtered)
-                {
-                    var card = new VisualElement();
-                    card.AddToClassList("detail-card");
-                    card.EnableInClassList("selected-unit", unit.id == selectedId);
-                    list.Add(card);
-                    AddText(card, unit.id + "  " + unit.name, "detail-title");
-                    AddText(card, SideLabel(unit.side) + " · " + unit.status, "detail-line");
-                    AddText(card, "平面坐标 X " + unit.x.ToString("0.0") + " / Z " + unit.z.ToString("0.0"), "detail-line");
-                    if (serverMode && serverClient.View?.spatial_test == true)
-                    {
-                        SandboxServerUnit fact = serverClient.View.units.First(candidate => candidate.unit_id == unit.id);
-                        AddText(card, string.IsNullOrEmpty(fact.camp_id) ? "尚未提交测试兵营与资源" : "测试能源 " + fact.energy.ToString("0.###") + " · 补给 " + fact.supply + " · 耐久 " + fact.durability + "\n兵营 " + fact.camp_id + " · 编队 " + fact.formation_id, "detail-line");
-                    }
-                    var actions = new VisualElement();
-                    actions.AddToClassList("action-row");
-                    card.Add(actions);
-                    AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id); RefreshProjection(); render?.Invoke(); });
-                    AddButton(actions, "地图移动", () => BeginMove(unit.id));
-                    AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection(); render?.Invoke(); });
-                }
-            };
-            searchField.RegisterValueChangedCallback(change => { unitSearch = change.newValue; render(); });
-            render();
         }
 
         /// <summary>展示当前任务、三节点与前端尚未获得的业务事实。</summary>
@@ -646,7 +603,7 @@ namespace Qiongtu.Sandbox
             }
             foreach (SandboxBarracksData camp in projection.barracks ?? Array.Empty<SandboxBarracksData>())
             {
-                string buildingName = camp.type == SandboxUnitType.Support ? "补给站" : DemoSandboxViewSource.BarracksName(camp.type);
+                string buildingName = camp.type == SandboxUnitType.Support ? "补给站" : BarracksDisplayName(camp);
                 var label = new Label((camp.side == SandboxRole.Red ? "红方" : "蓝方") + buildingName)
                 {
                     name = "barracks-label-" + camp.id,

@@ -17,7 +17,6 @@ namespace Qiongtu.Sandbox
         private bool serverSavesLoading;
         private bool serverSavesLoaded;
         private int serverSavesOffset;
-        private SandboxUnitData[] CurrentUnits => serverMode ? projection.units : source.Current.units;
 
         /// <summary>建立连接组件，读取地图身份并绑定状态发布事件。</summary>
         private void InitializeServerSync()
@@ -75,6 +74,11 @@ namespace Qiongtu.Sandbox
             serverHead = head;
             if (changed) serverSavesLoaded = false;
             RefreshProjection();
+            if (changed && !serverClient.Busy && armyOverlay != null)
+            {
+                if (managedArmyType.HasValue) refreshArmyManagement?.Invoke();
+                else RenderArmy();
+            }
             if (!serverClient.Busy && activePanel != null && (serverRefreshPanel || (changed && activePanel != "plan" && activePanel != "events")))
             {
                 string panel = activePanel; serverRefreshPanel = false; ShowPanel(panel);
@@ -115,11 +119,12 @@ namespace Qiongtu.Sandbox
             root.Q<Button>("stepButton").SetEnabled(writable && permission != null && permission.can_advance && serverClient.View.clock.phase != "running");
             root.Q<Button>("playButton").SetEnabled(writable && permission != null && (serverClient.View.clock.phase == "running" || permission.can_advance));
             SetText("playButton", serverClient.View?.clock.phase == "running" ? "暂停" : "继续播放");
-            root.Q<Button>("armyAction").SetEnabled(writable && permission != null && permission.can_manage_units);
+            root.Q<Button>("armyAction").SetEnabled(serverClient.View != null);
             root.Q<Button>("eventsButton").SetEnabled(writable && role == SandboxRole.Host && serverClient.View.clock.phase != "finished");
             SetText("connectionAction", serverClient.HasPending ? "核对提交结果" : serverClient.Healthy ? "后端已连接" : "接入状态");
             SetText("taskProgress", serverClient.View == null ? "等待后端任务状态" : "任务节点状态来自后端 · 规则未裁决时明确标记");
-            if (!writable) { CancelArmyCommand(); CloseArmy(); }
+            if (!serverClient.Healthy || serverClient.View == null) { CancelArmyCommand(); CloseArmy(); }
+            else armyOverlay?.SetEnabled(writable);
         }
 
         /// <summary>显示自动接入状态及重试入口，不要求用户填写地址、对局或令牌。</summary>
@@ -154,7 +159,7 @@ namespace Qiongtu.Sandbox
             SetText("drawerTitle", "后端任务与协作");
             if (serverClient.View == null) { AddText(drawerContent, serverClient.Status, "body-text"); return; }
             SandboxServerView view = serverClient.View;
-            if (view.spatial_test && role != SandboxRole.Host && view.clock.phase == "preparing") BuildTestPreparation();
+            if (view.clock.phase == "preparing") AddButton(drawerContent, "配置兵营", OpenArmy);
             AddText(drawerContent, "红方准备：" + (view.clock.ready.red ? "已就绪" : "未就绪") + " · 蓝方准备：" + (view.clock.ready.blue ? "已就绪" : "未就绪"), "section-title");
             if (view.capabilities.can_set_ready) AddButton(drawerContent, "本方准备完成", () => SendServerCommand("set_ready", new SandboxServerReadyInput { ready = true }));
             if (role == SandboxRole.Host && view.clock.phase == "preparing")
@@ -169,32 +174,6 @@ namespace Qiongtu.Sandbox
                 foreach (SandboxServerTaskNode node in task.nodes) AddText(drawerContent, node.node_id + " · " + ServerTaskStatus(node.status), "detail-line");
             }
             AddText(drawerContent, "当前后端未实施正式任务裁决；不会根据地图动画自动完成节点。", "body-text");
-        }
-
-        /// <summary>在任务与协作面板完成本方测试兵营预览及整体编制提交。</summary>
-        private void BuildTestPreparation()
-        {
-            AddText(drawerContent, "S2 空间测试规则 · 兵营与编制", "section-title");
-            AddText(drawerContent, "坐标为 120×80 业务坐标。正式尺寸和资源参数尚未批准；预览后提交，开局后固定。", "body-text");
-            var x = new TextField("兵营 X") { value = role == SandboxRole.Red ? "10.3" : "100.3" };
-            var y = new TextField("兵营 Y") { value = role == SandboxRole.Red ? "26.2" : "50.2" };
-            var recon = new IntegerField("侦察数量（1–10）") { value = 1 };
-            var ground = new IntegerField("陆兵数量（1–10）") { value = 1 };
-            var support = new IntegerField("保障数量（1–10）") { value = 1 };
-            foreach (VisualElement field in new VisualElement[] { x, y, recon, ground, support }) { field.AddToClassList("field"); drawerContent.Add(field); }
-            AddButton(drawerContent, "预览并确认测试准备", () => {
-                var input = new SandboxServerPreparation { side = ServerSide(role), position = new SandboxServerPosition { x = x.value, y = y.value },
-                    quantities = new SandboxServerQuantities { recon = recon.value, ground = ground.value, support = support.value } };
-                serverClient.PreviewPreparation(input, (preview, basis) => {
-                    input.preview_token = preview.preview_token;
-                    SetText("modalTitle", "提交测试兵营和编制？");
-                    SetText("modalMessage", "后端已通过占地、部署区和道路接入检查。提交后替换本方测试编制并清除准备状态。参数仅用于测试。");
-                    SetText("confirmModalButton", "确认提交测试配置");
-                    modalAction = () => SendServerCommand("set_preparation", input, basis);
-                    root.Q("modalBackdrop").RemoveFromClassList("hidden");
-                    root.Q<Button>("cancelModalButton").Focus();
-                });
-            }, "primary-button");
         }
 
         /// <summary>冻结编辑时依据，期间状态变化会由后端拒绝旧提交。</summary>

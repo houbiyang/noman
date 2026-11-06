@@ -4,7 +4,7 @@ from copy import deepcopy
 from unittest import TestCase, main
 
 from backend import spatial
-from backend.demo_domain import initial_state, map_manifest
+from backend.demo_domain import delete_unit, initial_state, map_manifest, validate_state
 from backend.runtime import ServiceError
 
 
@@ -74,6 +74,17 @@ class SpatialTests(TestCase):
         self.assertFalse(any(camp["side"] == "red" for camp in result["camps"]))
         self.assertTrue(all(unit.get("camp_id") is None for unit in result["units"] if unit["side"] == "red"))
         spatial.validate(result)
+
+    def test_delete_unit_clears_route_and_formation_but_keeps_camp(self):
+        """暂停后删除最后一名同兵种单位，清理活动引用并保留兵营。"""
+        self.state["lifecycle"]["phase"] = "paused"
+        unit = next(item for item in self.state["units"] if item["unit_id"] == "R-G01")
+        self.state["routes"] = [spatial.route(self.state, unit, dict(x="12", y="30"))]
+        result, _ = delete_unit(self.state, "red", "R-G01")
+        self.assertEqual(result["routes"], [])
+        self.assertFalse(any("R-G01" in formation["unit_ids"] for formation in result["formations"]))
+        self.assertTrue(any(camp["camp_id"] == "red-camp" for camp in result["camps"]))
+        validate_state(result)
 
 
 if __name__ == "__main__":

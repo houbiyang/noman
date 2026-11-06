@@ -15,17 +15,14 @@ namespace Qiongtu.Sandbox
         private SandboxUnitType? pendingArmyType;
         private SandboxRole pendingArmySide;
         private string pendingMoveId;
-        private readonly int[] serverArmyQuantities = { 1, 1, 1 };
-        private int pendingServerArmyQuantity;
+        private Action refreshArmyManagement;
 
         private void OpenArmy()
         {
             if (settingsOverlay != null) { RequestCloseSettings(OpenArmy); return; }
-            if (serverMode && serverClient.View?.spatial_test == true) { ShowPanel("tasks"); return; }
             CancelArmyCommand(); ClosePanel(); CloseArmy(); PausePlayback();
             armySide = role == SandboxRole.Host ? SandboxRole.Red : role;
             managedArmyType = null;
-            if (serverMode) ReadServerArmyQuantities();
             RenderArmy();
         }
         private void RenderArmy()
@@ -33,7 +30,6 @@ namespace Qiongtu.Sandbox
             CloseArmy();
             armyOverlay = new VisualElement { name = "armyOverlay" }; armyOverlay.AddToClassList("army-panel"); armyOverlay.AddToClassList("ui-blocker");
             root.Add(armyOverlay);
-            if (serverMode) { RenderServerArmy(); return; }
             if (managedArmyType.HasValue) { RenderBarracksManagement(); return; }
             var panel = armyOverlay;
             var header = new VisualElement(); header.AddToClassList("army-header"); panel.Add(header);
@@ -60,7 +56,7 @@ namespace Qiongtu.Sandbox
         private void BuildArmyCard(VisualElement parent, int index)
         {
             var type = (SandboxUnitType)index;
-            var camp = source.Current.barracks.FirstOrDefault(item => item.side == armySide && item.type == type);
+            var camp = projection.barracks.FirstOrDefault(item => item.side == armySide && item.type == type);
             var card = new VisualElement(); card.AddToClassList("army-card"); parent.Add(card);
             if (pendingArmyType == type && pendingArmySide == armySide) card.AddToClassList("army-card-selected");
             var stage = new VisualElement(); stage.AddToClassList("army-stage"); card.Add(stage);
@@ -68,68 +64,18 @@ namespace Qiongtu.Sandbox
             image.AddToClassList("army-model"); stage.Add(image);
             stage.RegisterCallback<ClickEvent>(evt => { BeginDeploy(type); evt.StopPropagation(); });
             var details = new VisualElement(); details.AddToClassList("army-card-details"); card.Add(details);
-            AddText(details, DemoSandboxViewSource.BarracksName(type), "army-card-title");
+            AddText(details, camp == null ? DemoSandboxViewSource.BarracksName(type) : BarracksDisplayName(camp), "army-card-title");
             AddText(details, DemoSandboxViewSource.ArmyName(type), "army-troop-name");
             AddText(details, camp == null ? "尚未建造" : "已建造 · 等待仿真指令", "army-current");
-            AddButton(details, camp == null ? "选点建造兵营" : "重新选址", () => BeginDeploy(type), "army-deploy");
+            AddButton(details, camp == null ? "选点建造兵营" : "重新选址", () => BeginDeploy(type), "army-deploy")
+                .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
             AddButton(details, "查看兵种 / 管理单位", () => OpenArmyManagement(armySide, type), "army-manage");
-        }
-
-        /// <summary>从当前席位投影读取后端编制表单的初始数量。</summary>
-        private void ReadServerArmyQuantities()
-        {
-            for (int index = 0; index < serverArmyQuantities.Length; index++)
-                serverArmyQuantities[index] = Math.Max(1, CurrentUnits.Count(unit => unit.side == armySide && (int)unit.type == index));
-        }
-
-        /// <summary>沿用后端已有的编制和部署命令，展示当前服务端单位数量。</summary>
-        private void RenderServerArmy()
-        {
-            var header = new VisualElement(); header.AddToClassList("army-header"); armyOverlay.Add(header);
-            AddText(header, "后端军队配置", "army-title");
-            AddButton(header, "×", CloseArmy, "army-close");
-            var toolbar = new VisualElement(); toolbar.AddToClassList("army-toolbar"); armyOverlay.Add(toolbar);
-            AddText(toolbar, SideLabel(armySide) + "编队", "army-side");
-            if (role == SandboxRole.Host)
-                AddButton(toolbar, armySide == SandboxRole.Red ? "切换为蓝方" : "切换为红方", () => {
-                    armySide = armySide == SandboxRole.Red ? SandboxRole.Blue : SandboxRole.Red;
-                    ReadServerArmyQuantities(); RenderArmy();
-                }, "army-switch");
-            var scroll = new ScrollView(ScrollViewMode.Vertical); scroll.AddToClassList("army-scroll"); armyOverlay.Add(scroll);
-            foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
-            {
-                int typeIndex = (int)type;
-                var card = new VisualElement(); card.AddToClassList("army-card"); scroll.Add(card);
-                var details = new VisualElement(); details.AddToClassList("army-card-details"); card.Add(details);
-                AddText(details, DemoSandboxViewSource.ArmyName(type), "army-card-title");
-                AddText(details, "当前编制  " + CurrentUnits.Count(unit => unit.side == armySide && unit.type == type) + " 个单位", "army-current");
-                var quantity = new IntegerField("部署数量（1–10）") { value = serverArmyQuantities[typeIndex] };
-                quantity.AddToClassList("field"); details.Add(quantity);
-                quantity.RegisterValueChangedCallback(change => serverArmyQuantities[typeIndex] = change.newValue);
-                AddButton(details, "选点部署", () => BeginServerDeploy(type, serverArmyQuantities[typeIndex]), "army-deploy");
-            }
-            var footer = new VisualElement(); footer.AddToClassList("army-footer"); armyOverlay.Add(footer);
-            AddButton(footer, "应用编队", () => SendServerCommand("configure_army", new SandboxServerConfigure {
-                side = ServerSide(armySide), quantities = new SandboxServerQuantities {
-                    recon = serverArmyQuantities[0], ground = serverArmyQuantities[1], support = serverArmyQuantities[2] }
-            }), "army-deploy");
-            AddText(footer, "状态与提交结果由后端校验", "army-footnote");
-        }
-
-        /// <summary>保留后端地图部署流程，等待地图点击后提交原有部署命令。</summary>
-        /// <param name="type">待部署的兵种。</param>
-        /// <param name="quantity">提交到后端校验的单位数量。</param>
-        private void BeginServerDeploy(SandboxUnitType type, int quantity)
-        {
-            if (quantity < 1 || quantity > 10) { Notify("每类部署数量须为 1–10"); return; }
-            pendingArmyType = type; pendingServerArmyQuantity = quantity; pendingArmySide = armySide; pendingMoveId = null;
-            CloseArmy(); ClosePanel();
-            ShowArmyCommand("部署 " + DemoSandboxViewSource.ArmyName(type) + " × " + quantity, "单击地图布置编队 · Esc 取消");
         }
 
         private void CloseArmy()
         {
             armyOverlay?.RemoveFromHierarchy(); armyOverlay = null;
+            refreshArmyManagement = null;
             world.SelectBarracks(null);
         }
 
@@ -149,7 +95,6 @@ namespace Qiongtu.Sandbox
 
         private void OpenArmyManagement(SandboxRole side, SandboxUnitType type)
         {
-            if (serverMode) { ShowPanel("units"); return; }
             if (settingsOverlay != null) { RequestCloseSettings(() => OpenArmyManagement(side, type)); return; }
             if (role != SandboxRole.Host && side != role) return;
             CancelArmyCommand(); ClosePanel(); CloseArmy(); PausePlayback();
@@ -160,13 +105,13 @@ namespace Qiongtu.Sandbox
         private void RenderBarracksManagement()
         {
             var type = managedArmyType.Value;
-            string campId = DemoSandboxViewSource.BarracksId(armySide, type);
-            bool hasCamp = projection.barracks.Any(camp => camp.id == campId);
-            world.SelectBarracks(hasCamp ? campId : null);
+            var camp = projection.barracks.FirstOrDefault(item => item.side == armySide && item.type == type);
+            bool hasCamp = camp != null;
+            world.SelectBarracks(camp?.id);
             armyOverlay.name = "barracksManagement";
             var header = new VisualElement(); header.AddToClassList("army-header"); armyOverlay.Add(header);
             var titles = new VisualElement(); titles.style.flexGrow = 1; header.Add(titles);
-            AddText(titles, DemoSandboxViewSource.BarracksName(type), "army-manager-title");
+            AddText(titles, camp == null ? DemoSandboxViewSource.BarracksName(type) : BarracksDisplayName(camp), "army-manager-title");
             AddText(titles, SideLabel(armySide) + " · " + DemoSandboxViewSource.ArmyName(type), "army-troop-name");
             AddButton(header, "×", () => { CloseArmy(); CancelArmyCommand(); }, "army-close");
             var toolbar = new VisualElement(); toolbar.AddToClassList("army-toolbar"); armyOverlay.Add(toolbar);
@@ -194,7 +139,7 @@ namespace Qiongtu.Sandbox
                 AddText(summary, "当前任务 · " + projection.taskType, "army-current");
                 foreach (var state in units.GroupBy(unit => unit.status))
                     AddText(summary, state.Key + "  × " + state.Count(), "army-status-line");
-                AddText(summary, hasCamp ? "该阵营同兵种单位，含初始演示单位" : "尚未建造兵营 · 可先管理已有同兵种单位", "army-footnote");
+                AddText(summary, hasCamp ? "当前阵营同兵种单位" : "尚未建造兵营 · 可先管理已有同兵种单位", "army-footnote");
                 var filtered = units.Where(unit => (unit.id + unit.name).IndexOf(unitSearch, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
                 if (filtered.Length == 0) AddText(list, units.Length == 0 ? "暂无该兵种单位；等待后续仿真出兵。" : "没有匹配的单位。", "army-empty");
                 foreach (var unit in filtered)
@@ -210,17 +155,26 @@ namespace Qiongtu.Sandbox
                         health.AddToClassList("army-health"); card.Add(health);
                     }
                     AddText(card, "位置 X " + unit.x.ToString("0.00") + " / Z " + unit.z.ToString("0.00"), "army-footnote");
+                    if (serverMode && serverClient.View.spatial_test)
+                    {
+                        var fact = serverClient.View.units.First(item => item.unit_id == unit.id);
+                        AddText(card, string.IsNullOrEmpty(fact.camp_id) ? "等待配置兵营与测试资源" : "测试能源 " + fact.energy.ToString("0.###")
+                            + " · 补给 " + fact.supply + " · 耐久 " + fact.durability, "army-current");
+                    }
                     var actions = new VisualElement(); actions.AddToClassList("army-unit-actions"); card.Add(actions);
                     AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id, UnitLocateViewport()); RefreshProjection(); }, "army-unit-action");
                     AddButton(actions, "地图移动", () => BeginMove(unit.id), "army-unit-action");
                     AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection(); }, "army-unit-action");
-                    AddButton(actions, "删除单位", () => OpenDeleteArmyUnitModal(unit), "army-unit-delete");
+                    AddButton(actions, "删除单位", () => OpenDeleteArmyUnitModal(unit), "army-unit-delete")
+                        .SetEnabled(!serverMode || serverClient.View?.capabilities.can_delete_unit == true);
                 }
             };
+            refreshArmyManagement = render;
             search.RegisterValueChangedCallback(change => { unitSearch = change.newValue; render(); }); render();
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); armyOverlay.Add(footer);
-            AddButton(footer, hasCamp ? "重新选址兵营" : "选点建造兵营", () => BeginDeploy(type), "army-deploy");
-            AddText(footer, "本机演示数据 · 血量未知不推算 · 无人工出兵", "army-footnote");
+            AddButton(footer, hasCamp ? "重新选址兵营" : "选点建造兵营", () => BeginDeploy(type), "army-deploy")
+                .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
+            AddText(footer, serverMode ? "当前席位数据 · 血量未知不推算 · 无人工出兵" : "本机演示数据 · 血量未知不推算 · 无人工出兵", "army-footnote");
             header.Q<Button>().Focus();
         }
         private Rect UnitLocateViewport()
@@ -241,6 +195,11 @@ namespace Qiongtu.Sandbox
             SetText("confirmModalButton", "确认删除单位");
             modalAction = () =>
             {
+                if (serverMode)
+                {
+                    SendServerCommand("delete_unit", new SandboxServerDeleteUnit { unit_id = unit.id });
+                    return;
+                }
                 if (source.TryDeleteArmyUnit(role, unit.id, out string message))
                 {
                     if (selectedId == unit.id && cameraRig.IsFollowing) cameraRig.ReturnToOverview();
@@ -255,6 +214,7 @@ namespace Qiongtu.Sandbox
         }
         private void BeginDeploy(SandboxUnitType type)
         {
+            if (serverMode && serverClient.View?.capabilities.can_place_barracks != true) { Notify("兵营只能在准备阶段建造或重新选址"); return; }
             managedArmyType = null;
             pendingArmyType = type; pendingArmySide = armySide; pendingMoveId = null;
             ClosePanel(); RenderArmy();
@@ -280,21 +240,17 @@ namespace Qiongtu.Sandbox
         }
         private void HandleArmyMapClick(Vector3 point)
         {
+            if (serverMode && (!serverClient.Healthy || serverClient.Busy || serverClient.HasPending))
+            { Notify("请等待当前同步或提交结果，选址状态已保留"); return; }
             if (!world.TryBusinessPosition(point, out Vector2 position)) { Notify("请选择地图范围内的位置"); return; }
             if (pendingArmyType.HasValue)
             {
                 SandboxUnitType type = pendingArmyType.Value;
                 if (serverMode)
                 {
-                    for (int index = 0; index < pendingServerArmyQuantity; index++)
-                    {
-                        float x = position.x + (index % 4 - Math.Min(pendingServerArmyQuantity, 4) / 2f + 0.5f) * 2.1f;
-                        float z = position.y + index / 4 * 2.1f;
-                        if (!world.CanPlace(x, z, type)) { Notify("编队位置不可用，请避开水面、建筑与地图边界"); return; }
-                    }
-                    var payload = new SandboxServerDeploy { side = ServerSide(pendingArmySide), unit_type = ServerType(type), quantity = pendingServerArmyQuantity,
+                    var payload = new SandboxServerBarracks { side = ServerSide(pendingArmySide), unit_type = ServerType(type),
                         position = ServerPosition(position.x, position.y) };
-                    CancelArmyCommand(); SendServerCommand("deploy_army", payload); return;
+                    CancelArmyCommand(); SendServerCommand("place_barracks", payload); return;
                 }
                 if (!world.CanPlaceBarracks(type, pendingArmySide, position.x, position.y, out string placementMessage)) { Notify(placementMessage); return; }
                 if (!source.TryPlaceBarracks(role, pendingArmySide, type, position.x, position.y, out string message)) { Notify(message); return; }
@@ -315,5 +271,11 @@ namespace Qiongtu.Sandbox
                 else Notify(message);
             }
         }
+
+        /// <summary>兼容旧版共用测试兵营的名称，三类新兵营沿用协作者的命名。</summary>
+        /// <param name="camp">当前角色投影中的兵营。</param>
+        /// <returns>页面和地图标签使用的建筑名称。</returns>
+        private static string BarracksDisplayName(SandboxBarracksData camp) =>
+            camp.id == "red-camp" || camp.id == "blue-camp" ? "既有共用兵营" : DemoSandboxViewSource.BarracksName(camp.type);
     }
 }

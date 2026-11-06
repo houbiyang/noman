@@ -7,7 +7,7 @@ import json
 import math
 from pathlib import Path
 
-from backend.demo_domain import MAP_PATH, new_unit, own_side, position, require, reset_plan
+from backend.demo_domain import MAP_PATH, barracks_id, map_manifest, new_unit, own_side, position, require, reset_plan
 from backend.runtime import sha256
 
 
@@ -132,6 +132,44 @@ def route(state: dict, unit: dict, target: dict) -> dict:
                 unit_id=unit["unit_id"], points=points, road_ids=road_ids, distance_m=round(total, 6),
                 traveled_m=0, segment_index=0, movement_type="air" if unit["unit_type"] == "recon" else "ground",
                 status="queued", test_only=True)
+
+
+def place_barracks(state: dict, actor: str, payload: dict) -> tuple[dict, dict]:
+    """校验并保存单一兵种兵营，重新选址只改变建筑和归属。"""
+    side, kind = payload["side"], payload["unit_type"]
+    own_side(actor, side)
+    require(state["lifecycle"]["phase"] == "preparing", "PHASE_CONFLICT", "兵营只能在准备阶段建造或重新选址")
+    geometry_state = state
+    if "spatial_profile" not in state["manifest"]:
+        geometry_state = dict(state, manifest=dict(state["manifest"], spatial_profile=profile(),
+                              map_source_sha256=map_manifest()["source_file_sha256"]))
+    placed = camp(geometry_state, side, payload["position"])
+    placed.update(camp_id=barracks_id(side, kind), unit_type=kind)
+    center = meters(placed["position"])
+    for other in state["camps"]:
+        if other["camp_id"] == placed["camp_id"] or not other.get("position"):
+            continue
+        other_center = meters(other["position"])
+        clearance = placed["half_extent_m"] + other.get("half_extent_m", placed["half_extent_m"])
+        require(abs(center[0] - other_center[0]) >= clearance or abs(center[1] - other_center[1]) >= clearance,
+                "CAMP_OCCUPIED", "兵营占地与已有兵营重叠")
+    state = deepcopy(state)
+    state["camps"] = [item for item in state["camps"] if item["camp_id"] != placed["camp_id"]] + [placed]
+    for unit in state["units"]:
+        if unit["side"] == side and unit["unit_type"] == kind:
+            unit["camp_id"] = placed["camp_id"]
+            if "spatial_profile" in state["manifest"]:
+                limits = state["manifest"]["spatial_profile"]["unit_profiles"][kind]
+                for field in ("energy", "supply", "durability"):
+                    if unit.get(field) is None:
+                        unit[field] = limits[field]
+    used_camps = {unit.get("camp_id") for unit in state["units"]}
+    state["camps"] = [item for item in state["camps"]
+                      if item["side"] != side or item.get("unit_type") or item["camp_id"] in used_camps]
+    state["lifecycle"]["ready"][side] = False
+    reset_plan(state, side)
+    return state, dict(title="兵营位置已保存", detail="已校验部署区、完整占地、建筑和道路接入，已有单位保留原位置",
+                       side=side, visibility=side, private_plan=False)
 
 
 def set_preparation(state: dict, actor: str, payload: dict) -> tuple[dict, dict]:

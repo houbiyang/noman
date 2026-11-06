@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from backend.contracts import CommandRequest, CreateGame, PAYLOAD_MODELS
 from backend.demo_domain import (
-    CONDITION_NAMES, TASK_NAMES, apply_interaction, host_only, initial_state, map_manifest,
+    CONDITION_NAMES, TASK_NAMES, apply_interaction, delete_unit, host_only, initial_state, map_manifest,
     new_plan, require, validate_state, waiting_sides,
 )
 from backend.runtime import Settings, ServiceError, canonical, sha256, token_digest, utcnow
@@ -272,6 +272,7 @@ class SandboxService:
                                       can_review_proposal=role != "host" and not finished and state["decisions"]["plans"][role]["status"] == "pending_review",
                                       can_set_ready=role != "host" and phase == "preparing", can_save=role == "host",
                                       can_manage_units=phase not in ("running", "finished"), can_move_unit=not finished,
+                                      can_place_barracks=phase == "preparing", can_delete_unit=phase not in ("running", "finished"),
                                       authoritative_combat=False, authoritative_navigation=False),
                     resources=dict(instruction_budget=20, executed_instructions=None, source="demo_limit_only"),
                     map=dict(map_id=map_manifest()["map_id"], resource_url="/api/v1/maps/current", coordinate_system_id="unity-demo-120x80-v1",
@@ -470,7 +471,13 @@ class SandboxService:
         world_revision = game["world_revision"]
         save_id = None
         event = dict(title="演示操作已提交", detail="", side=actor, visibility="public", private_plan=False)
-        if kind == "set_preparation":
+        if kind == "place_barracks":
+            state, event = spatial.place_barracks(state, actor, payload)
+            world_revision += 1
+        elif kind == "delete_unit":
+            state, event = delete_unit(state, actor, payload["unit_id"])
+            world_revision += 1
+        elif kind == "set_preparation":
             require("spatial_profile" in state["manifest"], "SPATIAL_TEST_REQUIRED", "请新建显式启用空间测试规则的对局")
             require(bool(payload.get("preview_token")), "PREVIEW_REQUIRED", "请先预览测试兵营")
             preview = self.settings.verify(payload["preview_token"], "preparation-preview")
@@ -548,8 +555,9 @@ class SandboxService:
                 if kind in ("configure_army", "deploy_army"):
                     raise ServiceError(409, "PREPARATION_REQUIRED", "测试规则仅允许在准备阶段整体提交兵营和编制")
                 if kind == "set_ready" and payload["ready"]:
-                    require(any(camp["side"] == actor and camp["deployment_validated"] for camp in state["camps"]),
-                            "CAMP_REQUIRED", "请先提交有效测试兵营和编制")
+                    camps = {camp["camp_id"] for camp in state["camps"] if camp["side"] == actor and camp["deployment_validated"]}
+                    require(camps and all(unit.get("camp_id") in camps for unit in state["units"] if unit["side"] == actor),
+                            "CAMP_REQUIRED", "请先为本方各兵种配置有效兵营")
                 if kind == "move_unit":
                     require(state["lifecycle"]["phase"] in ("paused", "running"), "PHASE_CONFLICT", "开始并采用建议后才能安排路线")
                     unit = next((item for item in state["units"] if item["unit_id"] == payload["unit_id"] and (actor == "host" or item["side"] == actor)), None)

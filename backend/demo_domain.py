@@ -117,9 +117,22 @@ def validate_state(state: dict) -> None:
     for side in ("red", "blue"):
         for unit_type in UNIT_NAMES:
             count = sum(unit["side"] == side and unit["unit_type"] == unit_type for unit in state["units"])
-            require(1 <= count <= 10, "SNAPSHOT_INVALID", "当前演示每方每类必须为 1–10 个单位")
+            require(0 <= count <= 10, "SNAPSHOT_INVALID", "当前演示每方每类须为 0–10 个单位")
         plan = state["decisions"]["plans"][side]
         require(plan["side"] == side and 0 <= plan["resource_limit"] <= 20, "SNAPSHOT_INVALID", "建议所属方或额度无效")
+    camps = {camp["camp_id"]: camp for camp in state["camps"]}
+    require(len(camps) == len(state["camps"]), "SNAPSHOT_INVALID", "兵营身份重复")
+    for camp in camps.values():
+        require(camp["side"] in ("red", "blue"), "SNAPSHOT_INVALID", "兵营阵营无效")
+        if camp.get("unit_type"):
+            require(camp["unit_type"] in UNIT_NAMES and camp["camp_id"] == barracks_id(camp["side"], camp["unit_type"]),
+                    "SNAPSHOT_INVALID", "兵营兵种或身份无效")
+            position(camp["position"])
+    for unit in state["units"]:
+        if unit.get("camp_id"):
+            camp = camps.get(unit["camp_id"])
+            require(camp is not None and camp["side"] == unit["side"] and camp.get("unit_type", unit["unit_type"]) == unit["unit_type"],
+                    "SNAPSHOT_INVALID", "单位与兵营归属不一致")
     if "spatial_profile" in state["manifest"]:
         from backend.spatial import validate
         validate(state)
@@ -136,6 +149,27 @@ def reset_plan(state: dict, side: str) -> None:
     state["decisions"]["plans"][side] = new_plan(side, old["version"] + 1)
     if state["lifecycle"]["phase"] not in ("preparing", "finished"):
         state["lifecycle"].update(phase="awaiting_confirmation", controller_session_id=None)
+
+
+def barracks_id(side: str, unit_type: str) -> str:
+    """生成与既有 Unity 兵营一致的稳定身份。"""
+    return ("R" if side == "red" else "B") + "-CAMP-" + {"recon": "recon", "ground": "infantry", "support": "support"}[unit_type]
+
+
+def delete_unit(state: dict, actor: str, unit_id: str) -> tuple[dict, dict]:
+    """删除单位及其活动路线，保留兵营和历史记录，清除相关准备状态。"""
+    require(state["lifecycle"]["phase"] not in ("running", "finished"), "PHASE_CONFLICT", "请在准备或暂停阶段删除单位")
+    unit = next((item for item in state["units"] if item["unit_id"] == unit_id and (actor == "host" or item["side"] == actor)), None)
+    require(unit is not None, "UNIT_NOT_FOUND", "单位不存在或无权操作", 404)
+    state = deepcopy(state)
+    side = unit["side"]
+    state["units"] = [item for item in state["units"] if item["unit_id"] != unit_id]
+    state["routes"] = [item for item in state["routes"] if item["unit_id"] != unit_id]
+    for formation in state["formations"]:
+        formation["unit_ids"] = [identity for identity in formation["unit_ids"] if identity != unit_id]
+    state["lifecycle"]["ready"][side] = False
+    reset_plan(state, side)
+    return state, dict(title="单位已删除", detail=unit_id + " 已移除，兵营保留", side=side, visibility=side, private_plan=False)
 
 
 def apply_interaction(state: dict, actor: str, command_type: str, payload: dict) -> tuple[dict, dict]:
