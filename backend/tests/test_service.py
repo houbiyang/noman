@@ -139,6 +139,53 @@ class CurrentFeatureTests(unittest.TestCase):
         self.client.delete("/api/v1/session", headers=self.headers["red"])
         self.assertEqual(self.client.get(self.path + "/view", headers=self.headers["red"]).status_code, 401)
 
+    def test_19_typed_barracks_and_deletion_persist_with_save_restore(self):
+        """三类兵营独立保存，重新选址保留单位，删除重试和读档保持一致。"""
+        response = self.client.post("/api/v1/games", headers=dict(self.bootstrap, **{"Idempotency-Key": str(uuid4())}),
+                                    json=dict(title="兵营页面联调", is_demo=True, spatial_test=True))
+        self.assertEqual(response.status_code, 201, response.text)
+        self.game_id = response.json()["game_id"]
+        self.path = "/api/v1/games/" + self.game_id
+        for role in ("host", "red", "blue"):
+            seat = self.client.post(f"/api/v1/bootstrap/games/{self.game_id}/sessions", headers=self.bootstrap, json=dict(role=role)).json()
+            self.headers[role] = {"Authorization": "Bearer " + seat["access_token"]}
+        original_units = self.view("red")["units"]
+        locations = {"recon": ("10.3", "26.2"), "ground": ("10.9", "26.2"), "support": ("10.3", "26.7")}
+        for kind, (x, y) in locations.items():
+            self.command("place_barracks", dict(side="red", unit_type=kind, position=dict(x=x, y=y)), "red")
+        placed = self.view("red")
+        self.assertEqual(len(placed["camps"]), 3)
+        self.assertEqual({camp["unit_type"] for camp in placed["camps"]}, set(locations))
+        self.assertEqual([unit["position"] for unit in placed["units"]], [unit["position"] for unit in original_units])
+        self.assertTrue(all(unit["camp_id"] for unit in placed["units"]))
+        self.assertEqual(self.view("blue")["camps"], [])
+        self.command("set_ready", dict(ready=True), "red")
+        self.command("place_barracks", dict(side="red", unit_type="recon", position=dict(x="10.3", y="27.2")), "red")
+        self.assertFalse(self.view("red")["clock"]["ready"]["red"])
+        self.assertEqual(len(self.view("red")["camps"]), 3)
+        save_id = self.command("create_save")["result"]["save_id"]
+        body = dict(context=self.view("red")["context"], command_type="delete_unit", payload=dict(unit_id="R-U01"))
+        key = str(uuid4())
+        self.command("delete_unit", role="red", body=body, key=key)
+        self.assertTrue(self.command("delete_unit", role="red", body=body, key=key)["replayed"])
+        self.assertFalse(any(unit["unit_id"] == "R-U01" for unit in self.view("red")["units"]))
+        self.assertEqual(len(self.view("red")["camps"]), 3)
+        self.command("restore_save", dict(save_id=save_id))
+        self.assertTrue(any(unit["unit_id"] == "R-U01" for unit in self.view("red")["units"]))
+        self.assertEqual(len(self.view("red")["camps"]), 3)
+
+    def test_20_barracks_permissions_overlap_and_legacy_demo(self):
+        """旧演示局可新增兵营，越权、重叠和删除他方单位均不改变有效头。"""
+        payload = dict(side="red", unit_type="ground", position=dict(x="10.3", y="26.2"))
+        self.command("place_barracks", payload, "red")
+        before = self.view()["context"]
+        self.command("place_barracks", dict(payload, side="blue"), "red", expected=403)
+        self.command("place_barracks", dict(payload, unit_type="recon"), "red", expected=409)
+        self.command("delete_unit", dict(unit_id="B-U01"), "red", expected=404)
+        self.assertEqual(self.view()["context"], before)
+        self.command("delete_unit", dict(unit_id="R-U01"), "red")
+        self.assertFalse(any(unit["unit_id"] == "R-U01" for unit in self.view("red")["units"]))
+
     def test_03_context_fence_and_duplicate_concurrency(self):
         body = dict(context=self.view("red")["context"], command_type="set_ready", payload=dict(ready=True))
         key = str(uuid4())

@@ -31,6 +31,7 @@ namespace Qiongtu.Sandbox
         public SandboxServerClock clock;
         public SandboxServerMap map;
         public SandboxServerUnit[] units;
+        public SandboxServerCamp[] camps;
         public SandboxServerTask[] tasks;
         public SandboxServerCondition[] conditions;
         public SandboxServerRecord[] timeline;
@@ -51,6 +52,8 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerPosition { public string x, y, coordinate_system_id = "unity-demo-120x80-v1"; }
     /// <summary>经过服务端角色过滤的单位。</summary>
     [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability; public SandboxServerPosition position; }
+    /// <summary>按当前席位过滤的兵营，旧版共用兵营可省略兵种。</summary>
+    [Serializable] public sealed class SandboxServerCamp { public string camp_id, side, unit_type, status; public bool deployment_validated; public SandboxServerPosition position; }
     /// <summary>任务节点的实际服务端状态。</summary>
     [Serializable] public sealed class SandboxServerTaskNode { public string node_id, status; }
     /// <summary>任务对象及节点，不根据演示步推算完成。</summary>
@@ -71,6 +74,7 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerCapabilities
     {
         public bool can_control_time, can_start_game, can_advance, can_review_proposal, can_set_ready, can_manage_units, can_move_unit;
+        public bool can_place_barracks, can_delete_unit;
     }
     /// <summary>可公开的稳定错误信息。</summary>
     [Serializable] public sealed class SandboxServerError { public string code, message; }
@@ -120,6 +124,10 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerCommandHead { public SandboxServerContext context; public string command_type; }
     /// <summary>单位机动输入。</summary>
     [Serializable] public sealed class SandboxServerMove { public string unit_id; public SandboxServerPosition position; }
+    /// <summary>地图选址后的单兵种兵营输入，由服务端核对完整占地和权限。</summary>
+    [Serializable] public sealed class SandboxServerBarracks { public string side, unit_type; public SandboxServerPosition position; }
+    /// <summary>单个单位的删除输入，服务端保留兵营及历史记录。</summary>
+    [Serializable] public sealed class SandboxServerDeleteUnit { public string unit_id; }
     /// <summary>三类数量配置。</summary>
     [Serializable] public sealed class SandboxServerQuantities { public int recon, ground, support; }
     /// <summary>编制配置输入。</summary>
@@ -182,6 +190,17 @@ namespace Qiongtu.Sandbox
                 if (unit.position == null || unit.position.coordinate_system_id != "unity-demo-120x80-v1"
                     || !Coordinate(unit.position.x, 120, out _) || !Coordinate(unit.position.y, 80, out _)) return "后端单位坐标无效";
             }
+            var camps = view.camps ?? Array.Empty<SandboxServerCamp>();
+            if (camps.Any(camp => camp == null || string.IsNullOrEmpty(camp.camp_id))
+                || camps.Select(camp => camp.camp_id).Distinct().Count() != camps.Length) return "后端兵营身份缺失或重复";
+            foreach (SandboxServerCamp camp in camps)
+            {
+                if ((camp.side != "red" && camp.side != "blue") || (view.role != "host" && camp.side != view.role)) return "后端兵营超出当前席位范围";
+                if (!string.IsNullOrEmpty(camp.unit_type) && camp.unit_type != "recon" && camp.unit_type != "ground" && camp.unit_type != "support") return "后端兵营兵种无效";
+                if (camp.position != null && (camp.position.coordinate_system_id != "unity-demo-120x80-v1"
+                    || !Coordinate(camp.position.x, 120, out _) || !Coordinate(camp.position.y, 80, out _))) return "后端兵营坐标无效";
+                if (!string.IsNullOrEmpty(camp.unit_type) && camp.position == null) return "后端兵种兵营缺少位置";
+            }
             if (view.role == "host" && view.decisions.own_plan != null) return "主持人视图包含未授权的私有建议";
             if (view.role != "host" && (view.decisions.own_plan == null || view.decisions.own_plan.side != view.role)) return "本方建议归属无效";
             if (view.tasks.Any(task => task == null || task.nodes == null || (view.role != "host" && task.side != view.role))) return "任务对象或归属无效";
@@ -211,7 +230,14 @@ namespace Qiongtu.Sandbox
                 units = view.units.Select(unit => new SandboxUnitData {
                     id = unit.unit_id, name = unit.name, side = Role(unit.side), status = unit.status,
                     type = unit.unit_type == "recon" ? SandboxUnitType.Recon : unit.unit_type == "ground" ? SandboxUnitType.Ground : SandboxUnitType.Support,
-                    x = float.Parse(unit.position.x, CultureInfo.InvariantCulture), z = float.Parse(unit.position.y, CultureInfo.InvariantCulture)
+                    x = float.Parse(unit.position.x, CultureInfo.InvariantCulture), z = float.Parse(unit.position.y, CultureInfo.InvariantCulture),
+                    barracksId = unit.camp_id
+                }).ToArray(),
+                barracks = (view.camps ?? Array.Empty<SandboxServerCamp>()).Where(camp => camp.position != null)
+                    .OrderBy(camp => string.IsNullOrEmpty(camp.unit_type)).Select(camp => new SandboxBarracksData {
+                    id = camp.camp_id, side = Role(camp.side),
+                    type = camp.unit_type == "recon" ? SandboxUnitType.Recon : camp.unit_type == "support" ? SandboxUnitType.Support : SandboxUnitType.Ground,
+                    x = float.Parse(camp.position.x, CultureInfo.InvariantCulture), z = float.Parse(camp.position.y, CultureInfo.InvariantCulture)
                 }).ToArray(),
                 ownPlan = plan == null ? null : new SandboxPlanData { side = Role(plan.side), version = plan.version,
                     status = plan.status == "adopted" ? SandboxPlanStatus.Approved : plan.status == "rejected" ? SandboxPlanStatus.Rejected : SandboxPlanStatus.Pending,

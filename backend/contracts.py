@@ -96,6 +96,20 @@ class MoveUnit(StrictModel):
     position: Position
 
 
+class PlaceBarracks(StrictModel):
+    """保存本方指定兵种的兵营位置，已有单位保持原位置。"""
+
+    side: Side
+    unit_type: UnitType
+    position: Position
+
+
+class DeleteUnit(StrictModel):
+    """仅删除当前席位有权管理的单个单位。"""
+
+    unit_id: str = Field(min_length=1, max_length=40)
+
+
 class TestPreparation(StrictModel):
     """整体配置测试兵营和三类单位；空位置表示撤销兵营。"""
 
@@ -182,6 +196,7 @@ class ExitPayload(SavePayload):
 
 
 PAYLOAD_MODELS = {
+    "place_barracks": PlaceBarracks, "delete_unit": DeleteUnit,
     "set_preparation": TestPreparation,
     "configure_army": ConfigureArmy, "deploy_army": DeployArmy, "move_unit": MoveUnit,
     "set_ready": ReadyPayload, "set_tasks": TaskPayload, "review_proposal": ReviewProposal,

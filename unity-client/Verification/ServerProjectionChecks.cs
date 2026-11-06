@@ -53,6 +53,24 @@ internal static class ServerProjectionChecks
         view = Fixture(); view.decisions.own_plan = new SandboxServerPlan();
         SandboxServerProjection.NormalizeMissingPlan(view, "{}");
         Check(!Valid(view) && view.decisions.own_plan != null, "本方建议缺失不能按主持人规则放行");
+        view = Fixture();
+        view.camps = new[] { new SandboxServerCamp { camp_id = "R-CAMP-recon", side = "red", unit_type = "recon",
+            position = new SandboxServerPosition { x = "10.3", y = "26.2" } } };
+        view.units[0].camp_id = "R-CAMP-recon";
+        Check(Valid(view), "同阵营兵种兵营允许发布");
+        projected = SandboxServerProjection.Convert(view);
+        Check(projected.barracks.Length == 1 && projected.barracks[0].type == SandboxUnitType.Recon
+            && projected.barracks[0].x == 10.3f, "兵营按实际兵种和业务坐标映射");
+        Check(projected.units[0].barracksId == "R-CAMP-recon", "单位保留后端兵营归属");
+        view.camps[0].side = "blue"; Check(!Valid(view), "另一阵营兵营不能进入当前投影");
+        view.camps[0].side = "red"; view.camps[0].position.x = "NaN"; Check(!Valid(view), "兵营非有限坐标拒绝");
+        view.camps[0].position.x = "10.3"; view.camps[0].unit_type = "unknown"; Check(!Valid(view), "未知兵营类型拒绝");
+        view.camps[0].unit_type = "ground"; view.camps[0].position = null; Check(!Valid(view), "兵种兵营缺少位置拒绝");
+        view.camps[0].unit_type = null; Check(Valid(view), "旧版固定兵营可省略兵种和位置");
+        Check(SandboxServerProjection.Convert(view).barracks.Length == 0, "未提供位置的旧兵营不猜测坐标");
+        view.camps[0].position = new SandboxServerPosition { x = "10.3", y = "26.2" };
+        Check(Valid(view) && SandboxServerProjection.Convert(view).barracks.Length == 1, "旧版已放置共用兵营仍可显示");
+        view.camps = new[] { view.camps[0], view.camps[0] }; Check(!Valid(view), "重复兵营身份拒绝");
         Console.WriteLine("后端地图投影检查通过：" + checks + " 项；不替代 Unity 网络及画面验收。");
         return 0;
     }
