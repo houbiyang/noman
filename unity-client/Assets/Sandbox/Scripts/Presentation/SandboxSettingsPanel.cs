@@ -50,27 +50,31 @@ namespace Qiongtu.Sandbox
             settingsIssues.Clear(); settingsSection = "service";
             healthMessage = serverMode ? "尚未检测 · 当前沙盘状态来自后端席位" : "尚未检测 · 当前沙盘使用本地演示数据";
             settingsOverlay = new VisualElement { name = "settingsOverlay" };
-            settingsOverlay.AddToClassList("settings-panel"); settingsOverlay.AddToClassList("ui-blocker"); root.Add(settingsOverlay);
-            var header = SettingsGroup(settingsOverlay, "settings-header");
+            settingsOverlay.AddToClassList("settings-backdrop"); settingsOverlay.AddToClassList("ui-blocker"); root.Add(settingsOverlay);
+            var panel = SettingsGroup(settingsOverlay, "settings-panel");
+            var header = SettingsGroup(panel, "settings-header");
             var heading = SettingsGroup(header, "settings-heading");
-            AddText(heading, "SANDBOX / CONFIGURATION", "settings-eyebrow");
+            AddText(heading, "穹图 / 配置中心", "settings-eyebrow");
             AddText(heading, "沙盘设置", "settings-title");
+            AddText(heading, "连接服务、配置智能体与调整观察界面", "settings-header-description");
+            AddText(header, "本机配置", "settings-badge");
             var close = AddButton(header, "×", () => RequestCloseSettings(), "settings-close"); close.name = "closeSettings"; close.tooltip = "关闭设置，Esc";
-            AddText(settingsOverlay, "本机配置  /  " + RoleLabel(role) + "  /  仿真第 " + projection.step + "／60 分钟 · "
+            AddText(panel, RoleLabel(role) + "  ·  第 " + projection.step + "／60 分钟  ·  "
                 + (serverMode ? ServerPhaseLabel() : "演示已暂停"), "settings-context");
-            var body = SettingsGroup(settingsOverlay, "settings-body");
+            var body = SettingsGroup(panel, "settings-body");
             var nav = SettingsGroup(body, "settings-nav"); settingsNav.Clear();
-            SettingsNav(nav, "service", "01  服务连接");
-            SettingsNav(nav, "red", "02  红方 AI");
-            SettingsNav(nav, "blue", "03  蓝方 AI");
-            SettingsNav(nav, "display", "04  沙盘显示");
-            AddText(nav, "红蓝双方可直接配置\nAI 配置保存为本机草稿", "settings-nav-note");
+            AddText(nav, "配置分类", "settings-nav-caption");
+            SettingsNav(nav, "service", "服务连接");
+            SettingsNav(nav, "red", "红方 AI");
+            SettingsNav(nav, "blue", "蓝方 AI");
+            SettingsNav(nav, "display", "沙盘显示");
+            AddText(nav, "AI 参数保存为本机草稿\n显示偏好保存后生效", "settings-nav-note");
             settingsContent = new ScrollView(ScrollViewMode.Vertical) { name = "settingsContent" };
             settingsContent.AddToClassList("settings-content"); body.Add(settingsContent);
-            var footer = SettingsGroup(settingsOverlay, "settings-footer");
+            var footer = SettingsGroup(panel, "settings-footer");
             var status = SettingsGroup(footer, "settings-footer-copy");
             settingsSaveState = AddText(status, "", "settings-save-state");
-            settingsFeedback = AddText(status, settingsWarning.Length > 0 ? settingsWarning : "AI 配置仅保存在本机，尚未应用到仿真服务。", "settings-note");
+            settingsFeedback = AddText(status, settingsWarning.Length > 0 ? settingsWarning : "显示偏好保存后应用；AI 参数保存为本机草稿。", "settings-note");
             var actions = SettingsGroup(footer, "settings-actions");
             AddButton(actions, "校验", () => ValidateSettings(false), "settings-secondary").name = "validateSettings";
             AddButton(actions, "关闭", () => RequestCloseSettings(), "settings-secondary").name = "cancelSettings";
@@ -92,6 +96,9 @@ namespace Qiongtu.Sandbox
         private void RenderSettingsSection()
         {
             settingsContent.Clear(); settingsFields.Clear(); settingsErrors.Clear();
+            settingsContent.scrollOffset = Vector2.zero;
+            settingsOverlay.EnableInClassList("settings-red-section", settingsSection == "red");
+            settingsOverlay.EnableInClassList("settings-blue-section", settingsSection == "blue");
             foreach (var item in settingsNav) item.Value.EnableInClassList("settings-nav-active", item.Key == settingsSection);
             switch (settingsSection)
             {
@@ -116,65 +123,76 @@ namespace Qiongtu.Sandbox
         }
         private void BuildServiceSettings()
         {
-            SettingsSectionTitle("服务连接", "连接仿真服务后，才可读取真实状态、智能体建议与执行回执。");
-            var card = SettingsCard("仿真 API", "接口契约 /api/v1 · JSON / UTF-8");
-            SettingsText(card, "serviceBaseUrl", "服务根地址", settingsDraft.serviceBaseUrl, value => { settingsDraft.serviceBaseUrl = value; CancelHealthCheck(); healthMessage = "地址已修改，请重新检测"; if (healthStatus != null) healthStatus.text = healthMessage; });
-            SettingsInteger(card, "serviceTimeoutSeconds", "连接检测超时（秒）", settingsDraft.serviceTimeoutSeconds, value => settingsDraft.serviceTimeoutSeconds = value);
+            SettingsSectionTitle("服务连接", "查看当前对局连接，或检查指定服务地址的可达性。");
+            var session = SettingsCard("当前对局连接");
+            var connection = SettingsGroup(session, "settings-connection");
+            AddText(connection, serverMode && serverClient.Healthy ? "连接正常" : serverMode ? "等待连接" : "本机演示", "settings-connection-state");
+            AddText(connection, serverMode ? serverClient.Status : source.SourceLabel, "settings-note");
+            var facts = SettingsGroup(session, "settings-session-facts");
+            SettingsFact(facts, "当前席位", RoleLabel(role));
+            SettingsFact(facts, "对局阶段", serverMode ? ServerPhaseLabel() : "演示已暂停");
+            AddText(session, "会话由本机启动入口自动接入。", "settings-note");
+            var technical = new Foldout { text = "查看接口信息", value = false }; technical.AddToClassList("settings-details"); session.Add(technical);
+            SettingsFact(technical, "角色视图", "GET /games/{game_id}/view");
+            SettingsFact(technical, "提交入口", "POST /games/{game_id}/commands");
+            SettingsFact(technical, "一致性", "StateContext · Idempotency-Key · 回执核对");
+            var card = SettingsCard("连接检测", "检测地址单独保存为本机草稿，当前对局继续使用原有会话连接。");
+            var fields = SettingsGroup(card, "settings-grid");
+            SettingsText(fields, "serviceBaseUrl", "检测目标地址", settingsDraft.serviceBaseUrl, value => { settingsDraft.serviceBaseUrl = value; CancelHealthCheck(); healthMessage = "地址已修改，请重新检测"; if (healthStatus != null) healthStatus.text = healthMessage; });
+            SettingsInteger(fields, "serviceTimeoutSeconds", "检测超时 / 秒", settingsDraft.serviceTimeoutSeconds, value => settingsDraft.serviceTimeoutSeconds = value);
             healthStatus = AddText(card, healthMessage, "settings-notice"); healthStatus.name = "healthStatus";
             var row = SettingsGroup(card, "settings-actions");
             healthButton = AddButton(row, "检测服务", StartHealthCheck, "settings-secondary"); healthButton.name = "testService"; healthButton.SetEnabled(healthRoutine == null);
             AddButton(row, "取消检测", () => { CancelHealthCheck(); healthMessage = "已取消本机健康检测"; healthStatus.text = healthMessage; }, "settings-secondary");
-            AddText(card, "仅请求 GET /health，不携带凭据、不提交命令。HTTP 可达不代表 AI、数据库或席位会话可用。", "settings-note");
-            var session = SettingsCard("会话与执行", "真实会话由受控启动入口签发，不在设置页输入或保存令牌。");
-            SettingsFact(session, "当前来源", serverMode ? serverClient.Status : "本地演示 · 未绑定服务器会话");
-            SettingsFact(session, "角色视图", "GET /games/{game_id}/view");
-            SettingsFact(session, "统一变更", "POST /games/{game_id}/commands");
-            SettingsFact(session, "一致性", "StateContext + Idempotency-Key + 回执核对");
-            AddText(session, "此处地址用于连接检测草稿。地图会话通过同源启动入口自动接入，修改草稿后继续使用原有会话连接。", "settings-note");
+            AddText(card, "检测结果表示 /health 的可达性，模型和席位状态由各自服务提供。", "settings-note");
         }
         private void BuildSideSettings(SandboxSideAiSettings side, string key, string title)
         {
-            SettingsSectionTitle(title + " AI 接口", title + "配置草稿 · 生成、向量与重排序分别设置，凭据仅填写服务端环境变量名。");
-            var roles = SettingsCard("四个逻辑智能体", "AI 总指挥 / 侦察 / 陆兵 / 保障。一个兵种智能体可管理多个单位。");
-            AddText(roles, "首次方案和重大调整须人工确认。允许工具、资料范围与过期结果写入资格由后端校验。", "settings-note");
+            SettingsSectionTitle(title + " AI 配置", "本机草稿 · 建议生成、向量检索和重排序可分别配置。");
+            var roles = SettingsCard("智能体协同", "总指挥统筹，侦察、陆兵与保障智能体分别管理所属单位。");
+            var agentRoles = SettingsGroup(roles, "settings-agent-roles");
+            foreach (string agentRole in new[] { "总指挥", "侦察", "陆兵", "保障" }) AddText(agentRoles, agentRole, "settings-agent-role");
+            AddText(roles, "首次方案与重大调整沿用人工确认流程。", "settings-note");
             BuildModelSettings(side.generation, key + ".generation", "建议生成", true);
-            var tuning = SettingsCard("调用与版本", "下列数值为可编辑草稿初值，不是已冻结的服务端限制。AI 配置保存后不会开始调用。");
-            SettingsText(tuning, key + ".profileVersion", "配置版本", side.profileVersion, value => side.profileVersion = value);
-            SettingsText(tuning, key + ".promptVersion", "提示模板版本", side.promptVersion, value => side.promptVersion = value);
-            SettingsFloat(tuning, key + ".temperature", "采样温度（0–2）", side.temperature, value => side.temperature = value);
-            SettingsInteger(tuning, key + ".maxOutputTokens", "单次输出上限（tokens）", side.maxOutputTokens, value => side.maxOutputTokens = value);
-            SettingsInteger(tuning, key + ".runTokenBudget", "单次运行预算（tokens）", side.runTokenBudget, value => side.runTokenBudget = value);
-            SettingsInteger(tuning, key + ".timeoutSeconds", "调用超时（秒）", side.timeoutSeconds, value => side.timeoutSeconds = value);
-            SettingsInteger(tuning, key + ".readRetries", "只读请求重试上限（0–3）", side.readRetries, value => side.readRetries = value);
-            AddText(tuning, "超时不等于远端已停止或未计费。游戏变更须查询原请求结果，不能通过此项盲目重试。", "settings-note");
+            var tuning = new Foldout { text = "调用参数与版本", value = false }; tuning.AddToClassList("settings-card"); settingsContent.Add(tuning);
+            var parameters = SettingsGroup(tuning, "settings-grid");
+            SettingsText(parameters, key + ".profileVersion", "配置版本", side.profileVersion, value => side.profileVersion = value);
+            SettingsText(parameters, key + ".promptVersion", "提示模板版本", side.promptVersion, value => side.promptVersion = value);
+            SettingsFloat(parameters, key + ".temperature", "采样温度 / 0–2", side.temperature, value => side.temperature = value);
+            SettingsInteger(parameters, key + ".maxOutputTokens", "输出上限 / tokens", side.maxOutputTokens, value => side.maxOutputTokens = value);
+            SettingsInteger(parameters, key + ".runTokenBudget", "运行预算 / tokens", side.runTokenBudget, value => side.runTokenBudget = value);
+            SettingsInteger(parameters, key + ".timeoutSeconds", "调用超时 / 秒", side.timeoutSeconds, value => side.timeoutSeconds = value);
+            SettingsInteger(parameters, key + ".readRetries", "只读重试 / 0–3", side.readRetries, value => side.readRetries = value);
+            AddText(tuning, "参数保存为草稿，模型调用由后端接入后执行。", "settings-note");
             BuildModelSettings(side.embedding, key + ".embedding", "向量检索", false);
             BuildModelSettings(side.rerank, key + ".rerank", "重排序", false);
-            var evidence = SettingsCard("资料与证据", "混合检索、精确原文定位与版本引用是正式建议的前置能力。");
-            SettingsText(evidence, key + ".knowledgeScope", "资料集合引用（待后端核准）", side.knowledgeScope, value => side.knowledgeScope = value);
-            AddText(evidence, "这里只记录引用草稿，不改变实际资料授权；不在客户端编辑系统提示、允许工具或隐藏状态。", "settings-note");
+            var evidence = SettingsCard("资料范围", "填写供后端核准的资料集合引用。");
+            SettingsText(evidence, key + ".knowledgeScope", "资料集合引用", side.knowledgeScope, value => side.knowledgeScope = value);
         }
         private void BuildModelSettings(SandboxModelEndpoint model, string key, string title, bool expanded)
         {
-            var fold = new Foldout { text = title + "  /  待接入", value = expanded }; fold.AddToClassList("settings-card"); settingsContent.Add(fold);
-            SettingsToggle(fold, key + ".enabled", "准备启用此配置", model.enabled, value => model.enabled = value);
-            SettingsText(fold, key + ".provider", "供应商 / 兼容协议", model.provider, value => model.provider = value);
-            SettingsText(fold, key + ".baseUrl", "接口根地址", model.baseUrl, value => model.baseUrl = value);
-            SettingsText(fold, key + ".model", "模型标识", model.model, value => model.model = value);
-            SettingsText(fold, key + ".credentialRef", "密钥环境变量名（可留空）", model.credentialRef, value => model.credentialRef = value);
-            AddText(fold, "例如 RED_AI_API_KEY。实际密钥由服务端保管；无鉴权本机模型可留空。", "settings-note");
+            var fold = new Foldout { text = title, value = expanded }; fold.AddToClassList("settings-card"); settingsContent.Add(fold);
+            AddText(fold, "本机配置草稿 · 等待模型服务接入", "settings-model-status");
+            SettingsToggle(fold, key + ".enabled", "记录启用意向", model.enabled, value => model.enabled = value);
+            var fields = SettingsGroup(fold, "settings-grid");
+            SettingsText(fields, key + ".provider", "供应商 / 协议", model.provider, value => model.provider = value);
+            SettingsText(fields, key + ".model", "模型标识", model.model, value => model.model = value);
+            SettingsText(fields, key + ".baseUrl", "接口根地址", model.baseUrl, value => model.baseUrl = value);
+            SettingsText(fields, key + ".credentialRef", "密钥环境变量名", model.credentialRef, value => model.credentialRef = value);
+            AddText(fold, "例如 RED_AI_API_KEY；实际密钥由服务端保管，无鉴权本机模型可留空。", "settings-note");
             var test = AddButton(fold, "模型测试 · 等待后端接口", () => { }, "settings-secondary"); test.SetEnabled(false);
             test.tooltip = "接口契约第 15.3 节尚未定义模型配置、测试与取消路径";
-            AddText(fold, "勾选仅记录启用意向。配置发布、脱敏测试、取消与运行状态待后端接口实现。", "settings-note");
         }
         private void BuildDisplaySettings()
         {
-            SettingsSectionTitle("沙盘显示", "本机观察偏好，保存后立即生效，不改变仿真状态或可见权限。");
+            SettingsSectionTitle("沙盘显示", "调整本机观察图层，保存后应用到当前画面。");
             var layers = SettingsCard("地图图层");
-            SettingsToggle(layers, "showGrid", "显示地图网格", settingsDraft.showGrid, value => settingsDraft.showGrid = value);
-            SettingsToggle(layers, "showRoutes", "显示道路与路线", settingsDraft.showRoutes, value => settingsDraft.showRoutes = value);
-            SettingsToggle(layers, "showFacilities", "显示公共设施", settingsDraft.showFacilities, value => settingsDraft.showFacilities = value);
-            SettingsToggle(layers, "showLabels", "显示地图标签", settingsDraft.showLabels, value => settingsDraft.showLabels = value);
-            var rules = SettingsCard("仿真与操作边界", "以下为只读说明，设置页不提供修改规则或自动采用建议的开关。");
+            var grid = SettingsGroup(layers, "settings-display-grid");
+            SettingsToggle(grid, "showGrid", "地图网格", settingsDraft.showGrid, value => settingsDraft.showGrid = value, "辅助判断方位和地面位置");
+            SettingsToggle(grid, "showRoutes", "道路与路线", settingsDraft.showRoutes, value => settingsDraft.showRoutes = value, "显示地图道路与路线图层");
+            SettingsToggle(grid, "showFacilities", "公共设施", settingsDraft.showFacilities, value => settingsDraft.showFacilities = value, "显示公共设施及区域标记");
+            SettingsToggle(grid, "showLabels", "地图标签", settingsDraft.showLabels, value => settingsDraft.showLabels = value, "显示单位、兵营和地点名称");
+            var rules = new Foldout { text = "仿真与操作说明", value = false }; rules.AddToClassList("settings-card"); settingsContent.Add(rules);
             SettingsFact(rules, "时间", "每次推进 1 分钟 · 截止第 60 分钟");
             SettingsFact(rules, "人工确认", "首次方案与重大调整必须确认");
             SettingsFact(rules, "本地兵营", "只建造或重新选址 · 无手动出兵选项");
@@ -188,8 +206,10 @@ namespace Qiongtu.Sandbox
         }
         private void RegisterSettingsField(VisualElement parent, VisualElement field, string key)
         {
-            field.name = "setting-" + key; field.AddToClassList("settings-field"); parent.Add(field); settingsFields[key] = field;
-            var error = AddText(parent, "", "settings-field-error"); error.AddToClassList("hidden"); settingsErrors[key] = error;
+            var wrapper = SettingsGroup(parent, "settings-field-wrap");
+            if (key == "serviceBaseUrl" || key.EndsWith(".baseUrl") || key.EndsWith(".credentialRef")) wrapper.AddToClassList("settings-span-full");
+            field.name = "setting-" + key; field.AddToClassList("settings-field"); wrapper.Add(field); settingsFields[key] = field;
+            var error = AddText(wrapper, "", "settings-field-error"); error.AddToClassList("hidden"); settingsErrors[key] = error;
         }
         private void SettingsText(VisualElement parent, string key, string label, string value, Action<string> change)
         {
@@ -207,19 +227,21 @@ namespace Qiongtu.Sandbox
             var field = new FloatField(label) { value = value };
             RegisterSettingsField(parent, field, key); field.RegisterValueChangedCallback(evt => { change(evt.newValue); SettingsChanged(); });
         }
-        private void SettingsToggle(VisualElement parent, string key, string label, bool value, Action<bool> change)
+        private void SettingsToggle(VisualElement parent, string key, string label, bool value, Action<bool> change, string description = null)
         {
             var field = new Toggle(label) { value = value };
             RegisterSettingsField(parent, field, key); field.RegisterValueChangedCallback(evt => { change(evt.newValue); SettingsChanged(); });
+            if (description != null) AddText(field.parent, description, "settings-toggle-description");
         }
         private void SettingsChanged()
         {
             if (settingsIssues.Count > 0) { settingsIssues = SandboxSettingsValidation.Validate(settingsDraft); ShowSettingsErrors(); }
-            settingsFeedback.text = "修改尚未保存。AI 配置须由后端接入后才能应用。"; UpdateSettingsDirty();
+            settingsFeedback.text = "显示偏好保存后应用；AI 参数保存为本机草稿。"; UpdateSettingsDirty();
         }
         private void UpdateSettingsDirty()
         {
-            settingsSaveState.text = SettingsDirty ? "●  有未保存的修改" : "本机配置 · 已与已保存版本一致";
+            settingsSaveState.text = SettingsDirty ? "●  有未保存的修改" : "当前无未保存修改";
+            settingsSaveState.EnableInClassList("settings-unsaved", SettingsDirty);
             settingsSaveButton.SetEnabled(SettingsDirty);
         }
         private bool ValidateSettings(bool forSave)
