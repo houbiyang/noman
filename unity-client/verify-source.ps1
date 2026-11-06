@@ -107,4 +107,12 @@ $runtimeConfiguration = '{"runtimeOptions":{"tfm":"net8.0","framework":{"name":"
 Set-Content -LiteralPath (Join-Path $outputDirectory 'Qiongtu.Sandbox.DomainChecks.runtimeconfig.json') -Value $runtimeConfiguration -Encoding utf8
 & $dotnetPath $domainAssembly
 if ($LASTEXITCODE -ne 0) { throw '前端状态检查失败' }
+$serverContracts = Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxServerContracts.cs'
+$serverChecks = Join-Path $clientRoot 'Verification\ServerProjectionChecks.cs'
+$serverAssembly = Join-Path $outputDirectory 'Qiongtu.Sandbox.ServerChecks.dll'
+Invoke-SourceCompiler -CompilerArguments (@('-nologo', '-noconfig', '-nostdlib+', '-langversion:9.0', '-warnaserror+', '-target:exe') + @($domainReferences) + @("-out:$serverAssembly", $domainSource, $armySource, $serverContracts, $serverChecks)) -ResponseName 'server-contracts.rsp'
+if ($LASTEXITCODE -ne 0) { throw '后端地图投影检查编译失败' }
+Set-Content -LiteralPath (Join-Path $outputDirectory 'Qiongtu.Sandbox.ServerChecks.runtimeconfig.json') -Value $runtimeConfiguration -Encoding utf8
+& $dotnetPath $serverAssembly
+if ($LASTEXITCODE -ne 0) { throw '后端地图投影检查失败' }
 Write-Output '桌面运行时、网页条件分支、编辑器源码和独立状态检查均通过；原生导入、构建和浏览器画面须分别验收。'

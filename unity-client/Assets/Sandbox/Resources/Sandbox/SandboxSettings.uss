@@ -1,0 +1,61 @@
+/* docs/04: dark HUD, 4px rhythm, 24/18/14/12 typography, 44px targets. */
+.settings-panel { position:absolute; right:18px; top:104px; bottom:136px; width:840px; max-width:86%; background-color:rgb(18,26,35); border-width:1px; border-color:rgb(66,82,97); border-radius:8px; overflow:hidden; color:rgb(231,237,242); }
+.settings-header { flex-direction:row; align-items:center; padding:12px 20px 8px; flex-shrink:0; }
+.settings-heading { flex-grow:1; }
+.settings-eyebrow { font-size:12px; color:rgb(148,167,183); margin:0 0 4px; padding:0; }
+.settings-title { font-size:24px; -unity-font-style:bold; margin:0; padding:0; }
+.settings-close { width:44px; min-height:44px; margin:0; padding:0; font-size:26px; color:rgb(224,234,242); background-color:rgb(37,49,62); border-width:1px; border-color:rgb(77,95,110); border-radius:6px; }
+.settings-context { font-size:12px; white-space:normal; color:rgb(165,183,197); padding:0 20px 12px; border-bottom-width:1px; border-bottom-color:rgb(51,66,81); flex-shrink:0; }
+.settings-body { flex-direction:row; flex-grow:1; flex-shrink:1; min-height:0; }
+.settings-nav { width:156px; flex-shrink:0; padding:12px 8px; background-color:rgb(16,23,31); border-right-width:1px; border-right-color:rgb(51,66,81); }
+.settings-nav-item { min-height:44px; margin:0 0 4px; padding:8px; border-radius:6px; border-width:1px; border-color:rgba(0,0,0,0); background-color:rgba(0,0,0,0); color:rgb(172,189,203); font-size:14px; -unity-text-align:middle-left; }
+.settings-nav-item:hover { background-color:rgb(35,49,62); }
+.settings-nav-active { background-color:rgb(41,62,77); border-color:rgb(115,163,188); color:rgb(240,247,252); }
+.settings-side-red { border-left-width:3px; border-left-color:rgb(202,92,95); }
+.settings-side-blue { border-left-width:3px; border-left-color:rgb(86,146,208); }
+.settings-nav-item:disabled { opacity:0.45; }
+.settings-nav-note { color:rgb(143,161,178); font-size:12px; white-space:normal; margin:16px 8px; padding:0; }
+.settings-content { flex-grow:1; flex-shrink:1; min-width:0; min-height:0; padding:16px; }
+.settings-section-title { font-size:18px; -unity-font-style:bold; margin:0 0 8px; padding:0; }
+.settings-description { font-size:14px; color:rgb(173,192,206); margin:0 0 16px; padding:0; white-space:normal; }
+.settings-card { background-color:rgb(25,36,47); border-radius:8px; border-width:1px; border-color:rgb(53,71,88); padding:12px; margin:0 0 12px; flex-shrink:0; }
+.settings-card-title { font-size:18px; color:rgb(230,238,245); -unity-font-style:bold; margin:0 0 8px; padding:0; white-space:normal; }
+.settings-note { font-size:12px; color:rgb(164,184,200); white-space:normal; margin:4px 0; padding:0; }
+.settings-notice { font-size:14px; color:rgb(216,225,203); background-color:rgb(37,49,45); border-left-width:2px; border-left-color:rgb(159,178,137); padding:8px; margin:8px 0; white-space:normal; }
+.settings-fact { flex-direction:row; margin:4px 0; }
+.settings-fact-key { width:104px; flex-shrink:0; font-size:12px; color:rgb(151,175,194); white-space:normal; }
+.settings-fact-value { flex-grow:1; flex-shrink:1; min-width:0; font-size:14px; color:rgb(219,231,241); white-space:normal; }
+.settings-field { margin:8px 0; flex-shrink:0; }
+.settings-field { flex-direction:column; align-items:stretch; margin:0; font-size:14px; }
+.settings-field .unity-base-field__label { color:rgb(192,208,221); font-size:14px; min-width:0; width:auto; margin:0 0 6px; padding:0; white-space:normal; }
+.settings-field .unity-base-text-field__input { min-height:44px; padding:8px 10px; background-color:rgb(13,22,31); border-width:1px; border-color:rgb(77,99,117); border-radius:6px; color:rgb(238,245,250); -unity-text-align:middle-left; }
+.settings-field .unity-base-text-field__input:focus { border-color:rgb(139,193,216); }
+.settings-field.unity-toggle { flex-direction:row; align-items:center; min-height:44px; }
+.settings-field .unity-toggle__label { flex-grow:1; flex-shrink:1; margin:0 8px 0 0; }
+.settings-field .unity-toggle__input { min-height:32px; min-width:32px; }
+.settings-field-error { font-size:12px; white-space:normal; color:rgb(255,194,152); margin:4px 0 0; padding:0; }
+.settings-invalid .unity-base-text-field__input { border-color:rgb(238,171,119); border-width:2px; }
+.settings-card > .unity-foldout__toggle { min-height:44px; font-size:18px; -unity-font-style:bold; color:rgb(224,236,245); margin:0; }
+.settings-card > .unity-foldout__content { margin-left:0; }
+.settings-footer { flex-shrink:0; padding:12px 20px; border-top-width:1px; border-top-color:rgb(58,77,93); background-color:rgb(21,31,41); }
+.settings-footer-copy { margin-bottom:8px; }
+.settings-save-state { font-size:14px; color:rgb(229,238,244); margin:0 0 4px; padding:0; }
+.settings-actions { flex-direction:row; justify-content:flex-end; flex-wrap:wrap; }
+.settings-primary, .settings-secondary { min-height:44px; margin:4px 0 0 8px; padding:8px 16px; border-radius:6px; border-width:1px; font-size:14px; }
+.settings-primary { background-color:rgb(161,198,207); border-color:rgb(161,198,207); color:rgb(14,30,38); -unity-font-style:bold; }
+.settings-secondary { background-color:rgb(35,49,62); border-color:rgb(79,104,124); color:rgb(226,238,246); }
+.settings-primary:hover { background-color:rgb(189,220,227); }
+.settings-secondary:hover, .settings-close:hover { background-color:rgb(51,72,90); }
+.settings-primary:disabled, .settings-secondary:disabled { opacity:0.4; }
+.settings-primary:focus, .settings-secondary:focus, .settings-close:focus, .settings-nav-item:focus { border-color:rgb(189,220,227); }
+.compact .settings-panel { right:12px; }
+.compact .settings-nav { width:144px; }
+.compact .settings-header { padding:8px 16px; }
+.compact .settings-content { padding:12px; }
+.compact .settings-footer { padding:8px 16px; }
+
+.settings-field.unity-toggle .unity-toggle__checkmark { background-color:rgb(13,22,31); border-width:1px; border-color:rgb(107,135,156); border-radius:4px; width:24px; height:24px; -unity-background-image-tint-color:rgb(224,238,246); }
+.settings-panel .unity-scroller--vertical, .army-panel .unity-scroller--vertical { width:12px; margin-left:8px; }
+.settings-panel .unity-scroller__low-button, .settings-panel .unity-scroller__high-button, .army-panel .unity-scroller__low-button, .army-panel .unity-scroller__high-button { display:none; }
+.settings-panel .unity-base-slider__tracker, .army-panel .unity-base-slider__tracker { background-color:rgb(28,42,55); border-width:0; }
+.settings-panel .unity-base-slider__dragger, .army-panel .unity-base-slider__dragger { background-color:rgb(84,110,131); border-width:0; border-radius:6px; }

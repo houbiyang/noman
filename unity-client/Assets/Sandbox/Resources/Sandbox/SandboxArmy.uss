@@ -1,43 +1,46 @@
-.army-overlay { position:absolute; left:0; top:0; right:0; bottom:0; background-color:rgba(16,26,23,0.78); align-items:center; justify-content:center; padding:28px; }
-.army-panel { width:1180px; max-width:100%; max-height:94%; background-color:rgb(236,236,223); border-radius:18px; overflow:hidden; border-width:1px; border-color:rgb(150,160,137); }
-.army-header { flex-direction:row; align-items:center; padding:24px 28px 20px; background-color:rgb(232,233,218); border-bottom-width:1px; border-bottom-color:rgb(199,205,181); }
-.army-eyebrow { color:rgb(104,119,83); font-size:11px; letter-spacing:2px; margin-bottom:3px; }
-.army-title { color:rgb(37,53,40); font-size:34px; -unity-font-style:bold; }
-.army-subtitle { color:rgb(104,114,97); font-size:13px; margin-top:4px; }
-.army-close { width:44px; height:44px; border-radius:12px; background-color:rgb(216,222,201); color:rgb(56,75,48); font-size:30px; border-width:0; }
-.army-toolbar { flex-direction:row; align-items:center; padding:12px 28px; background-color:rgb(49,65,49); }
-.army-side { color:rgb(233,238,220); font-size:15px; -unity-font-style:bold; margin-right:16px; }
-.army-capacity { color:rgb(185,199,167); font-size:12px; -unity-text-align:middle-right; }
-.army-switch { background-color:rgb(76,93,65); color:rgb(237,240,226); border-width:0; border-radius:5px; padding:6px 12px; }
-.army-scroll { flex-shrink:1; min-height:180px; }
-.army-cards { flex-direction:row; padding:20px 20px 22px; }
-.army-card { flex-grow:1; flex-basis:0; min-width:0; margin:0 7px; padding:16px; background-color:rgb(248,247,235); border-radius:12px; border-width:1px; border-color:rgb(202,208,183); }
-.army-card-top { flex-direction:row; }
-.army-card-tag { color:rgb(118,133,90); font-size:10px; letter-spacing:2px; margin-bottom:6px; }
-.army-card-title { color:rgb(44,57,43); font-size:23px; -unity-font-style:bold; margin-bottom:8px; white-space:normal; }
-.army-stage { height:184px; background-color:rgb(33,46,46); border-radius:9px; overflow:hidden; margin-bottom:12px; }
-.army-model { flex-grow:1; width:100%; }
-.army-model-caption { position:absolute; bottom:9px; left:12px; font-size:10px; color:rgb(180,197,166); }
-.army-description { color:rgb(97,108,87); font-size:12px; white-space:normal; height:48px; }
-.army-current { font-size:11px; color:rgb(113,126,95); margin-top:8px; margin-bottom:10px; }
-.army-quantity { flex-direction:row; align-items:center; background-color:rgb(231,233,216); border-radius:8px; padding:6px; margin-bottom:12px; }
-.army-stepper { width:40px; height:44px; font-size:25px; color:rgb(61,80,44); background-color:rgb(248,249,237); border-width:1px; border-color:rgb(192,202,166); border-radius:6px; }
-.army-stepper:disabled { opacity:0.3; }
-.army-stepper:hover, .army-secondary:hover { background-color:rgb(210,223,181); }
-.army-quantity-value { flex-grow:1; align-items:center; }
-.army-number { font-size:28px; color:rgb(44,63,34); -unity-font-style:bold; }
-.army-number-hint { font-size:10px; color:rgb(125,138,106); }
-.army-deploy { height:40px; font-size:14px; color:rgb(245,248,231); background-color:rgb(78,99,54); border-width:0; border-radius:7px; -unity-font-style:bold; }
-.army-deploy:hover, .army-primary:hover { background-color:rgb(100,127,63); }
-.army-footer { flex-direction:row; align-items:center; padding:18px 28px; background-color:rgb(219,225,200); border-top-width:1px; border-top-color:rgb(190,200,165); }
-.army-total { font-size:19px; color:rgb(47,66,37); -unity-font-style:bold; }
-.army-footnote { font-size:11px; color:rgb(107,122,90); margin-top:5px; white-space:normal; max-width:550px; }
-.army-secondary { background-color:rgb(237,239,222); border-width:1px; border-color:rgb(179,192,150); color:rgb(73,93,51); padding:11px 20px; border-radius:7px; margin-left:10px; }
-.army-primary { background-color:rgb(67,91,43); border-width:0; color:rgb(245,247,229); padding:12px 26px; margin-left:12px; border-radius:7px; font-size:15px; -unity-font-style:bold; }
-.army-command { position:absolute; top:120px; align-self:center; flex-direction:row; align-items:center; padding:15px 20px; background-color:rgb(43,61,43); border-radius:10px; border-width:1px; border-color:rgb(147,167,103); }
-.army-command-title { font-size:18px; color:rgb(236,241,217); -unity-font-style:bold; }
-.army-command-detail { font-size:12px; color:rgb(172,191,145); margin-top:5px; }
-.compact .army-title { font-size:28px; }
-.compact .army-header { padding-top:16px; padding-bottom:14px; }
-.compact .army-card-title { font-size:20px; }
-.compact .army-stage { height:160px; }
+.army-panel { position:absolute; right:18px; top:104px; bottom:136px; width:398px; max-width:90%; background-color:rgb(18,26,35); border-radius:8px; overflow:hidden; border-width:1px; border-color:rgb(66,82,97); color:rgb(231,237,242); }
+.army-header { flex-direction:row; align-items:center; flex-shrink:0; padding:12px 16px; border-bottom-width:1px; border-bottom-color:rgb(51,66,81); }
+.army-title { color:rgb(231,237,242); font-size:24px; -unity-font-style:bold; }
+.army-close { width:44px; min-height:44px; margin:0; padding:0; border-radius:6px; background-color:rgb(37,49,62); color:rgb(224,234,242); font-size:26px; border-width:1px; border-color:rgb(77,95,110); }
+.army-toolbar { flex-direction:row; align-items:center; flex-shrink:0; padding:8px 12px; background-color:rgb(25,36,47); }
+.army-side { color:rgb(215,228,240); font-size:14px; -unity-font-style:bold; margin-right:8px; }
+.army-switch { background-color:rgb(35,49,62); color:rgb(226,238,246); border-width:1px; border-color:rgb(79,104,124); border-radius:6px; padding:8px; margin:0; font-size:12px; min-height:44px; }
+.army-scroll { flex-grow:1; flex-shrink:1; min-height:0; }
+.army-cards { padding:12px 12px 0; }
+.army-card { flex-direction:row; flex-shrink:0; margin-bottom:12px; padding:12px; background-color:rgb(25,36,47); border-radius:8px; border-width:1px; border-color:rgb(53,71,88); }
+.army-stage { width:104px; height:116px; flex-shrink:0; background-color:rgb(13,22,31); border-radius:6px; overflow:hidden; margin-right:12px; }
+.army-model { width:100%; height:100%; }
+.army-card-details { flex-grow:1; min-width:0; }
+.army-card-title { color:rgb(230,238,245); font-size:18px; -unity-font-style:bold; white-space:normal; margin:0; padding:0; }
+.army-troop-name { font-size:12px; color:rgb(168,188,204); margin:4px 0; white-space:normal; }
+.army-current { font-size:12px; color:rgb(181,199,211); margin:4px 0 8px; padding:0; white-space:normal; }
+.army-deploy { min-height:44px; margin:0; padding:8px; font-size:14px; color:rgb(226,238,246); background-color:rgb(35,49,62); border-width:1px; border-color:rgb(79,104,124); border-radius:6px; }
+.army-deploy:hover, .army-switch:hover, .army-secondary:hover { background-color:rgb(51,72,90); }
+.army-footer { flex-shrink:0; padding:12px 16px; background-color:rgb(21,31,41); border-top-width:1px; border-top-color:rgb(58,77,93); }
+.army-footnote { font-size:12px; color:rgb(164,184,200); margin-top:4px; white-space:normal; }
+.army-command { position:absolute; left:18px; right:434px; top:104px; flex-direction:row; align-items:center; padding:12px; background-color:rgb(21,31,41); border-radius:8px; border-width:1px; border-color:rgb(115,163,188); }
+.army-command-title { font-size:18px; color:rgb(231,237,242); -unity-font-style:bold; white-space:normal; }
+.army-command-detail { font-size:12px; color:rgb(168,188,204); margin-top:4px; white-space:normal; }
+.army-secondary { background-color:rgb(35,49,62); border-width:1px; border-color:rgb(79,104,124); color:rgb(226,238,246); min-height:44px; padding:8px 16px; border-radius:6px; margin-left:12px; }
+.army-card-selected { border-color:rgb(139,193,216); background-color:rgb(32,49,64); }
+
+/* Camp selection and unit management share the same compact right drawer. */
+.army-manage { min-height:36px; margin:6px 0 0; border-width:1px; border-color:rgb(85,110,103); border-radius:5px; background-color:rgb(30,49,47); color:rgb(220,230,220); font-size:12px; white-space:normal; }
+.army-manager-title { font-size:21px; color:rgb(231,237,225); -unity-font-style:bold; white-space:normal; }
+.army-manager-body { padding:12px; }
+.army-summary { padding:12px; margin-bottom:12px; background-color:rgb(30,46,44); border-width:1px; border-color:rgb(87,107,91); border-radius:6px; }
+.army-summary-count { font-size:21px; color:rgb(223,226,191); -unity-font-style:bold; }
+.army-status-line { color:rgb(205,219,211); font-size:13px; margin:2px 0; white-space:normal; }
+.army-type-tab { flex-grow:1; min-height:40px; margin-left:6px; padding:5px; color:rgb(202,219,212); border-radius:5px; background-color:rgb(32,48,47); border-width:1px; border-color:rgb(65,89,81); }
+.army-active-tab { border-color:rgb(189,194,143); background-color:rgb(64,77,63); color:rgb(237,238,213); }
+.army-unit-card { flex-shrink:0; padding:12px; margin-bottom:10px; background-color:rgb(24,37,39); border-radius:6px; border-width:1px; border-color:rgb(64,84,80); }
+.army-unit-title { font-size:15px; -unity-font-style:bold; color:rgb(227,235,226); white-space:normal; }
+.army-unit-actions { flex-direction:row; flex-wrap:wrap; margin-top:8px; }
+.army-unit-action, .army-unit-delete { width:47%; min-height:38px; margin:3px; font-size:12px; border-width:1px; border-color:rgb(82,107,96); border-radius:4px; background-color:rgb(37,55,51); color:rgb(218,230,222); }
+.army-unit-delete { border-color:rgb(129,79,72); background-color:rgb(66,41,39); color:rgb(239,198,182); }
+.army-manage:hover, .army-unit-action:hover, .army-type-tab:hover { background-color:rgb(57,77,63); }
+.army-unit-delete:hover { background-color:rgb(100,50,42); }
+.army-health { height:12px; margin:0 0 6px; }
+.army-health .unity-progress-bar__background { background-color:rgb(43,58,53); border-width:0; }
+.army-health .unity-progress-bar__progress { background-color:rgb(137,170,105); }
+.army-empty { font-size:14px; color:rgb(176,195,183); white-space:normal; padding:20px 6px; }

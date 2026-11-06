@@ -24,6 +24,10 @@ namespace Qiongtu.Sandbox
         public float x;
         public float z;
         public string status;
+        // maxHealth == 0 means unavailable, including old saves; never infer full health.
+        public int health;
+        public int maxHealth;
+        public string barracksId; // Optional for pre-barracks saves and initial demo units.
 
         /// <summary>创建无共享引用的单位显示副本。</summary>
         /// <returns>可供角色投影使用的新单位对象。</returns>
@@ -75,6 +79,7 @@ namespace Qiongtu.Sandbox
         public int step;
         public int revision = 1;
         public string taskType;
+        public SandboxBarracksData[] barracks = new SandboxBarracksData[0];
         public SandboxUnitData[] units;
         public SandboxPlanData redPlan;
         public SandboxPlanData bluePlan;
@@ -89,6 +94,7 @@ namespace Qiongtu.Sandbox
         public int step;
         public int revision;
         public string taskType;
+        public SandboxBarracksData[] barracks = new SandboxBarracksData[0];
         public SandboxUnitData[] units;
         public SandboxPlanData ownPlan;
         public string waitingSummary;
@@ -139,6 +145,7 @@ namespace Qiongtu.Sandbox
                 step = session.step,
                 revision = session.revision,
                 taskType = session.taskType,
+                barracks = session.barracks.Where(camp => role == SandboxRole.Host || camp.side == role).Select(camp => camp.Copy()).ToArray(),
                 units = session.units.Where(unit => role == SandboxRole.Host || unit.side == role).Select(unit => unit.Copy()).ToArray(),
                 ownPlan = role == SandboxRole.Host ? null : GetPlan(role).Copy(),
                 waitingSummary = GetWaitingSummary(),
@@ -289,24 +296,23 @@ namespace Qiongtu.Sandbox
         {
             if (data == null || data.schemaVersion != 1) return "不支持的前端存档版本";
             if (!Guid.TryParse(data.sessionId, out _) || !ValidText(data.title, 60) || !TaskTypes.Contains(data.taskType)) return "存档标识或任务字段无效";
-            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || (data.units.Length < 6 || data.units.Length > 60) || data.records == null) return "存档状态不完整";
+            if (data.step < 0 || data.step > 60 || data.revision < 1 || data.units == null || data.records == null) return "存档状态不完整";
+            if (data.units.Length > MaxArmyUnits) return "红蓝双方地图总计最多 10 个单位，存档超出当前部署上限";
+            string barracksError = ValidateBarracks(data);
+            if (barracksError.Length > 0) return barracksError;
             var identities = new HashSet<string>();
             foreach (SandboxUnitData unit in data.units)
             {
                 if (unit == null || !ValidText(unit.id, 40) || !identities.Add(unit.id)
                     || !ValidArmyIdentity(unit)
                     || !ValidText(unit.name, 60) || !ValidText(unit.status, 60)
+                    || unit.health < 0 || unit.maxHealth < 0 || unit.health > unit.maxHealth
                     || float.IsNaN(unit.x) || float.IsInfinity(unit.x) || unit.x < 0 || unit.x > 120
                     || float.IsNaN(unit.z) || float.IsInfinity(unit.z) || unit.z < 0 || unit.z > 80)
                     return "存档单位身份或坐标无效";
             }
             foreach (SandboxRole side in new[] { SandboxRole.Red, SandboxRole.Blue })
             {
-                foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
-                {
-                    int count = data.units.Count(unit => unit.side == side && unit.type == type);
-                    if (count < 1 || count > 10) return "每方每类单位须为 1–10 个";
-                }
                 SandboxPlanData plan = side == SandboxRole.Red ? data.redPlan : data.bluePlan;
                 if (plan == null || plan.side != side || plan.version < 1 || !Enum.IsDefined(typeof(SandboxPlanStatus), plan.status)
                     || plan.resourceAllowance < 0 || plan.resourceAllowance > 20 || !ValidText(plan.priority, 120)
@@ -361,6 +367,7 @@ namespace Qiongtu.Sandbox
             {
                 schemaVersion = data.schemaVersion, sessionId = data.sessionId, title = data.title,
                 step = data.step, revision = data.revision, taskType = data.taskType,
+                barracks = (data.barracks ?? new SandboxBarracksData[0]).Select(camp => camp.Copy()).ToArray(),
                 units = data.units.Select(unit => unit.Copy()).ToArray(), redPlan = data.redPlan.Copy(), bluePlan = data.bluePlan.Copy(),
                 records = data.records.Select(record => record.Copy()).ToList()
             };

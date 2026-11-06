@@ -32,6 +32,7 @@ namespace Qiongtu.Sandbox
         private bool routesVisible = true;
         private bool facilitiesVisible = true;
         private Action modalAction;
+        private Label groundProjectionLabel;
         private readonly Dictionary<string, Label> mapLabels = new Dictionary<string, Label>();
 
         /// <summary>连接场景、相机和数据适配器，创建原生 UI Toolkit 文档。</summary>
@@ -67,13 +68,17 @@ namespace Qiongtu.Sandbox
             root.style.unityFontDefinition = FontDefinition.FromFont(runtimeFont);
             root.RegisterCallback<GeometryChangedEvent>(_ => root.EnableInClassList("compact", root.resolvedStyle.width < 1450));
             cameraRig.IsPointerOverUi = IsPointerOverUi;
-            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null;
+            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null;
             cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null;
             cameraRig.MapClicked += HandleArmyMapClick;
             root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxArmy"));
             BindButton("armyAction", OpenArmy);
-            root.Q<Button>("armyAction").tooltip = "配置军队、调整数量与地图部署";
+            var barracksIcon = root.Q<VisualElement>(className: "army-icon");
+            barracksIcon.style.backgroundImage = new StyleBackground(Resources.Load<Texture2D>("Army/infantry-barracks-card"));
+            barracksIcon.style.unityBackgroundImageTintColor = Color.white;
+            root.Q<Button>("armyAction").tooltip = "选择兵种并在地图上放置兵营";
             cameraRig.UnitSelected += SelectUnit;
+            cameraRig.BarracksSelected += SelectBarracks;
             cameraRig.ViewChanged += UpdateCameraButton;
             BindButton("redRole", () => ChangeRole(SandboxRole.Red));
             BindButton("blueRole", () => ChangeRole(SandboxRole.Blue));
@@ -97,24 +102,27 @@ namespace Qiongtu.Sandbox
             BindButton("confirmModalButton", ConfirmModal);
             BindButton("cancelModalButton", CloseModal);
             root.RegisterCallback<KeyDownEvent>(HandleModalKeyboard, TrickleDown.TrickleDown);
+            InitializeSettings();
+            InitializeServerSync();
             RefreshProjection();
         }
 
         /// <summary>读取并同步同一版本的三维对象、HUD 与操作能力。</summary>
         private void RefreshProjection()
         {
-            projection = source.GetProjection(role);
-            world.ApplyProjection(projection);
+            projection = serverMode ? ServerProjection() : source.GetProjection(role);
+            if (serverMode) role = projection.role;
+            world.ApplyProjection(projection, serverMode);
             RebuildMapLabels();
             if (!projection.units.Any(unit => unit.id == selectedId)) selectedId = projection.units.FirstOrDefault()?.id;
             world.Select(selectedId);
             SetText("sessionTitle", projection.title);
-            SetText("sourceLabel", source.SourceLabel);
+            SetText("sourceLabel", serverMode ? serverClient.Status : source.SourceLabel);
             SetText("roleCaption", RoleLabel(role));
             SetText("taskName", projection.taskType);
             SetText("taskDescription", TaskDescription(projection.taskType));
             SetText("stepLabel", projection.step.ToString("00") + " / 60");
-            string phase = projection.step >= 60 ? "截止步 · 演示结束" : projection.waitingSummary.Length > 0 ? "等待 " + projection.waitingSummary : playing ? "演示播放中" : "演示已暂停";
+            string phase = serverMode ? ServerPhaseLabel() : projection.step >= 60 ? "截止步 · 演示结束" : projection.waitingSummary.Length > 0 ? "等待 " + projection.waitingSummary : playing ? "演示播放中" : "演示已暂停";
             SetText("phaseLabel", phase);
             SandboxUnitData selected = projection.units.FirstOrDefault(unit => unit.id == selectedId);
             SetText("selectedSummary", selected != null ? selected.id + "  ·  " + selected.name : "尚未选择单位");
@@ -131,12 +139,16 @@ namespace Qiongtu.Sandbox
             foreach (SandboxRole candidate in Enum.GetValues(typeof(SandboxRole)))
                 root.Q<Button>(candidate == SandboxRole.Red ? "redRole" : candidate == SandboxRole.Blue ? "blueRole" : "hostRole").EnableInClassList("selected-role", role == candidate);
             UpdateCameraButton();
+            if (serverMode) RefreshServerControls();
+            if (armyOverlay != null && managedArmyType.HasValue) RenderArmy();
         }
 
         /// <summary>清理旧角色私有对象、草稿和相机目标后切换角色。</summary>
         private void ChangeRole(SandboxRole next)
         {
             if (next == role) return;
+            if (settingsOverlay != null) { RequestCloseSettings(() => ChangeRole(next)); return; }
+            if (serverMode) { BeginServerConnection(next); return; }
             CloseArmy(); CancelArmyCommand();
             PausePlayback();
             CloseModal();
@@ -153,6 +165,7 @@ namespace Qiongtu.Sandbox
         /// <summary>只允许选择当前投影内的单位。</summary>
         private void SelectUnit(string unitId)
         {
+            if (settingsOverlay != null) { RequestCloseSettings(() => SelectUnit(unitId)); return; }
             if (unitId == null || !projection.units.Any(unit => unit.id == unitId)) return;
             selectedId = unitId;
             if (cameraRig.IsFollowing) cameraRig.Follow(selectedId);
@@ -160,12 +173,13 @@ namespace Qiongtu.Sandbox
             SandboxUnitData selected = projection.units.FirstOrDefault(unit => unit.id == selectedId);
             SetText("selectedSummary", selected == null ? "尚未选择单位" : selected.id + "  ·  " + selected.name);
             UpdateCameraButton();
-            ShowPanel("units");
+            if (!serverMode) OpenArmyManagement(selected.side, selected.type);
         }
 
         /// <summary>展开或关闭同一抽屉，避免同时遮挡地图。</summary>
         private void TogglePanel(string panel)
         {
+            if (panel == "units" && !serverMode) { OpenSelectedArmyManagement(); return; }
             if (activePanel == panel) ClosePanel();
             else ShowPanel(panel);
         }
@@ -173,6 +187,8 @@ namespace Qiongtu.Sandbox
         /// <summary>创建指定功能面板并暂停本地演示播放。</summary>
         private void ShowPanel(string panel)
         {
+            if (panel == "units" && !serverMode) { OpenSelectedArmyManagement(); return; }
+            if (settingsOverlay != null) { RequestCloseSettings(() => ShowPanel(panel)); return; }
             CloseArmy(); CancelArmyCommand();
             PausePlayback();
             activePanel = panel;
@@ -226,6 +242,11 @@ namespace Qiongtu.Sandbox
                     AddText(card, unit.id + "  " + unit.name, "detail-title");
                     AddText(card, SideLabel(unit.side) + " · " + unit.status, "detail-line");
                     AddText(card, "平面坐标 X " + unit.x.ToString("0.0") + " / Z " + unit.z.ToString("0.0"), "detail-line");
+                    if (serverMode && serverClient.View?.spatial_test == true)
+                    {
+                        SandboxServerUnit fact = serverClient.View.units.First(candidate => candidate.unit_id == unit.id);
+                        AddText(card, string.IsNullOrEmpty(fact.camp_id) ? "尚未提交测试兵营与资源" : "测试能源 " + fact.energy.ToString("0.###") + " · 补给 " + fact.supply + " · 耐久 " + fact.durability + "\n兵营 " + fact.camp_id + " · 编队 " + fact.formation_id, "detail-line");
+                    }
                     var actions = new VisualElement();
                     actions.AddToClassList("action-row");
                     card.Add(actions);
@@ -241,6 +262,7 @@ namespace Qiongtu.Sandbox
         /// <summary>展示当前任务、三节点与前端尚未获得的业务事实。</summary>
         private void BuildTasksPanel()
         {
+            if (serverMode) { BuildServerTasks(); return; }
             SetText("drawerTitle", "任务与协作");
             AddText(drawerContent, projection.taskType, "section-title");
             AddText(drawerContent, TaskDescription(projection.taskType), "body-text");
@@ -262,6 +284,7 @@ namespace Qiongtu.Sandbox
         /// <summary>绑定本方建议草稿，主持人仅看到双方等待摘要。</summary>
         private void BuildPlanPanel()
         {
+            if (serverMode) { BuildServerPlan(); return; }
             SetText("drawerTitle", "建议与人工确认");
             if (role == SandboxRole.Host)
             {
@@ -315,8 +338,10 @@ namespace Qiongtu.Sandbox
         /// <summary>展示主持人事件预览并以输入与修订共同限制登记。</summary>
         private void BuildEventsPanel()
         {
+            if (serverMode) { BuildServerEvents(); return; }
             SetText("drawerTitle", "事件预览与登记");
             if (role != SandboxRole.Host) { AddText(drawerContent, "只有主持人可以注入事件。", "body-text"); return; }
+            if (projection.units.Length == 0) { AddText(drawerContent, "地图暂无可选单位；等待仿真从兵营派出单位后再登记事件。", "empty-message"); return; }
             var eventType = new DropdownField("事件类型", DemoSandboxViewSource.EventTypes.ToList(), 0);
             var target = new DropdownField("影响单位", projection.units.Select(unit => unit.id).ToList(), 0);
             eventType.AddToClassList("field");
@@ -361,7 +386,7 @@ namespace Qiongtu.Sandbox
         private void BuildTimelinePanel()
         {
             SetText("drawerTitle", "本次演示时间线");
-            AddText(drawerContent, "仅记录本地操作及来源明确的样例。不把记录登记当作仿真执行完成。", "body-text");
+            AddText(drawerContent, serverMode ? "来自数据库，与当前地图同一快照头内最近一百条可见记录。" : "仅记录本地操作及来源明确的样例。不把记录登记当作仿真执行完成。", "body-text");
             foreach (SandboxRecord record in projection.records.Reverse())
             {
                 var card = new VisualElement();
@@ -369,13 +394,14 @@ namespace Qiongtu.Sandbox
                 drawerContent.Add(card);
                 AddText(card, "T+" + record.step.ToString("00") + "  " + record.title, "detail-title");
                 AddText(card, record.detail, "detail-line");
-                AddText(card, record.isPublic ? "公开记录" : SideLabel(record.side) + "记录", "muted");
+                AddText(card, serverMode ? "后端可见记录" : record.isPublic ? "公开记录" : SideLabel(record.side) + "记录", "muted");
             }
         }
 
         /// <summary>提供本机前端快照保存、目录读取与明确恢复确认。</summary>
         private void BuildSavesPanel()
         {
+            if (serverMode) { BuildServerStorageNotice(); return; }
             SetText("drawerTitle", Application.platform == RuntimePlatform.WebGLPlayer ? "浏览器前端存档" : "本机前端存档");
             AddText(drawerContent, "保存双方演示状态与操作记录。它不包含正式仿真数据库、AI 检查点或 Unity 相机状态。", "body-text");
             if (Application.platform == RuntimePlatform.WebGLPlayer)
@@ -438,6 +464,7 @@ namespace Qiongtu.Sandbox
                 }
                 Notify(message);
             };
+            root.Q("modalBackdrop").BringToFront();
             root.Q("modalBackdrop").RemoveFromClassList("hidden");
             root.Q<Button>("cancelModalButton").Focus();
         }
@@ -463,6 +490,7 @@ namespace Qiongtu.Sandbox
                 Application.Quit();
 #endif
             };
+            root.Q("modalBackdrop").BringToFront();
             root.Q("modalBackdrop").RemoveFromClassList("hidden");
             root.Q<Button>("cancelModalButton").Focus();
         }
@@ -498,6 +526,7 @@ namespace Qiongtu.Sandbox
         /// <summary>开始或暂停明确标注的前端演示播放。</summary>
         private void TogglePlayback()
         {
+            if (serverMode) { SendServerCommand(serverClient.View?.clock.phase == "running" ? "pause" : "continue"); return; }
             if (playing) { PausePlayback(); return; }
             string blocker = source.GetAdvanceBlocker(role);
             if (blocker.Length > 0) { Notify(blocker); return; }
@@ -510,6 +539,7 @@ namespace Qiongtu.Sandbox
         /// <summary>停止本地计时，不影响当前建议状态。</summary>
         private void PausePlayback()
         {
+            if (serverMode) return;
             playing = false;
             if (source != null && root != null) RefreshProjection();
         }
@@ -517,6 +547,7 @@ namespace Qiongtu.Sandbox
         /// <summary>通过同一适配器推进一个演示步。</summary>
         private void Advance()
         {
+            if (serverMode) { SendServerCommand("advance_step"); return; }
             if (source.TryAdvance(role, out string message))
             {
                 if (source.Current.step == 60) playing = false;
@@ -560,7 +591,7 @@ namespace Qiongtu.Sandbox
         private void Update()
         {
             if (root == null) return;
-            if (playing && Time.unscaledTime >= nextFrameAt)
+            if (!serverMode && playing && Time.unscaledTime >= nextFrameAt)
             {
                 Advance();
                 nextFrameAt = Time.unscaledTime + 2;
@@ -572,15 +603,21 @@ namespace Qiongtu.Sandbox
             }
             Keyboard keyboard = Keyboard.current;
             if (keyboard == null) return;
+            if (connectionOverlay != null)
+            {
+                if (keyboard.escapeKey.wasPressedThisFrame) { connectionOverlay.RemoveFromHierarchy(); connectionOverlay = null; }
+                return;
+            }
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
-                if (armyOverlay != null) CloseArmy();
+                if (modalAction != null) CloseModal();
+                else if (settingsOverlay != null) RequestCloseSettings();
+                else if (armyOverlay != null) { CloseArmy(); CancelArmyCommand(); }
                 else if (pendingArmyType.HasValue || pendingMoveId != null) CancelArmyCommand();
-                else if (modalAction != null) CloseModal();
                 else if (activePanel != null) ClosePanel();
                 else cameraRig.ReturnToOverview();
             }
-            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null) ToggleFollow();
+            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null && settingsOverlay == null) ToggleFollow();
         }
 
         /// <summary>失焦后停止播放，避免后台继续推进演示。</summary>
@@ -595,18 +632,43 @@ namespace Qiongtu.Sandbox
             VisualElement annotations = root.Q("mapAnnotations");
             annotations.Clear();
             mapLabels.Clear();
+            groundProjectionLabel = new Label { name = "unit-ground-projection", pickingMode = PickingMode.Ignore };
+            groundProjectionLabel.AddToClassList("map-label");
+            groundProjectionLabel.style.display = DisplayStyle.None;
+            annotations.Add(groundProjectionLabel);
             foreach (SandboxUnitData unit in projection.units)
             {
-                var label = new Label(unit.id) { pickingMode = PickingMode.Ignore };
+                var label = new Label(serverMode ? ServerUnitLabel(unit.id) : unit.id) { pickingMode = PickingMode.Ignore };
                 label.AddToClassList("map-label");
                 label.AddToClassList(unit.side == SandboxRole.Red ? "red-text" : "blue-text");
                 annotations.Add(label);
                 mapLabels.Add(unit.id, label);
             }
+            foreach (SandboxBarracksData camp in projection.barracks ?? Array.Empty<SandboxBarracksData>())
+            {
+                string buildingName = camp.type == SandboxUnitType.Support ? "补给站" : DemoSandboxViewSource.BarracksName(camp.type);
+                var label = new Label((camp.side == SandboxRole.Red ? "红方" : "蓝方") + buildingName)
+                {
+                    name = "barracks-label-" + camp.id,
+                    pickingMode = PickingMode.Ignore
+                };
+                label.AddToClassList("map-label");
+                label.AddToClassList("barracks-map-label");
+                label.AddToClassList(camp.side == SandboxRole.Red ? "red-text" : "blue-text");
+                annotations.Add(label);
+                mapLabels.Add(camp.id, label);
+            }
             foreach (SandboxMapPoint point in world.MapPoints)
             {
                 var label = new Label(point.name) { pickingMode = PickingMode.Ignore };
                 label.AddToClassList("map-label");
+                if (point.kind == "capture") label.AddToClassList("capture-point");
+                if (point.kind == "deployment_red" || point.kind == "deployment_blue")
+                {
+                    label.AddToClassList("deployment-zone");
+                    label.AddToClassList(point.kind == "deployment_red" ? "red-text" : "blue-text");
+                    label.tooltip = "兵营完整占地须位于本方部署区内，具体位置还须通过地形、建筑和道路检查。";
+                }
                 annotations.Add(label);
                 mapLabels.Add(point.id, label);
             }
@@ -616,20 +678,50 @@ namespace Qiongtu.Sandbox
         private void LateUpdate()
         {
             if (root?.panel == null) return;
+            UpdateGroundProjectionLabel();
             foreach (KeyValuePair<string, Label> pair in mapLabels)
             {
                 Transform unit = world.FindUnit(pair.Key);
-                SandboxMapPoint point = unit == null ? world.MapPoints.FirstOrDefault(candidate => candidate.id == pair.Key) : null;
-                if (unit == null && (point == null || !world.FacilitiesVisible)) { pair.Value.style.display = DisplayStyle.None; continue; }
-                Vector3 position = unit != null ? unit.position + Vector3.up * 2.3f : SandboxWorld.Surface(point.x, point.z) + Vector3.up * (point.kind == "camp" || point.kind == "facility" || point.kind == "task" ? 4 : 2);
+                Transform camp = unit == null ? world.FindBarracks(pair.Key) : null;
+                SandboxMapPoint point = unit == null && camp == null ? world.MapPoints.FirstOrDefault(candidate => candidate.id == pair.Key) : null;
+                if (unit == null && camp == null && (point == null || !world.FacilitiesVisible)) { pair.Value.style.display = DisplayStyle.None; continue; }
+                bool deploymentPoint = point != null && (point.kind == "deployment_red" || point.kind == "deployment_blue");
+                // 动态兵营不属于公共设施图层；标签锚点高于放大后建筑的旗杆。
+                Vector3 position = unit != null ? unit.GetComponent<SandboxUnitView>().MapLabelPosition
+                    : camp != null ? camp.position + Vector3.up * (9f * SandboxArmyLayout.ModelScale)
+                    : SandboxWorld.Surface(point.x, point.z) + Vector3.up * (point.kind == "capture" || deploymentPoint ? 36 : point.kind == "camp" || point.kind == "facility" || point.kind == "task" ? 4 : 2);
                 Vector3 screen = cameraRig.WorldToScreen(position);
                 Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(screen.x, Screen.height - screen.y));
                 bool visible = screen.z > 0 && panelPosition.x > 0 && panelPosition.x < root.resolvedStyle.width && panelPosition.y > 16 && panelPosition.y < root.resolvedStyle.height - 120;
                 pair.Value.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
                 if (!visible) continue;
-                pair.Value.style.left = panelPosition.x - 30;
-                pair.Value.style.top = panelPosition.y;
+                float labelWidth = float.IsNaN(pair.Value.resolvedStyle.width) ? 0 : pair.Value.resolvedStyle.width;
+                float labelHeight = float.IsNaN(pair.Value.resolvedStyle.height) ? 0 : pair.Value.resolvedStyle.height;
+                float labelLeft = panelPosition.x - (camp != null || point != null && (point.kind == "capture" || deploymentPoint) ? labelWidth / 2 : 30);
+                pair.Value.style.left = deploymentPoint ? Mathf.Clamp(labelLeft, 8, Mathf.Max(8, root.resolvedStyle.width - labelWidth - 8)) : labelLeft;
+                pair.Value.style.top = deploymentPoint ? Mathf.Max(16, panelPosition.y - labelHeight - 6)
+                    : panelPosition.y - (camp != null || unit != null ? labelHeight + (unit != null ? 8 : 0) : 0);
             }
+        }
+
+        private void UpdateGroundProjectionLabel()
+        {
+            if (groundProjectionLabel == null) return;
+            var selected = projection.units.FirstOrDefault(unit => unit.id == selectedId);
+            Transform target = selected != null ? world.FindUnit(selectedId) : null;
+            bool visible = target != null && target.GetComponent<SandboxUnitView>().IsAirborne;
+            groundProjectionLabel.style.display = DisplayStyle.None;
+            if (!visible || !world.TryBusinessPosition(target.position, out Vector2 point)) return;
+            Vector3 screen = cameraRig.WorldToScreen(SandboxWorld.Surface(target.position.x, target.position.z));
+            Vector2 panel = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(screen.x, Screen.height - screen.y));
+            if (screen.z <= 0 || panel.x < 16 || panel.x > root.resolvedStyle.width - 180
+                || panel.y < 180 || panel.y > root.resolvedStyle.height - 160) return;
+            groundProjectionLabel.text = "地面投影 · X " + point.x.ToString("0.00") + " / Z " + point.y.ToString("0.00");
+            groundProjectionLabel.EnableInClassList("red-text", selected.side == SandboxRole.Red);
+            groundProjectionLabel.EnableInClassList("blue-text", selected.side == SandboxRole.Blue);
+            groundProjectionLabel.style.left = panel.x + 12;
+            groundProjectionLabel.style.top = panel.y + 12;
+            groundProjectionLabel.style.display = DisplayStyle.Flex;
         }
 
         /// <summary>追加具有完整文字说明的表单字段。</summary>
@@ -701,9 +793,12 @@ namespace Qiongtu.Sandbox
         private void OnDestroy()
         {
             playing = false;
+            CancelHealthCheck();
             if (cameraRig != null)
             {
                 cameraRig.UnitSelected -= SelectUnit;
+                cameraRig.BarracksSelected -= SelectBarracks;
+                cameraRig.MapClicked -= HandleArmyMapClick;
                 cameraRig.ViewChanged -= UpdateCameraButton;
                 cameraRig.IsPointerOverUi = null;
                 cameraRig.IsEditingUi = null;

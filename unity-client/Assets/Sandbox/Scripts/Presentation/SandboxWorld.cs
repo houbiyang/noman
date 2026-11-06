@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,10 +13,31 @@ namespace Qiongtu.Sandbox
         private readonly List<Material> ownedMaterials = new List<Material>();
         private readonly List<Mesh> ownedMeshes = new List<Mesh>();
         private Transform unitRoot;
+        private readonly Dictionary<string, GameObject> barracksViews = new Dictionary<string, GameObject>();
+        private LineRenderer barracksSelectionRing;
+        private SandboxBarracksData[] visibleBarracks = new SandboxBarracksData[0];
+        private readonly HashSet<string> spawnFromBarracks = new HashSet<string>();
+        public Transform FindBarracks(string id) => barracksViews.TryGetValue(id, out var camp) ? camp.transform : null;
+        public void AnimateBarracksSpawns(IEnumerable<string> ids) { foreach (string id in ids) spawnFromBarracks.Add(id); }
         private GameObject routes;
         private GameObject grid;
         private GameObject facilities;
+        private GameObject captureMarkers;
+        private GameObject deploymentMarkers;
+        private SandboxMapPoint[] mapPoints;
+        /// <summary>按两侧各两处近端目标及北、中、南三处争夺目标安排公开占点。</summary>
+        private static readonly SandboxMapPoint[] CapturePoints =
+        {
+            new SandboxMapPoint { id = "CAPTURE_A", name = "A · 西南镇", kind = "capture", x = 3000, z = 3000 },
+            new SandboxMapPoint { id = "CAPTURE_B", name = "B · 城市西区", kind = "capture", x = 4140, z = 5000 },
+            new SandboxMapPoint { id = "CAPTURE_C", name = "C · 北岸镇", kind = "capture", x = 4500, z = 8500 },
+            new SandboxMapPoint { id = "CAPTURE_D", name = "D · 中央桥西", kind = "capture", x = 5500, z = 5800 },
+            new SandboxMapPoint { id = "CAPTURE_E", name = "E · 南桥东岸", kind = "capture", x = 7350, z = 3000 },
+            new SandboxMapPoint { id = "CAPTURE_F", name = "F · 工业货场北侧", kind = "capture", x = 8200, z = 5800 },
+            new SandboxMapPoint { id = "CAPTURE_G", name = "G · 机场入口", kind = "capture", x = 8400, z = 9300 }
+        };
         private LineRenderer selectionRing;
+        private LineRenderer selectionProjection;
         private Material redMaterial;
         private Material blueMaterial;
         private Material darkMaterial;
@@ -27,7 +49,7 @@ namespace Qiongtu.Sandbox
         private readonly HashSet<string> relocated = new HashSet<string>();
 
         /// <summary>当前公开的稳定地图标记。</summary>
-        public SandboxMapPoint[] MapPoints => Definition.points;
+        public SandboxMapPoint[] MapPoints => mapPoints ?? Definition.points;
         /// <summary>实际显示地图范围，供相机取景与边界限制共用。</summary>
         public Vector2 MapSize => new Vector2(Definition.width, Definition.length);
 
@@ -62,16 +84,25 @@ namespace Qiongtu.Sandbox
             routes = mapRoot.transform.Find("routes").gameObject;
             grid = mapRoot.transform.Find("grid").gameObject;
             facilities = mapRoot.transform.Find("facilities").gameObject;
+            BuildCaptureMarkers(definition);
+            BuildDeploymentMarkers(definition);
             unitRoot = NewGroup("ProjectedUnits").transform;
             selectionRing = CreateLine("SelectionRing", unitRoot, Circle(Vector3.zero, 2.1f), 0.1f, new Color(0.89f, 0.88f, 0.56f));
             selectionRing.gameObject.SetActive(false);
+            selectionProjection = CreateLine("SelectionProjection", unitRoot, new Vector3[2], .09f, new Color(.89f, .88f, .56f));
+            selectionProjection.gameObject.SetActive(false);
+            barracksSelectionRing = CreateLine("BarracksSelectionRing", unitRoot, Circle(Vector3.zero, 15), .35f, new Color(.89f, .88f, .56f));
+            barracksSelectionRing.gameObject.SetActive(false);
         }
 
         /// <summary>按新的角色投影更新场景，移除不再允许显示的对象。</summary>
         /// <param name="projection">当前有效的角色投影。</param>
-        public void ApplyProjection(SandboxProjection projection)
+        /// <param name="authoritative">是否直接采用后端坐标，避免客户端动画改写权威位置。</param>
+        public void ApplyProjection(SandboxProjection projection, bool authoritative = false)
         {
+            bool layoutChanged = ApplyBarracks(projection.barracks ?? new SandboxBarracksData[0]);
             var allowed = new HashSet<string>();
+            int spawnIndex = 0;
             foreach (SandboxUnitData unit in projection.units)
             {
                 allowed.Add(unit.id);
@@ -79,17 +110,23 @@ namespace Qiongtu.Sandbox
                 {
                     view = BuildUnit(unit);
                     unitViews.Add(unit.id, view);
+                    if (spawnFromBarracks.Remove(unit.id))
+                    {
+                        var camp = System.Array.Find(visibleBarracks, item => item.id == unit.barracksId);
+                        if (camp != null) view.SpawnAt(ArmyPosition(camp.x, SandboxArmyLayout.ExitZ(camp.z), unit.type), spawnIndex++ * .45f);
+                    }
                 }
                 Vector3 position = ArmyPosition(unit.x, unit.z, unit.type);
-                if (relocated.Remove(unit.id)) view.Relocate(position);
-                else if (!view.HasTarget(position))
+                if (authoritative || relocated.Remove(unit.id)) view.Relocate(position);
+                else if (!view.HasTarget(position) || layoutChanged && unit.type != SandboxUnitType.Recon)
                 {
                     if (!view.HasPosition || unit.type == SandboxUnitType.Recon) view.SetTarget(position);
                     else
                     {
                         List<Vector3> path = Navigation.FindPath(view.transform.position, position);
                         // An unreachable demo target must not produce a straight line through water or buildings.
-                        if (path != null) view.SetTarget(position, path);
+                        if (path != null) view.SetTarget(position, path, layoutChanged);
+                        else if (layoutChanged) view.HoldPosition();
                     }
                 }
             }
@@ -97,11 +134,67 @@ namespace Qiongtu.Sandbox
             {
                 if (allowed.Contains(unitId)) continue;
                 // 立即禁用命中与渲染，再在帧末销毁，避免角色切换时泄露旧对象。
-                unitViews[unitId].HideRoute();
+                unitViews[unitId].ReleaseRoute();
                 unitViews[unitId].gameObject.SetActive(false);
-                Destroy(unitViews[unitId].gameObject);
+                ReleaseUnitObject(unitViews[unitId].gameObject);
                 unitViews.Remove(unitId);
             }
+        }
+
+        private bool ApplyBarracks(SandboxBarracksData[] camps)
+        {
+            bool changed = camps.Length != visibleBarracks.Length || System.Array.Exists(camps, camp => !System.Array.Exists(visibleBarracks, old => old.id == camp.id && old.x == camp.x && old.z == camp.z));
+            visibleBarracks = camps;
+            var allowed = new HashSet<string>(); var footprints = new List<Bounds>();
+            foreach (var camp in camps)
+            {
+                allowed.Add(camp.id);
+                if (!barracksViews.TryGetValue(camp.id, out var model))
+                {
+                    model = SandboxBarracksModel.Build(camp.type, camp.side == SandboxRole.Red ? redMaterial : blueMaterial, metalMaterial, darkMaterial, metalMaterial);
+                    model.name = camp.id; model.transform.SetParent(unitRoot, false); barracksViews.Add(camp.id, model);
+                    // One stable pick volume; decorative parts keep their colliders disabled.
+                    var pick = model.AddComponent<BoxCollider>();
+                    pick.center = new Vector3(0, 4, 0); pick.size = new Vector3(17, 8, 17);
+                }
+                Vector3 position = ArmyPosition(camp.x, camp.z, SandboxUnitType.Ground);
+                model.transform.position = position;
+                footprints.Add(new Bounds(position + new Vector3(0, 2, -1) * SandboxArmyLayout.ModelScale, new Vector3(14, 8, 9) * SandboxArmyLayout.ModelScale));
+            }
+            foreach (string id in new List<string>(barracksViews.Keys))
+                if (!allowed.Contains(id)) { barracksViews[id].SetActive(false); ReleaseUnitObject(barracksViews[id]); barracksViews.Remove(id); }
+            Navigation.SetBarracks(footprints);
+            return changed;
+        }
+
+        // Test terrain and the complete ten-slot rally area even for aerial units: buildings need dry ground.
+        public bool CanPlaceBarracks(SandboxUnitType type, SandboxRole side, float x, float z, out string message)
+        {
+            message = "请选择平坦空地，避开水面、建筑、单位和地图边界";
+            if (!SandboxArmyLayout.Contains(x, z)) return false;
+            string own = DemoSandboxViewSource.BarracksId(side, type);
+            Vector3 center = ArmyPosition(x, z, SandboxUnitType.Ground);
+            foreach (var camp in visibleBarracks)
+                if (camp.id != own && SandboxArmyLayout.Overlaps(x, z, camp.x, camp.z)) return false;
+            float extent = 10 * SandboxArmyLayout.ModelScale;
+            for (float dx = -extent; dx <= extent; dx += 2.5f) for (float dz = -extent; dz <= extent; dz += 2.5f)
+            {
+                Vector3 p = ArmyPosition(x + dx / SandboxArmyLayout.MetersPerX, z + dz / SandboxArmyLayout.MetersPerZ, SandboxUnitType.Ground);
+                if (!Navigation.IsTerrainWalkable(p) || Mathf.Abs(p.y - center.y) > 2.8f) return false;
+            }
+            foreach (var unit in unitViews.Values)
+            {
+                Vector3 delta = unit.transform.position - center;
+                if (Mathf.Abs(delta.x) < extent && Mathf.Abs(delta.z) < extent) return false;
+            }
+            Vector3 exit = ArmyPosition(x, SandboxArmyLayout.ExitZ(z), SandboxUnitType.Ground);
+            if (!Navigation.IsTerrainWalkable(exit)) return false;
+            for (int i = 0; i < 10; i++)
+            {
+                Vector3 rally = ArmyPosition(DemoSandboxViewSource.RallyX(x, i, 10), DemoSandboxViewSource.RallyZ(z, i), SandboxUnitType.Ground);
+                if (!Navigation.IsTerrainWalkable(rally) || type != SandboxUnitType.Recon && Navigation.FindPath(exit, rally) == null) return false;
+            }
+            message = ""; return true;
         }
 
         /// <summary>清除旧角色的对象引用及选中标记。</summary>
@@ -109,13 +202,26 @@ namespace Qiongtu.Sandbox
         {
             foreach (SandboxUnitView view in unitViews.Values)
             {
-                view.HideRoute();
+                view.ReleaseRoute();
                 view.gameObject.SetActive(false);
-                Destroy(view.gameObject);
+                ReleaseUnitObject(view.gameObject);
             }
             unitViews.Clear();
+            foreach (var camp in barracksViews.Values) { camp.SetActive(false); ReleaseUnitObject(camp); }
+            barracksViews.Clear(); visibleBarracks = new SandboxBarracksData[0]; spawnFromBarracks.Clear();
+            Navigation.SetBarracks(new List<Bounds>());
             selectionRing.gameObject.SetActive(false);
+            selectionProjection.gameObject.SetActive(false);
+            SelectBarracks(null);
             selectedUnit = null; relocated.Clear();
+        }
+
+        private static void ReleaseUnitObject(GameObject unit)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying) { DestroyImmediate(unit); return; }
+#endif
+            Destroy(unit);
         }
 
         /// <summary>查找当前允许显示的单位变换。</summary>
@@ -131,9 +237,20 @@ namespace Qiongtu.Sandbox
             foreach (var entry in unitViews) entry.Value.ShowRoute(entry.Key == unitId);
             Transform target = FindUnit(unitId);
             selectionRing.gameObject.SetActive(target != null);
+            UpdateSelectionProjection(target);
             if (target == null) return;
             Vector3 center = Surface(target.position.x, target.position.z) + Vector3.up * 0.3f;
-            selectionRing.SetPositions(Circle(center, 2.1f));
+            selectionRing.SetPositions(Circle(center, 2.1f * SandboxUnitView.ModelScale));
+        }
+
+        public string BarracksAt(Collider collider) => barracksViews.FirstOrDefault(entry => entry.Value.GetComponent<Collider>() == collider).Key;
+
+        public void SelectBarracks(string id)
+        {
+            Transform target = id != null ? FindBarracks(id) : null;
+            barracksSelectionRing.gameObject.SetActive(target != null);
+            if (target != null)
+                barracksSelectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * .5f, 15 * SandboxArmyLayout.ModelScale));
         }
 
         /// <summary>调整纯显示图层，不改变演示状态。</summary>
@@ -146,6 +263,8 @@ namespace Qiongtu.Sandbox
             if (layer == "facilities")
             {
                 FacilitiesVisible = visible;
+                captureMarkers.SetActive(visible);
+                deploymentMarkers.SetActive(visible);
                 foreach (string groupName in new[] { "markers", "settlement", "deployment", "village", "logistics", "central_village" })
                 {
                     Transform group = mapRoot.transform.Find(groupName);
@@ -154,11 +273,188 @@ namespace Qiongtu.Sandbox
             }
         }
 
+        /// <summary>叠加七处公开占点的边界，不生成占领归属、进度或计分状态。</summary>
+        /// <param name="definition">当前米制地图，原有设施和任务标记保持原样。</param>
+        private void BuildCaptureMarkers(SandboxMapData definition)
+        {
+            captureMarkers = NewGroup("CaptureMarkers");
+            mapPoints = new SandboxMapPoint[definition.points.Length + CapturePoints.Length + definition.deploymentZones.Length];
+            Array.Copy(definition.points, mapPoints, definition.points.Length);
+            Array.Copy(CapturePoints, 0, mapPoints, definition.points.Length, CapturePoints.Length);
+            foreach (SandboxMapPoint point in CapturePoints)
+            {
+                Vector3[] boundary = CaptureBoundary(point, 200);
+                CreateLine(point.id + "Outline", captureMarkers.transform, boundary, 12, new Color(0.12f, 0.15f, 0.12f));
+                LineRenderer ring = CreateLine(point.id, captureMarkers.transform, boundary, 6, new Color(0.91f, 0.82f, 0.47f));
+                ring.sharedMaterial.EnableKeyword("_EMISSION");
+                ring.sharedMaterial.SetColor("_EmissionColor", new Color(0.45f, 0.36f, 0.12f));
+                ring.sortingOrder = 1;
+            }
+        }
+
+        /// <summary>逐点采样占点边界高度，使圆圈沿地形表面连续显示。</summary>
+        /// <param name="point">占点中心及其稳定身份。</param>
+        /// <param name="radius">显示半径，单位为米，不作为后端判定范围。</param>
+        /// <returns>包含重复首尾顶点的闭合边界。</returns>
+        private static Vector3[] CaptureBoundary(SandboxMapPoint point, float radius)
+        {
+            var boundary = new Vector3[97];
+            for (int index = 0; index < boundary.Length; index++)
+            {
+                float angle = index * Mathf.PI * 2 / (boundary.Length - 1);
+                boundary[index] = Surface(point.x + Mathf.Cos(angle) * radius, point.z + Mathf.Sin(angle) * radius) + Vector3.up * 6;
+            }
+            return boundary;
+        }
+
+        /// <summary>从后端共用的地图定义标注双方兵营部署范围，不另建一套坐标边界。</summary>
+        /// <param name="definition">包含双方部署矩形的当前地图定义。</param>
+        private void BuildDeploymentMarkers(SandboxMapData definition)
+        {
+            deploymentMarkers = NewGroup("DeploymentMarkers");
+            for (int index = 0; index < definition.deploymentZones.Length; index++)
+            {
+                SandboxDeploymentZone zone = definition.deploymentZones[index];
+                bool redSide = zone.side == "red";
+                Color color = redSide ? new Color(0.95f, 0.36f, 0.25f) : new Color(0.28f, 0.65f, 0.96f);
+                Vector3[] boundary = DeploymentBoundary(zone);
+                CreateLine(zone.id + "Outline", deploymentMarkers.transform, boundary, 24, new Color(0.1f, 0.13f, 0.13f));
+                LineRenderer border = CreateLine(zone.id + "Border", deploymentMarkers.transform, boundary, 12, color);
+                border.sharedMaterial.EnableKeyword("_EMISSION");
+                border.sharedMaterial.SetColor("_EmissionColor", color * 0.5f);
+                border.sortingOrder = 1;
+                BuildDeploymentFill(zone, color);
+                mapPoints[definition.points.Length + CapturePoints.Length + index] = new SandboxMapPoint
+                {
+                    id = zone.id + "_LABEL",
+                    name = (redSide ? "红方" : "蓝方") + "兵营部署区\n" + (zone.maxX - zone.minX).ToString("0")
+                        + " × " + (zone.maxZ - zone.minZ).ToString("0") + " m",
+                    kind = redSide ? "deployment_red" : "deployment_blue",
+                    x = (zone.minX + zone.maxX) / 2,
+                    z = (zone.minZ + zone.maxZ) / 2
+                };
+            }
+        }
+
+        /// <summary>沿矩形四边逐段贴地采样，使范围线随真实显示地形起伏。</summary>
+        /// <param name="zone">地图已有的部署矩形。</param>
+        /// <returns>按顺序闭合的边界顶点，不参与业务碰撞。</returns>
+        private static Vector3[] DeploymentBoundary(SandboxDeploymentZone zone)
+        {
+            var corners = new[]
+            {
+                new Vector2(zone.minX, zone.minZ), new Vector2(zone.maxX, zone.minZ),
+                new Vector2(zone.maxX, zone.maxZ), new Vector2(zone.minX, zone.maxZ)
+            };
+            var boundary = new List<Vector3>();
+            for (int side = 0; side < corners.Length; side++)
+            {
+                Vector2 start = corners[side];
+                Vector2 end = corners[(side + 1) % corners.Length];
+                int segments = Mathf.CeilToInt(Vector2.Distance(start, end) / 50);
+                for (int segment = 0; segment < segments; segment++)
+                {
+                    Vector2 position = Vector2.Lerp(start, end, (float)segment / segments);
+                    boundary.Add(Surface(position.x, position.y) + Vector3.up * 9);
+                }
+            }
+            boundary.Add(boundary[0]);
+            return boundary.ToArray();
+        }
+
+        /// <summary>使用已有透明材质绘制贴地浅色填充，不为部署区增加碰撞或通行规则。</summary>
+        /// <param name="zone">与后端共用的部署矩形。</param>
+        /// <param name="color">对应阵营的基础颜色。</param>
+        private void BuildDeploymentFill(SandboxDeploymentZone zone, Color color)
+        {
+            int columns = Mathf.CeilToInt((zone.maxX - zone.minX) / 50);
+            int rows = Mathf.CeilToInt((zone.maxZ - zone.minZ) / 50);
+            var vertices = new Vector3[(columns + 1) * (rows + 1)];
+            var triangles = new int[columns * rows * 6];
+            for (int row = 0; row <= rows; row++)
+            {
+                for (int column = 0; column <= columns; column++)
+                {
+                    float positionX = Mathf.Lerp(zone.minX, zone.maxX, (float)column / columns);
+                    float positionZ = Mathf.Lerp(zone.minZ, zone.maxZ, (float)row / rows);
+                    vertices[row * (columns + 1) + column] = Surface(positionX, positionZ) + Vector3.up * 2;
+                    if (row == rows || column == columns) continue;
+                    int lowerLeft = row * (columns + 1) + column;
+                    int upperLeft = lowerLeft + columns + 1;
+                    int offset = (row * columns + column) * 6;
+                    triangles[offset] = lowerLeft; triangles[offset + 1] = upperLeft; triangles[offset + 2] = upperLeft + 1;
+                    triangles[offset + 3] = lowerLeft; triangles[offset + 4] = upperLeft + 1; triangles[offset + 5] = lowerLeft + 1;
+                }
+            }
+            var mesh = new Mesh { name = zone.id + "Fill", vertices = vertices, triangles = triangles };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            ownedMeshes.Add(mesh);
+            Material template = Resources.Load<Material>("Sandbox/Cloud");
+            Material material = template != null ? new Material(template) : SandboxCloudLayer.CreateCloudMaterial();
+            material.name = zone.id + "FillMaterial";
+            material.SetColor("_BaseColor", new Color(color.r, color.g, color.b, 0.16f));
+            ownedMaterials.Add(material);
+            var fill = new GameObject(zone.id + "Fill");
+            fill.transform.SetParent(deploymentMarkers.transform, false);
+            fill.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = fill.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
         /// <summary>将演示平面坐标映射至三维地形表面。</summary>
         /// <param name="positionX">横向业务坐标。</param>
         /// <param name="positionZ">纵向业务坐标。</param>
         /// <returns>仅用于显示的三维位置。</returns>
         public static Vector3 Surface(float positionX, float positionZ) => new Vector3(positionX, Definition.SampleSurfaceHeight(positionX, positionZ), positionZ);
+
+        /// <summary>Find the highest triangulated terrain/bridge surface under an animated model's world bounds.</summary>
+        public static float HighestSurface(Bounds bounds)
+        {
+            float dx = Definition.width / (Definition.heightColumns - 1f);
+            float dz = Definition.length / (Definition.heightRows - 1f);
+            var xs = new List<float> { bounds.min.x, bounds.max.x };
+            var zs = new List<float> { bounds.min.z, bounds.max.z };
+            for (float x = Mathf.Ceil(bounds.min.x / dx) * dx; x < bounds.max.x; x += dx) xs.Add(x);
+            for (float z = Mathf.Ceil(bounds.min.z / dz) * dz; z < bounds.max.z; z += dz) zs.Add(z);
+            float height = float.NegativeInfinity;
+            foreach (float x in xs) foreach (float z in zs) height = Mathf.Max(height, Surface(x, z).y);
+            // A terrain triangle is planar. Its maximum inside a rectangle is at a rectangle
+            // corner, a grid vertex/edge, or where its diagonal crosses the rectangle boundary.
+            foreach (float x in new[] { bounds.min.x, bounds.max.x })
+                for (int row = Mathf.FloorToInt(bounds.min.z / dz); row <= Mathf.FloorToInt(bounds.max.z / dz); row++)
+                {
+                    float z = (row + x / dx - Mathf.Floor(x / dx)) * dz;
+                    if (z >= bounds.min.z && z <= bounds.max.z) height = Mathf.Max(height, Surface(x, z).y);
+                }
+            foreach (float z in new[] { bounds.min.z, bounds.max.z })
+                for (int col = Mathf.FloorToInt(bounds.min.x / dx); col <= Mathf.FloorToInt(bounds.max.x / dx); col++)
+                {
+                    float x = (col + z / dz - Mathf.Floor(z / dz)) * dx;
+                    if (x >= bounds.min.x && x <= bounds.max.x) height = Mathf.Max(height, Surface(x, z).y);
+                }
+            // Include bridge decks even when a narrow overlap falls between terrain sample points.
+            foreach (SandboxMapRoad road in Definition.roads)
+            {
+                if (!road.isBridge) continue;
+                var a = Array.Find(Definition.nodes, node => node.id == road.startId);
+                var b = Array.Find(Definition.nodes, node => node.id == road.endId);
+                Vector2 direction = new Vector2(b.x - a.x, b.z - a.z);
+                float halfLength = direction.magnitude * .5f; direction.Normalize();
+                Vector2 normal = new Vector2(-direction.y, direction.x);
+                Vector2 offset = new Vector2(bounds.center.x - (a.x + b.x) * .5f, bounds.center.z - (a.z + b.z) * .5f);
+                Vector2 extent = new Vector2(bounds.extents.x, bounds.extents.z);
+                float half = road.width * .5f;
+                if (Mathf.Abs(offset.x) <= extent.x + Mathf.Abs(direction.x) * halfLength + Mathf.Abs(normal.x) * half
+                    && Mathf.Abs(offset.y) <= extent.y + Mathf.Abs(direction.y) * halfLength + Mathf.Abs(normal.y) * half
+                    && Mathf.Abs(Vector2.Dot(offset, direction)) <= halfLength + extent.x * Mathf.Abs(direction.x) + extent.y * Mathf.Abs(direction.y)
+                    && Mathf.Abs(Vector2.Dot(offset, normal)) <= half + extent.x * Mathf.Abs(normal.x) + extent.y * Mathf.Abs(normal.y))
+                    height = Mathf.Max(height, road.surfaceHeight);
+            }
+            return height;
+        }
 
         /// <summary>将保留的旧演示坐标投影到新的十二公里米制地图。</summary>
         /// <param name="positionX">原业务横坐标。</param>
@@ -167,8 +463,8 @@ namespace Qiongtu.Sandbox
         private static Vector2 ProjectBusinessPosition(float positionX, float positionZ)
         {
             // 旧业务坐标范围为 120×80；按米制新地图等比例铺开，不改变存档字段。
-            float mappedX = Mathf.Clamp(positionX * 100, 0, Definition.width);
-            float mappedZ = Mathf.Clamp(positionZ * 150, 0, Definition.length);
+            float mappedX = Mathf.Clamp(positionX * SandboxArmyLayout.MetersPerX, 0, Definition.width);
+            float mappedZ = Mathf.Clamp(positionZ * SandboxArmyLayout.MetersPerZ, 0, Definition.length);
             return new Vector2(mappedX, mappedZ);
         }
 
@@ -202,7 +498,7 @@ namespace Qiongtu.Sandbox
         public static Vector3 ArmyPosition(float x, float z, SandboxUnitType type)
         {
             Vector2 mapped = ProjectBusinessPosition(x, z);
-            return Surface(mapped.x, mapped.y) + Vector3.up * (type == SandboxUnitType.Recon ? 6 : 0.08f);
+            return Surface(mapped.x, mapped.y) + Vector3.up * (type == SandboxUnitType.Recon ? SandboxUnitView.ReconAltitude : SandboxUnitView.GroundClearance);
         }
         public bool CanPlace(float x, float z, SandboxUnitType type) => x >= 0 && x <= 120 && z >= 0 && z <= 80 && (type == SandboxUnitType.Recon || Navigation.IsWalkable(ArmyPosition(x, z, type)));
         public bool CanMove(string id, float x, float z, SandboxUnitType type)
@@ -218,14 +514,25 @@ namespace Qiongtu.Sandbox
         /// <returns>位置有限且位于可操作范围内时返回真。</returns>
         public bool TryBusinessPosition(Vector3 point, out Vector2 business)
         {
-            business = new Vector2(point.x / 100f, point.z / 150f);
+            business = new Vector2(point.x / SandboxArmyLayout.MetersPerX, point.z / SandboxArmyLayout.MetersPerZ);
             return business.x >= 0 && business.x <= 120 && business.y >= 0 && business.y <= 80;
         }
         private void LateUpdate()
         {
             Transform target = FindUnit(selectedUnit);
             selectionRing.gameObject.SetActive(target != null);
-            if (target != null) selectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * 0.3f, 2.5f));
+            UpdateSelectionProjection(target);
+            if (target != null) selectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * 0.3f, 2.5f * SandboxUnitView.ModelScale));
+        }
+
+        private void UpdateSelectionProjection(Transform target)
+        {
+            var view = target != null ? target.GetComponent<SandboxUnitView>() : null;
+            selectionProjection.gameObject.SetActive(view != null && view.IsAirborne);
+            if (view == null || !view.IsAirborne) return;
+            Vector3 ground = Surface(target.position.x, target.position.z) + Vector3.up * .3f;
+            selectionProjection.SetPosition(0, ground);
+            selectionProjection.SetPosition(1, new Vector3(ground.x, view.VisualBounds.min.y, ground.z));
         }
 
         /// <summary>创建归属于场景的 URP 兼容材质。</summary>

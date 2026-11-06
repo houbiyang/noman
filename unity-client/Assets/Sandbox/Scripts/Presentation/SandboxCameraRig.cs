@@ -19,6 +19,10 @@ namespace Qiongtu.Sandbox
         private float pitch = 53;
         private float overviewPitch;
         private string followedId;
+        private bool elevatedFocus;
+        private bool overviewElevatedFocus;
+        private Rect framingViewport = new Rect(0, 0, 1, 1);
+        private Rect overviewFramingViewport;
         private Vector2 mouseDownPosition;
         private Vector2 previousPointerPosition;
         private bool pointerDragged;
@@ -41,6 +45,7 @@ namespace Qiongtu.Sandbox
 
         /// <summary>用户点选单位后通知页面。</summary>
         public event Action<string> UnitSelected;
+        public event Action<string> BarracksSelected;
         public Func<bool> IsMapCommand;
         public event Action<Vector3> MapClicked;
         public bool TryMapPoint(Vector2 screen, out Vector3 point)
@@ -89,6 +94,12 @@ namespace Qiongtu.Sandbox
             return unit != null && world.FindUnit(unit.UnitId) != null ? unit.UnitId : null;
         }
 
+        public string PickBarracks(Vector2 screenPosition)
+        {
+            Ray ray = viewCamera.ScreenPointToRay(screenPosition);
+            return Physics.Raycast(ray, out RaycastHit hit, 30000) ? world.BarracksAt(hit.collider) : null;
+        }
+
         /// <summary>将允许显示的三维位置投影到当前相机屏幕。</summary>
         /// <param name="worldPosition">公开地形或当前可见单位的位置。</param>
         /// <returns>屏幕位置；深度小于零表示在相机后方。</returns>
@@ -114,9 +125,12 @@ namespace Qiongtu.Sandbox
                 overviewDistance = distance;
                 overviewYaw = yaw;
                 overviewPitch = pitch;
+                overviewElevatedFocus = elevatedFocus;
+                overviewFramingViewport = framingViewport;
             }
             followedId = unitId;
-            distance = 16;
+            elevatedFocus = false; framingViewport = new Rect(0, 0, 1, 1);
+            distance = 16 * SandboxUnitView.ModelScale;
             pitch = 32;
             ViewChanged?.Invoke();
             return true;
@@ -131,21 +145,67 @@ namespace Qiongtu.Sandbox
                 distance = overviewDistance;
                 yaw = overviewYaw;
                 pitch = overviewPitch;
+                elevatedFocus = overviewElevatedFocus;
+                framingViewport = overviewFramingViewport;
             }
             followedId = null;
             ViewChanged?.Invoke();
         }
 
-        /// <summary>定位到单位附近，保持总览观察模式。</summary>
+        /// <summary>将完整模型和地面投影一起框入可用地图区域；定位不是跟随。</summary>
         /// <param name="unitId">当前允许显示的单位。</param>
-        public void Locate(string unitId)
+        /// <param name="viewport">排除 HUD 和右侧抽屉的归一化屏幕区域，原点在左下角。</param>
+        public void Locate(string unitId, Rect viewport = default)
         {
             Transform target = world.FindUnit(unitId);
             if (target == null) return;
             ReturnToOverview();
-            focus = target.position;
-            distance = 40;
+            var view = target.GetComponent<SandboxUnitView>();
+            if (!view.IsAirborne)
+            {
+                elevatedFocus = false; framingViewport = new Rect(0, 0, 1, 1);
+                focus = target.position; distance = 40;
+            }
+            else
+            {
+                framingViewport = viewport.width > .1f && viewport.height > .1f
+                    ? viewport : new Rect(.06f, .2f, .88f, .6f);
+                Bounds bounds = view.VisualBounds;
+                bounds.Encapsulate(view.MapLabelPosition + Vector3.up * 2);
+                // Include the actual ground selection ring, also on slopes/bridges.
+                for (int i = 0; i < 32; i++)
+                {
+                    float angle = i * Mathf.PI * 2 / 32;
+                    bounds.Encapsulate(SandboxWorld.Surface(target.position.x + Mathf.Cos(angle) * 5,
+                        target.position.z + Mathf.Sin(angle) * 5) + Vector3.up * .3f);
+                }
+                focus = bounds.center; elevatedFocus = true; pitch = 48;
+                distance = FitDistance(bounds, Quaternion.Euler(pitch, yaw, 0), framingViewport);
+            }
             ViewChanged?.Invoke();
+        }
+
+        // Fit every corner to an off-centre perspective viewport, including its depth.
+        // A fixed 40m distance can put a 48m-high drone above or behind the camera.
+        private float FitDistance(Bounds bounds, Quaternion rotation, Rect viewport)
+        {
+            float tanY = Mathf.Tan(viewCamera.fieldOfView * Mathf.Deg2Rad * .5f);
+            float tanX = tanY * viewCamera.aspect;
+            Vector2 centre = viewport.center * 2 - Vector2.one;
+            Vector2 min = viewport.min * 2 - Vector2.one, max = viewport.max * 2 - Vector2.one;
+            Quaternion inverse = Quaternion.Inverse(rotation);
+            float result = 24;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 corner = inverse * Vector3.Scale(bounds.extents,
+                    new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                result = Mathf.Max(result, 2 - corner.z);
+                result = Mathf.Max(result, (min.x * tanX * corner.z - corner.x) / ((centre.x - min.x) * tanX));
+                result = Mathf.Max(result, (corner.x - max.x * tanX * corner.z) / ((max.x - centre.x) * tanX));
+                result = Mathf.Max(result, (min.y * tanY * corner.z - corner.y) / ((centre.y - min.y) * tanY));
+                result = Mathf.Max(result, (corner.y - max.y * tanY * corner.z) / ((max.y - centre.y) * tanY));
+            }
+            return result * 1.12f;
         }
 
         /// <summary>回到中央城市与跨河通路的初始总览；滚轮可继续缩小查看全图。</summary>
@@ -153,6 +213,7 @@ namespace Qiongtu.Sandbox
         {
             CancelPointerGesture();
             followedId = null;
+            elevatedFocus = false; framingViewport = new Rect(0, 0, 1, 1);
             focus = new Vector3(world.MapSize.x / 2, 0, world.MapSize.y / 2);
             distance = world.MapSize.x * 0.28f;
             pitch = 48;
@@ -245,7 +306,12 @@ namespace Qiongtu.Sandbox
             {
                 if (IsMapCommand?.Invoke() == true || Keyboard.current?.shiftKey.isPressed == true)
                 { if (TryMapPoint(pointer, out Vector3 point)) MapClicked?.Invoke(point); }
-                else UnitSelected?.Invoke(PickUnit(pointer));
+                else
+                {
+                    string campId = PickBarracks(pointer);
+                    if (campId != null) BarracksSelected?.Invoke(campId);
+                    else UnitSelected?.Invoke(PickUnit(pointer));
+                }
             }
             CancelPointerGesture();
         }
@@ -260,6 +326,7 @@ namespace Qiongtu.Sandbox
             Ray currentRay = viewCamera.ScreenPointToRay(current);
             if (!plane.Raycast(previousRay, out float previousDistance) || !plane.Raycast(currentRay, out float currentDistance)) return;
             Vector3 movement = previousRay.GetPoint(previousDistance) - currentRay.GetPoint(currentDistance);
+            elevatedFocus = false; framingViewport = new Rect(0, 0, 1, 1);
             focus += new Vector3(movement.x, 0, movement.z);
             ClampFocus();
         }
@@ -296,6 +363,8 @@ namespace Qiongtu.Sandbox
         /// <summary>沿地图平面移动观察中心并限制范围。</summary>
         private void Pan(Vector2 movement)
         {
+            if (movement.sqrMagnitude < .000001f) return;
+            elevatedFocus = false; framingViewport = new Rect(0, 0, 1, 1);
             Quaternion heading = Quaternion.Euler(0, yaw, 0);
             focus += heading * new Vector3(movement.x, 0, movement.y);
             ClampFocus();
@@ -312,10 +381,13 @@ namespace Qiongtu.Sandbox
         private void ApplyCamera(bool smooth)
         {
             // 公里尺度下的观察中心随地形抬升，避免在高地放大时穿入地表。
-            if (!IsFollowing) focus.y = SandboxWorld.Surface(focus.x, focus.z).y;
+            if (!IsFollowing && !elevatedFocus) focus.y = SandboxWorld.Surface(focus.x, focus.z).y;
             viewCamera.nearClipPlane = Mathf.Clamp(distance * 0.004f, 0.3f, 80);
             Quaternion rotation = Quaternion.Euler(pitch, yaw, 0);
-            Vector3 position = focus - rotation * Vector3.forward * distance;
+            float halfHeight = distance * Mathf.Tan(viewCamera.fieldOfView * Mathf.Deg2Rad * .5f);
+            Vector2 offset = Vector2.one - framingViewport.center * 2;
+            Vector3 position = focus - rotation * Vector3.forward * distance
+                + rotation * new Vector3(offset.x * halfHeight * viewCamera.aspect, offset.y * halfHeight, 0);
             float blend = smooth ? 1 - Mathf.Exp(-Time.unscaledDeltaTime * 9) : 1;
             transform.position = Vector3.Lerp(transform.position, position, blend);
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, blend);

@@ -82,4 +82,30 @@ check("损坏的业务内容保留给 C# 校验而不删除", () => {
   assert.equal(result.records.length, 2);
   assert.equal(entries.size, 3);
 });
+context.QiongtuSettingsKey = bridge.$QiongtuSettingsKey;
+check("设置可更新且不覆盖游戏快照", () => {
+  assert.equal(bridge.QiongtuSettingsWrite('{"formatVersion":1,"showGrid":true}'), "");
+  assert.equal(bridge.QiongtuSettingsWrite('{"formatVersion":1,"showGrid":false}'), "");
+  assert.equal(JSON.parse(JSON.parse(bridge.QiongtuSettingsRead()).content).showGrid, false);
+  assert.equal(JSON.parse(bridge.QiongtuStorageRead()).records.length, 2);
+});
+check("设置按部署目录隔离", () => {
+  context.window.location.pathname = "/other/index.html";
+  assert.equal(JSON.parse(bridge.QiongtuSettingsRead()).content, "");
+  context.window.location.pathname = "/sandbox/";
+  assert.notEqual(JSON.parse(bridge.QiongtuSettingsRead()).content, "");
+});
+check("设置写入配额失败时保留上次内容", () => {
+  const before = JSON.parse(bridge.QiongtuSettingsRead()).content;
+  denyWrite = true;
+  assert.notEqual(bridge.QiongtuSettingsWrite("replacement"), "");
+  denyWrite = false;
+  assert.equal(JSON.parse(bridge.QiongtuSettingsRead()).content, before);
+});
+check("设置读取被禁用时返回提示且不清空记录", () => {
+  denyRead = true;
+  assert.notEqual(JSON.parse(bridge.QiongtuSettingsRead()).warning, "");
+  denyRead = false;
+  assert.notEqual(JSON.parse(bridge.QiongtuSettingsRead()).content, "");
+});
 process.stdout.write("网页存储桥接检查通过：" + count + " 项；Unity 互操作及刷新恢复仍须浏览器运行验收。\n");

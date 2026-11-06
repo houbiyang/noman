@@ -817,8 +817,8 @@ def build_scene(materials):
                 "width":SIZE,"length":SIZE,"displayScale":1,"buildingsBaked":True,
                 "heightColumns":SIZE//STEP+1,"heightRows":SIZE//STEP+1,"heights":[value for row in HEIGHTS for value in row],
                 "nodes":nodes,"roads":roads,"points":points,"materials":[{"id":name,"red":color[0],"green":color[1],"blue":color[2]} for name,color in PALETTE.items()],
-                "deploymentZones":[{"id":"RED_DEPLOY","side":"red","minX":1000,"maxX":1900,"minZ":3900,"maxZ":4700},
-                                   {"id":"BLUE_DEPLOY","side":"blue","minX":10000,"maxX":11200,"minZ":7500,"maxZ":8500}],
+                "deploymentZones":[{"id":"RED_DEPLOY","side":"red","minX":1000,"maxX":1900,"minZ":3200,"maxZ":10400},
+                                   {"id":"BLUE_DEPLOY","side":"blue","minX":10000,"maxX":11200,"minZ":1600,"maxZ":8800}],
                 "buildings":exporter.buildings}
     return definition,exporter
 

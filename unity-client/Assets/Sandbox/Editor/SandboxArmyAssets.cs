@@ -118,15 +118,33 @@ namespace Qiongtu.Sandbox.Editor
                 RenderCard(prefab, key, bounds);
                 UnityEngine.Object.DestroyImmediate(prefab);
             }
+            PrepareBarracks(materials);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            foreach (string key in new[] { "recon", "infantry", "support" })
+            foreach (string key in new[] { "recon", "infantry", "support", "recon-barracks", "infantry-barracks", "support-barracks" })
             {
                 var texture = (TextureImporter)AssetImporter.GetAtPath(Folder + "/" + key + "-card.png");
                 texture.npotScale = TextureImporterNPOTScale.None; texture.mipmapEnabled = false;
                 texture.alphaIsTransparency = true; texture.maxTextureSize = 1024; texture.SaveAndReimport();
             }
             Debug.Log("[军队] 三套 Unity 模型、URP 材质、机械动画枢轴与卡牌渲染完成");
+        }
+
+        private static void PrepareBarracks(Dictionary<string, Material> materials)
+        {
+            Material team = materials["TeamAccent"];
+            Material wall = materials["Ceramic_Armor"];
+            var dark = new Material(team) { color = new Color(.16f, .21f, .19f) };
+            var metal = new Material(team) { color = new Color(.64f, .66f, .54f) };
+            foreach (SandboxUnitType type in Enum.GetValues(typeof(SandboxUnitType)))
+            {
+                var model = SandboxBarracksModel.Build(type, team, wall, dark, metal);
+                var parts = model.GetComponentsInChildren<Renderer>(); Bounds bounds = parts[0].bounds;
+                foreach (var part in parts) bounds.Encapsulate(part.bounds);
+                RenderCard(model, DemoSandboxViewSource.ArmyKey(type) + "-barracks", bounds);
+                UnityEngine.Object.DestroyImmediate(model);
+            }
+            UnityEngine.Object.DestroyImmediate(dark); UnityEngine.Object.DestroyImmediate(metal);
         }
 
         private static string MaterialForPart(string name)
@@ -167,7 +185,7 @@ namespace Qiongtu.Sandbox.Editor
             float size = Mathf.Max(bounds.size.x, bounds.size.z, bounds.size.y);
             camera.orthographicSize = size * 0.53f; camera.aspect = 1.3f;
             Vector3 center = bounds.center;
-            camera.transform.position = center + new Vector3(4, 3, -5).normalized * size * 3;
+            camera.transform.position = center + new Vector3(4, 3, key.EndsWith("-barracks") ? 5 : -5).normalized * size * 3;
             camera.transform.LookAt(center);
             camera.nearClipPlane = 0.01f; camera.farClipPlane = 100;
             camera.GetUniversalAdditionalCameraData().renderPostProcessing = false;

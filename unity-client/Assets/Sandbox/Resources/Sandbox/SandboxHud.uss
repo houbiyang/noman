@@ -11,6 +11,9 @@
 .flex-spacer { flex-grow: 1; }
 .map-annotations { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
 .map-label { position: absolute; padding: 3px 7px; font-size: 11px; background-color: rgba(13, 30, 29, 0.92); border-width: 1px; border-color: #788f72; border-radius: 3px; color: #e5e6bc; }
+.map-label.capture-point { padding: 5px 9px; font-size: 13px; -unity-font-style: bold; background-color: rgba(30, 32, 23, 0.95); border-color: #e8d178; color: #f2e5ae; }
+.map-label.deployment-zone { padding: 5px 9px; font-size: 13px; -unity-font-style: bold; -unity-text-align: middle-center; border-width: 2px; white-space: normal; }
+.barracks-map-label { padding: 4px 9px; font-size: 13px; -unity-font-style: bold; white-space: nowrap; background-color: rgba(13, 24, 29, 0.96); }
 .map-label.red-text { border-color: #c87f6b; color: #f0b49e; }
 .map-label.blue-text { border-color: #70a1c2; color: #add7ec; }
 .role-float {
@@ -27,6 +30,7 @@
 .role-switch { flex-direction: row; }
 .role-switch Button { min-height: 40px; }
 .role-caption { color: #d5ded6; font-size: 11px; margin-right: 5px; margin-bottom: 3px; }
+.connection-action { width: 118px; min-height: 30px; margin: 3px 0 0; padding: 5px 8px; font-size: 11px; }
 .red-role { border-color: #a16d63; }
 .blue-role { border-color: #6c93a8; }
 .host-role { border-color: #929b71; }
@@ -71,10 +75,10 @@
 .action-tile:active { background-color: #3d5848; }
 .action-icon { width: 72px; height: 70px; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: #d1d9c9; }
 .battle-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Battle.png"); }
-.army-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Army.png"); }
+.army-icon { background-image: url("project://database/Assets/Sandbox/Resources/Army/infantry-barracks-card.png"); }
 .settings-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Settings.png"); }
 .action-caption { color: #e4ead8; font-size: 16px; -unity-font-style: bold; -unity-text-align: middle-center; }
-.settings-action { right: 24px; top: 104px; }
+.settings-action { right: 24px; top: 142px; }
 .battle-action { left: 24px; bottom: 148px; }
 .army-action { right: 24px; bottom: 148px; }
 .bottom-dock { position: absolute; left: 24px; right: 24px; bottom: 51px; min-height: 70px; padding: 12px 16px; flex-direction: row; align-items: center; background-color: rgba(16, 31, 32, 0.97); border-width: 1px; border-color: #4c6355; border-radius: 7px; }
@@ -100,6 +104,8 @@ Button:disabled { opacity: 0.42; }
 .primary-button { background-color: #c0d0ac; border-color: #d8e1c3; color: #1c2d28; -unity-font-style: bold; }
 .primary-button:hover { background-color: #d8e2c5; color: #14241e; }
 .accent-button { background-color: #d6c394; color: #28352c; border-color: #dfcfa5; }
+Button.danger-button { background-color: #593a34; color: #ffe0d4; border-color: #9b6354; }
+Button.danger-button:hover { background-color: #754b40; border-color: #d59c85; }
 .text-button { border-width: 0; background-color: rgba(0, 0, 0, 0); color: #d2dfc4; padding-left: 0; -unity-text-align: middle-left; margin-left: 0; }
 .selected-role { border-color: #d6d7a3; background-color: #415340; color: #f0efce; }
 .drawer { position: absolute; right: 18px; top: 104px; bottom: 136px; width: 398px; background-color: #16282a; border-width: 1px; border-color: #52665a; border-radius: 8px; }
@@ -132,7 +138,7 @@ Button:disabled { opacity: 0.42; }
 .compact .action-tile { width: 84px; height: 94px; padding: 4px; }
 .compact .action-icon { width: 64px; height: 62px; }
 .compact .action-caption { font-size: 15px; }
-.compact .settings-action { right: 14px; top: 98px; }
+.compact .settings-action { right: 14px; top: 136px; }
 .compact .battle-action { left: 14px; bottom: 141px; }
 .compact .army-action { right: 14px; bottom: 141px; }
 .compact .mission-title { font-size: 23px; }
