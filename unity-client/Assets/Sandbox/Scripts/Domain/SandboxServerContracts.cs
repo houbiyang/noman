@@ -144,6 +144,12 @@ namespace Qiongtu.Sandbox
         public SandboxServerPosition position;
         public SandboxServerPosition[] waypoints = Array.Empty<SandboxServerPosition>();
     }
+    /// <summary>停止、返营和重置试走能源不携带目标坐标。</summary>
+    [Serializable] public sealed class SandboxServerMovementOrderWithoutPosition
+    {
+        public string unit_id, mode;
+        public SandboxServerPosition[] waypoints = Array.Empty<SandboxServerPosition>();
+    }
     /// <summary>推进一个指定单位的独立部署试走步。</summary>
     [Serializable] public sealed class SandboxServerDeploymentStep { public string unit_id; }
     /// <summary>地图选址后的单兵种兵营输入，由服务端核对完整占地和权限。</summary>

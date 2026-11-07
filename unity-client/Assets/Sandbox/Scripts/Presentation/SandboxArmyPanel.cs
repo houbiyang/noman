@@ -353,6 +353,12 @@ namespace Qiongtu.Sandbox
             if (!serverClient.Healthy || serverClient.HasPending) { Notify("请等待原指令完成后再操作，目标尚未提交"); return; }
             deploymentMovingUnit = serverClient.View.clock.phase == "preparing" && mode != "stop_move" && mode != "reset_test_energy" && mode != "deploy_start" ? id : null;
             nextDeploymentMovement = Time.unscaledTime + .85f;
+            if (target == null)
+            {
+                SendServerCommand("movement_order", new SandboxServerMovementOrderWithoutPosition { unit_id = id, mode = mode,
+                    waypoints = waypoints ?? Array.Empty<SandboxServerPosition>() });
+                return;
+            }
             SendServerCommand("movement_order", new SandboxServerMovementOrder { unit_id = id, mode = mode, position = target,
                 waypoints = waypoints ?? Array.Empty<SandboxServerPosition>() });
         }
