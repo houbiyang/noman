@@ -15,6 +15,7 @@ namespace Qiongtu.Sandbox
         private SandboxClientSettings settingsDraft;
         private string settingsWarning = "";
         private string settingsSection = "service";
+        private string settingsLogFilter = "all";
         private VisualElement settingsOverlay;
         private ScrollView settingsContent;
         private Label settingsFeedback;
@@ -207,15 +208,37 @@ namespace Qiongtu.Sandbox
         private void BuildLogsSettings()
         {
             SettingsSectionTitle("运行日志", "本次页面会话的最近 100 条连接与命令记录；刷新网页后重新开始记录。");
-            var card = SettingsCard("操作记录", "仅显示时间、命令类型、HTTP 状态及后端公开错误信息。最新记录在前。");
             var entries = serverClient.RecentLogs;
-            if (entries.Count == 0) { AddText(card, "暂无记录。连接后端或执行命令后会在这里显示结果。", "settings-note"); return; }
+            var filters = SettingsGroup(settingsContent, "settings-log-filters");
+            SettingsLogFilter(filters, "all", "全部", entries.Count);
+            SettingsLogFilter(filters, "connection", "连接", entries.Count(entry => entry.Category == SandboxClientLogCategory.Connection));
+            SettingsLogFilter(filters, "command", "命令", entries.Count(entry => entry.Category == SandboxClientLogCategory.Command));
+            SettingsLogFilter(filters, "error", "错误", entries.Count(entry => entry.IsError));
+            var card = SettingsCard("操作记录", "错误筛选汇总连接和命令失败；最新记录在前。");
+            bool hasVisibleEntry = false;
             for (int index = entries.Count - 1; index >= 0; index--)
             {
                 SandboxClientLogEntry entry = entries[index];
-                var line = AddText(card, entry.Time + "  " + entry.Message, "settings-log-line");
+                if ((settingsLogFilter == "connection" && entry.Category != SandboxClientLogCategory.Connection)
+                    || (settingsLogFilter == "command" && entry.Category != SandboxClientLogCategory.Command)
+                    || (settingsLogFilter == "error" && !entry.IsError)) continue;
+                hasVisibleEntry = true;
+                string category = entry.Category == SandboxClientLogCategory.Connection ? "连接" : "命令";
+                var line = AddText(card, entry.Time + "  [" + category + "]  " + entry.Message, "settings-log-line");
                 line.EnableInClassList("settings-log-error", entry.IsError);
             }
+            if (!hasVisibleEntry) AddText(card, "当前分类暂无记录。", "settings-note");
+        }
+
+        /// <summary>创建日志分类筛选项并展示当前保留的记录数量。</summary>
+        /// <param name="parent">筛选项容器。</param>
+        /// <param name="key">分类键。</param>
+        /// <param name="title">页面显示名称。</param>
+        /// <param name="count">当前分类的记录数量。</param>
+        private void SettingsLogFilter(VisualElement parent, string key, string title, int count)
+        {
+            var button = AddButton(parent, title + " " + count, () => { settingsLogFilter = key; RenderSettingsSection(); }, "settings-log-filter");
+            button.EnableInClassList("settings-log-filter-active", settingsLogFilter == key);
         }
 
         /// <summary>日志页打开时同步显示新记录，其他配置页不重新绘制。</summary>

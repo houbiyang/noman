@@ -25,6 +25,9 @@
 .settings-card { background-color:rgb(23,48,36); border-radius:6px; border-width:1px; border-color:rgb(55,82,56); padding:18px; margin:0 0 16px; flex-shrink:0; }
 .settings-card-title { font-size:19px; color:rgb(229,231,202); -unity-font-style:bold; margin:0 0 10px; padding:0; white-space:normal; }
 .settings-note { font-size:13px; color:rgb(148,174,151); white-space:normal; margin:5px 0; padding:0; }
+.settings-log-filters { flex-direction:row; flex-wrap:wrap; margin:0 0 14px; }
+.settings-log-filter { min-height:40px; margin:0 8px 8px 0; padding:7px 14px; border-width:1px; border-color:rgb(79,104,68); border-radius:4px; background-color:rgb(28,50,36); color:rgb(215,226,194); font-size:14px; }
+.settings-log-filter-active { background-color:rgb(47,63,38); border-color:rgb(218,198,137); color:rgb(239,228,183); -unity-font-style:bold; }
 .settings-log-line { font-size:14px; color:rgb(208,226,202); white-space:normal; padding:10px 0; border-bottom-width:1px; border-bottom-color:rgb(49,74,52); }
 .settings-log-error { color:rgb(244,177,141); }
 .settings-connection { padding:4px 0 12px; }
@@ -96,6 +99,7 @@
 .compact .settings-card { padding:20px; }
 .compact .settings-card-title, .compact .settings-card > .unity-foldout__toggle { font-size:22px; }
 .compact .settings-note { font-size:17px; }
+.compact .settings-log-filter { min-height:48px; font-size:18px; }
 .compact .settings-log-line { font-size:18px; }
 .compact .settings-connection { flex-direction:row; align-items:center; }
 .compact .settings-connection-state { font-size:24px; flex-shrink:0; }
