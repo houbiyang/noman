@@ -15,6 +15,7 @@ from backend.runtime import sha256
 from backend import spatial
 
 FOLDER = Path(__file__).parent
+MAX_GRID_VISITS = 6000
 
 
 def is_garrisoned(state, unit):
@@ -161,7 +162,7 @@ class Navigator:
                     return chain
                 return None
             closed.add(current)
-            require(len(closed) <= 180000, 'ROUTE_SEARCH_LIMIT', '路线搜索范围过大，请添加途经点分段测试')
+            require(len(closed) <= MAX_GRID_VISITS, 'ROUTE_SEARCH_LIMIT', '单次移动超出局部搜索范围，请缩短目标距离或添加途经点分段测试')
             for dx, dz in ((-1,0),(0,-1),(0,1),(1,0),(-1,-1),(-1,1),(1,-1),(1,1)):
                 next_cell = (current[0]+dx, current[1]+dz)
                 if next_cell in closed or not (0 <= next_cell[0] < self.columns and 0 <= next_cell[1] < self.rows):

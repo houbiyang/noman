@@ -15,7 +15,7 @@ namespace Qiongtu.Sandbox
     public sealed class SandboxServerClient : MonoBehaviour
     {
         private string endpoint, gameId, bearer, mapId, mapHash;
-        private string responseBody, pendingBody, pendingKey, pendingCommandType;
+        private string responseBody, pendingBody, pendingKey, pendingCommandType, pendingBranchId;
         private long responseCode;
         private float nextPoll;
         private string automaticRole;
@@ -101,10 +101,12 @@ namespace Qiongtu.Sandbox
                 Feedback?.Invoke("已接收移动目标，当前状态读取完成后立即提交"); return;
             }
             if (Busy || HasPending || !Healthy || View == null) { Feedback?.Invoke("同步尚未就绪或原命令待核对，请稍后重试"); return; }
-            string head = JsonUtility.ToJson(new SandboxServerCommandHead { context = basis ?? View.context, command_type = kind });
+            SandboxServerContext context = basis ?? View.context;
+            string head = JsonUtility.ToJson(new SandboxServerCommandHead { context = context, command_type = kind });
             pendingBody = head.Substring(0, head.Length - 1) + ",\"payload\":" + (payload == null ? "{}" : JsonUtility.ToJson(payload)) + "}";
             pendingKey = Guid.NewGuid().ToString();
             pendingCommandType = kind;
+            pendingBranchId = context.branch_id;
             StartCoroutine(Commit());
         }
 
@@ -145,7 +147,11 @@ namespace Qiongtu.Sandbox
         {
             if (automaticRole != null && endpoint == null && !Busy && Time.realtimeSinceStartup >= nextPoll)
             { StartCoroutine(AutomaticConnect()); return; }
-            if (endpoint != null && !Busy && Time.realtimeSinceStartup >= nextPoll) StartCoroutine(Refresh());
+            if (endpoint != null && !Busy && Time.realtimeSinceStartup >= nextPoll)
+            {
+                if (pendingBody != null) StartCoroutine(VerifyPending());
+                else StartCoroutine(Refresh());
+            }
         }
 
         private IEnumerator Refresh()
@@ -171,7 +177,7 @@ namespace Qiongtu.Sandbox
             SandboxServerReceipt receipt = responseCode >= 200 && responseCode < 300 ? ReadJson<SandboxServerReceipt>() : null;
             if (responseCode == 0 || responseCode >= 500 || (responseCode >= 200 && responseCode < 300 && receipt?.status != "succeeded" && receipt?.status != "rejected"))
             {
-                Healthy = false; Status = "命令结果待核对；请使用原请求重试";
+                Status = "命令结果待核对；正在自动查询原请求";
                 Feedback?.Invoke(Status);
             }
             else
@@ -179,13 +185,37 @@ namespace Qiongtu.Sandbox
                 string commandType = pendingCommandType;
                 bool succeeded = receipt?.status == "succeeded";
                 string message = succeeded ? "后端已提交，正在读取保存后的状态" : PublicError();
-                pendingBody = null; pendingKey = null;
+                pendingBody = null; pendingKey = null; pendingBranchId = null;
                 yield return Fetch("GET", "/view", null, null);
                 PublishResponse();
                 Feedback?.Invoke(message);
                 CommandFinished?.Invoke(commandType, succeeded);
                 pendingCommandType = null;
             }
+            Busy = false; nextPoll = Time.realtimeSinceStartup + 1; Changed?.Invoke();
+        }
+
+        /// <summary>按原分支和幂等键查询超时命令的权威收据，不创建第二条命令。</summary>
+        /// <returns>等待本机后端核对结果的协程。</returns>
+        private IEnumerator VerifyPending()
+        {
+            Busy = true;
+            yield return Fetch("GET", "/commands/by-request?origin_branch_id=" + Uri.EscapeDataString(pendingBranchId)
+                + "&request_key=" + Uri.EscapeDataString(pendingKey), null, null);
+            SandboxServerReceipt receipt = responseCode == 200 ? ReadJson<SandboxServerReceipt>() : null;
+            if (receipt != null && (receipt.status == "succeeded" || receipt.status == "rejected"))
+            {
+                string commandType = pendingCommandType;
+                bool succeeded = receipt.status == "succeeded";
+                string message = succeeded ? "后端已确认命令，正在读取最新状态" : receipt.error?.message ?? "后端已拒绝命令";
+                pendingBody = null; pendingKey = null; pendingBranchId = null;
+                yield return Fetch("GET", "/view", null, null);
+                PublishResponse();
+                Feedback?.Invoke(message);
+                CommandFinished?.Invoke(commandType, succeeded);
+                pendingCommandType = null;
+            }
+            else Status = responseCode == 404 ? "原命令尚无收据；正在自动核对，可按原请求重试" : PublicError();
             Busy = false; nextPoll = Time.realtimeSinceStartup + 1; Changed?.Invoke();
         }
 
