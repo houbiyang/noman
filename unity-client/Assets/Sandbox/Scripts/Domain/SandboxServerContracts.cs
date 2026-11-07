@@ -52,7 +52,7 @@ namespace Qiongtu.Sandbox
     /// <summary>以十进制字符串传输的业务坐标。</summary>
     [Serializable] public sealed class SandboxServerPosition { public string x, y, coordinate_system_id = "unity-demo-120x80-v1"; }
     /// <summary>经过服务端角色过滤的单位。</summary>
-    [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public SandboxServerPosition position; }
+    [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public bool in_barracks; public SandboxServerPosition position; }
     /// <summary>以世界米制表达的后端已确认路径点。</summary>
     [Serializable] public sealed class SandboxServerMovementPoint { public float x, z; }
     /// <summary>角色过滤后的移动路线、单次试走轨迹和预计成本。</summary>

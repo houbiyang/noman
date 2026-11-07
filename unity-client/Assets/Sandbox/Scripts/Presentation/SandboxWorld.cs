@@ -99,7 +99,7 @@ namespace Qiongtu.Sandbox
         /// <summary>按新的角色投影更新场景，移除不再允许显示的对象。</summary>
         /// <param name="projection">当前有效的角色投影。</param>
         /// <param name="authoritative">是否直接采用后端坐标，避免客户端动画改写权威位置。</param>
-        public void ApplyProjection(SandboxProjection projection, bool authoritative = false, SandboxServerMovementPath[] movementPaths = null)
+        public void ApplyProjection(SandboxProjection projection, bool authoritative = false, SandboxServerMovementPath[] movementPaths = null, SandboxServerUnit[] serverUnits = null)
         {
             bool layoutChanged = ApplyBarracks(projection.barracks ?? new SandboxBarracksData[0]);
             var allowed = new HashSet<string>();
@@ -126,9 +126,10 @@ namespace Qiongtu.Sandbox
                     if (known && token != previous && movement?.points != null && movement.points.Length > 1)
                         view.PlayConfirmedTrace(System.Array.ConvertAll(movement.points, point => Surface(point.x, point.z)
                             + Vector3.up * (unit.type == SandboxUnitType.Recon ? SandboxUnitView.ReconAltitude : SandboxUnitView.GroundClearance)).ToList(), movement.mode == "reverse_move");
-                    else if (!known || token != previous || !view.IsMoving) view.Relocate(position);
+                    else if (!known || token != previous || !view.IsMoving && !view.HasTarget(position)) view.Relocate(position);
                     movementPlaybackTokens[unit.id] = token;
                     if (movement?.route_points != null) view.SetConfirmedRoute(System.Array.ConvertAll(movement.route_points, point => Surface(point.x, point.z) + Vector3.up * 1.5f).ToList());
+                    view.SetGarrisoned(serverUnits != null && System.Array.Exists(serverUnits, item => item.unit_id == unit.id && item.in_barracks));
                 }
                 else if (relocated.Remove(unit.id)) view.Relocate(position);
                 else if (!view.HasTarget(position) || layoutChanged && unit.type != SandboxUnitType.Recon)

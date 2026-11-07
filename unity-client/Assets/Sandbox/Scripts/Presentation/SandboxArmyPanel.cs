@@ -258,6 +258,8 @@ namespace Qiongtu.Sandbox
             string restriction = ArmyMoveRestriction();
             if (restriction.Length > 0) { Notify(restriction); return; }
             PausePlayback(); pendingMoveId = id; selectedId = id; pendingArmyType = null; world.Select(id);
+            if (serverMode && serverClient.View?.units?.Any(item => item.unit_id == id && item.in_barracks) == true)
+                cameraRig.Locate(id, UnitLocateViewport());
             pendingMovementMode = movementMode; movementWaypoints.Clear();
             ClosePanel(); CloseArmy();
             ShowArmyCommand("移动 " + id, serverMode && serverClient.View.spatial_test
@@ -297,7 +299,7 @@ namespace Qiongtu.Sandbox
         }
         private void HandleArmyMapClick(Vector3 point)
         {
-            if (serverMode && (!serverClient.Healthy || serverClient.Busy || serverClient.HasPending))
+            if (serverMode && (!serverClient.Healthy || serverClient.HasPending || serverClient.Busy && pendingMoveId == null))
             { Notify("请等待当前同步或提交结果，选址状态已保留"); return; }
             if (!world.TryBusinessPosition(point, out Vector2 position)) { Notify("请选择地图范围内的位置"); return; }
             if (pendingArmyType.HasValue)
@@ -348,9 +350,9 @@ namespace Qiongtu.Sandbox
         /// <param name="waypoints">当前用户添加的途经点。</param>
         private void SubmitMovement(string id, string mode, SandboxServerPosition target = null, SandboxServerPosition[] waypoints = null)
         {
-            if (!serverClient.Healthy || serverClient.Busy || serverClient.HasPending) { Notify("请等待同步完成后再操作，目标尚未提交"); return; }
+            if (!serverClient.Healthy || serverClient.HasPending) { Notify("请等待原指令完成后再操作，目标尚未提交"); return; }
             deploymentMovingUnit = serverClient.View.clock.phase == "preparing" && mode != "stop_move" && mode != "reset_test_energy" && mode != "deploy_start" ? id : null;
-            nextDeploymentMovement = Time.unscaledTime + 1.5f;
+            nextDeploymentMovement = Time.unscaledTime + .85f;
             SendServerCommand("movement_order", new SandboxServerMovementOrder { unit_id = id, mode = mode, position = target,
                 waypoints = waypoints ?? Array.Empty<SandboxServerPosition>() });
         }
@@ -363,7 +365,7 @@ namespace Qiongtu.Sandbox
             if (serverClient.Busy || serverClient.HasPending || Time.unscaledTime < nextDeploymentMovement) return;
             var route = serverClient.View.movement_paths?.FirstOrDefault(item => item.unit_id == deploymentMovingUnit);
             if (route == null || (route.status != "queued" && route.status != "moving" && route.status != "waiting")) { deploymentMovingUnit = null; return; }
-            nextDeploymentMovement = Time.unscaledTime + 1.5f;
+            nextDeploymentMovement = Time.unscaledTime + .85f;
             SendServerCommand("advance_deployment_movement", new SandboxServerDeploymentStep { unit_id = deploymentMovingUnit });
         }
 

@@ -146,5 +146,31 @@ class MovementTests(TestCase):
         self.assertEqual(unit_copy,self.unit)
         self.assertEqual(route_copy,route)
 
+    def test_first_order_leaves_camp_and_reorder_uses_current_position(self):
+        """首令从兵营经出口驶出并立即移动，改令不重返兵营。"""
+        self.unit['camp_id']='red-ground'
+        self.state['camps']=[dict(camp_id='red-ground',position=spatial.business((200,500)),half_extent_m=30)]
+        self.unit['position']=spatial.business((900,800))
+        self.assertTrue(movement.is_garrisoned(self.state,self.unit))
+        movement.order(self.state,'red',dict(unit_id=self.unit['unit_id'],mode='move',position=spatial.business((1200,500))))
+        active=self.state['routes'][0]
+        self.assertAlmostEqual(active['points'][0][0],200)
+        self.assertAlmostEqual(active['points'][1][1],540,5)
+        self.assertEqual(self.unit['movement_test_steps'],1)
+        self.assertFalse(movement.is_garrisoned(self.state,self.unit))
+        current=spatial.meters(self.unit['position'])
+        movement.order(self.state,'red',dict(unit_id=self.unit['unit_id'],mode='move',position=spatial.business((1300,500))))
+        self.assertAlmostEqual(self.state['routes'][0]['points'][0][0],current[0],5)
+
+    def test_invalid_departure_preserves_garrison(self):
+        """非法目标拒绝后，待命单位仍留在兵营且不扣任何能源。"""
+        self.unit['camp_id']='red-ground'
+        self.state['camps']=[dict(camp_id='red-ground',position=spatial.business((200,500)),half_extent_m=30)]
+        before=deepcopy(self.unit)
+        with self.assertRaises(ServiceError):
+            movement.order(self.state,'red',dict(unit_id=self.unit['unit_id'],mode='move',position=spatial.business((-10,500))))
+        self.assertEqual(self.unit,before)
+        self.assertTrue(movement.is_garrisoned(self.state,self.unit))
+
 
 if __name__=='__main__': main()

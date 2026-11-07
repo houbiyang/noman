@@ -17,6 +17,7 @@ namespace Qiongtu.Sandbox
         private Bounds visualBounds;
         public string UnitId { get; private set; }
         public bool IsMoving => path.Count > 0;
+        public bool IsGarrisoned => garrisoned;
         private SandboxUnitType type;
         private Transform visual;
         private readonly List<Transform> rotors = new List<Transform>();
@@ -29,6 +30,7 @@ namespace Qiongtu.Sandbox
         private float confirmedPlaybackSpeed;
         private bool confirmedReverse;
         private bool confirmedRoute;
+        private bool garrisoned;
         private MaterialPropertyBlock block;
         private LineRenderer route;
         private float spawnAt;
@@ -71,8 +73,18 @@ namespace Qiongtu.Sandbox
         public void Relocate(Vector3 position)
         {
             confirmedPlaybackSpeed = 0; confirmedReverse = false; confirmedRoute = false;
-            path.Clear(); destination = position; transform.position = position; speed = 0; initialized = true; spawnAt = Time.time;
+            path.Clear(); destination = position; transform.position = position; speed = 0; initialized = true;
             UpdateVisualPose(Time.time, false, 1);
+        }
+
+        /// <summary>切换兵营待命显示；出营前隐藏模型及拾取体，避免在旧演示位置闪现。</summary>
+        /// <param name="inside">是否仍在兵营内待命。</param>
+        public void SetGarrisoned(bool inside)
+        {
+            garrisoned = inside;
+            visual.gameObject.SetActive(!inside);
+            if (pickCollider != null) pickCollider.enabled = !inside;
+            if (inside) HideRoute();
         }
 
         public void HoldPosition() { path.Clear(); }
@@ -124,7 +136,7 @@ namespace Qiongtu.Sandbox
 
         private void Update()
         {
-            if (Time.time < spawnAt) return;
+            if (garrisoned || Time.time < spawnAt) return;
             float dt = Time.deltaTime;
             bool moving = path.Count > 0;
             speed = confirmedPlaybackSpeed > 0 ? confirmedPlaybackSpeed : Mathf.MoveTowards(speed, moving ? (type == SandboxUnitType.Recon ? 15 : type == SandboxUnitType.Ground ? 8 : 6) : 0, dt * 12);

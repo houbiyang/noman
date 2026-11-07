@@ -17,6 +17,13 @@ from backend import spatial
 FOLDER = Path(__file__).parent
 
 
+def is_garrisoned(state, unit):
+    """识别尚未出营的部署单位，兼容旧快照中没有出营标记的单位。"""
+    return (state['lifecycle']['phase'] == 'preparing' and not unit.get('movement_departed')
+            and not unit.get('movement_test_steps',0)
+            and any(camp['camp_id']==unit.get('camp_id') and camp.get('position') for camp in state['camps']))
+
+
 @lru_cache(maxsize=1)
 def profile():
     """读取独立移动参数，不覆盖既有 S2 冻结配置。"""
@@ -58,6 +65,13 @@ class Navigator:
         return self.meta['terrain_names'][self.grid[int(point[1]/self.cell)*self.columns+int(point[0]/self.cell)]]
 
     def clear(self, point):
+        """在单次寻路内复用同一占地检查，避免网格邻接搜索重复扫描。"""
+        key=tuple(point)
+        if key not in self.cache:
+            self.cache[key]=self._clear(point)
+        return self.cache[key]
+
+    def _clear(self, point):
         """检查完整圆形占地与网格包络，空中执行独立的二维禁飞规则。"""
         if not (self.radius <= point[0] <= self.data['width']-self.radius
                 and self.radius <= point[1] <= self.data['length']-self.radius):
@@ -203,12 +217,9 @@ class Navigator:
             first, last = nodes[road['startId']], nodes[road['endId']]
             if road['width'] < 2*self.radius:
                 continue
-            pieces = self.segment(first, last)
-            if pieces is None:
-                continue
-            cost = sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces)
-            graph[road['startId']].append((road['endId'], cost, [first,last]))
-            graph[road['endId']].append((road['startId'], cost, [last,first]))
+            # 道路几何只在搜索访问到对应边时校验，避免每条指令预扫整张地图。
+            graph[road['startId']].append((road['endId'], None, [first,last]))
+            graph[road['endId']].append((road['startId'], None, [last,first]))
             delta = (last[0]-first[0], last[1]-first[1])
             squared = sum(value*value for value in delta)
             for side, point in enumerate((start, end)):
@@ -243,6 +254,7 @@ class Navigator:
                     if pieces is not None:
                         graph['@start'].append(('@end',sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces),points))
         queue, costs, previous = [(0,'@start')], {'@start':0}, {}
+        edge_costs={}
         while queue:
             cost, current = heapq.heappop(queue)
             if cost > costs[current]:
@@ -253,6 +265,14 @@ class Navigator:
                     current, points = previous[current]; chunks.append(points)
                 return [point for chunk in reversed(chunks) for point in chunk]
             for next_id, weight, points in sorted(graph[current],key=lambda item:item[0]):
+                if weight is None:
+                    key=tuple(sorted((current,next_id)))
+                    if key not in edge_costs:
+                        pieces=self.segments(points)
+                        edge_costs[key]=None if pieces is None else sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces)
+                    weight=edge_costs[key]
+                    if weight is None:
+                        continue
                 if cost+weight < costs.get(next_id,math.inf)-1e-12:
                     costs[next_id],previous[next_id] = cost+weight,(current,points)
                     heapq.heappush(queue,(cost+weight,next_id))
@@ -331,7 +351,7 @@ def advance_unit(state, unit, active, deployment=False):
         blocked = False
         if unit['unit_type'] != 'recon':
             for other in state['units']:
-                if other['unit_id']==unit['unit_id'] or other['unit_type']=='recon':
+                if other['unit_id']==unit['unit_id'] or other['unit_type']=='recon' or is_garrisoned(state,other):
                     continue
                 other_point=spatial.meters(other['position'])
                 separation=radius+active['movement_profile']['unit_profiles'][other['unit_type']]['radius_m']+1
@@ -385,6 +405,7 @@ def order(state, actor, payload):
         require(navigator.clear(spatial.meters(target)),'TARGET_IMPASSABLE','试走起点位于该兵种禁行区，请重新选择')
         state['routes']=[route for route in state['routes'] if route['unit_id']!=unit['unit_id']]
         unit['position']=spatial.business(spatial.meters(target)); unit['status']='部署试走起点已设置'
+        unit['movement_departed']=True
         state['lifecycle']['ready'][unit['side']]=False; reset_plan(state,unit['side'])
         return unit
     if mode=='return_to_barracks':
@@ -394,10 +415,23 @@ def order(state, actor, payload):
         target=spatial.business((center[0],center[1]+camp.get('half_extent_m',30)+10))
         mode='move'
     require(target is not None,'TARGET_REQUIRED','请选择移动目标',422)
-    active=plan(state,unit,target,mode,payload.get('waypoints'))
+    candidate=deepcopy(unit)
+    waypoints=list(payload.get('waypoints') or [])
+    departing=is_garrisoned(state,unit)
+    if departing:
+        require(mode!='reverse_move','MODE_UNAVAILABLE','单位尚在兵营内，请先用普通或快速移动出营')
+        camp=next(value for value in state['camps'] if value['camp_id']==unit['camp_id'])
+        center=spatial.meters(camp['position'])
+        candidate['position']=spatial.business(center)
+        waypoints.insert(0,spatial.business((center[0],center[1]+camp.get('half_extent_m',30)+10)))
+    active=plan(state,candidate,target,mode,waypoints)
+    if departing:
+        unit['position']=candidate['position']
+    unit['movement_departed']=True
     state['routes']=[route for route in state['routes'] if route['unit_id']!=unit['unit_id']]+[active]
     unit['status']='部署试走已排队' if active['deployment_test'] else '规则路线已排队'
     if active['deployment_test']:
         state['lifecycle']['ready'][unit['side']]=False
         reset_plan(state,unit['side'])
+        advance_unit(state,unit,active,deployment=True)
     return unit

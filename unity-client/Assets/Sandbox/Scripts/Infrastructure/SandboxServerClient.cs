@@ -19,6 +19,8 @@ namespace Qiongtu.Sandbox
         private long responseCode;
         private float nextPoll;
         private string automaticRole;
+        private string queuedMovementKind;
+        private object queuedMovementPayload;
 #if UNITY_WEBGL && !UNITY_EDITOR
         private bool webComplete;
         private int webSequence;
@@ -31,7 +33,7 @@ namespace Qiongtu.Sandbox
         public SandboxServerView View { get; private set; }
         public bool Busy { get; private set; }
         public bool Healthy { get; private set; }
-        public bool HasPending => pendingBody != null;
+        public bool HasPending => pendingBody != null || queuedMovementKind != null;
         public string Status { get; private set; } = "尚未连接后端";
 
         /// <summary>配置本地显示地图身份，服务端版本不一致时禁止发布画面。</summary>
@@ -93,6 +95,11 @@ namespace Qiongtu.Sandbox
         /// <summary>提交严格类型的内部载荷，在收据明确之前不修改地图。</summary>
         public void Command(string kind, object payload = null, SandboxServerContext basis = null)
         {
+            if (Busy && !HasPending && Healthy && View != null && basis == null && kind == "movement_order")
+            {
+                queuedMovementKind = kind; queuedMovementPayload = payload;
+                Feedback?.Invoke("已接收移动目标，当前状态读取完成后立即提交"); return;
+            }
             if (Busy || HasPending || !Healthy || View == null) { Feedback?.Invoke("同步尚未就绪或原命令待核对，请稍后重试"); return; }
             string head = JsonUtility.ToJson(new SandboxServerCommandHead { context = basis ?? View.context, command_type = kind });
             pendingBody = head.Substring(0, head.Length - 1) + ",\"payload\":" + (payload == null ? "{}" : JsonUtility.ToJson(payload)) + "}";
@@ -148,6 +155,13 @@ namespace Qiongtu.Sandbox
             PublishResponse();
             Busy = false; nextPoll = Time.realtimeSinceStartup + 1;
             Changed?.Invoke();
+            if (queuedMovementKind != null)
+            {
+                string kind = queuedMovementKind; object payload = queuedMovementPayload;
+                queuedMovementKind = null; queuedMovementPayload = null;
+                if (Healthy) Command(kind, payload);
+                else Feedback?.Invoke("连接未恢复，移动目标未提交，请重试");
+            }
         }
 
         private IEnumerator Commit()

@@ -112,7 +112,7 @@ namespace Qiongtu.Sandbox
         {
             projection = serverMode ? ServerProjection() : source.GetProjection(role);
             if (serverMode) role = projection.role;
-            world.ApplyProjection(projection, serverMode, serverMode ? serverClient.View?.movement_paths : null);
+            world.ApplyProjection(projection, serverMode, serverMode ? serverClient.View?.movement_paths : null, serverMode ? serverClient.View?.units : null);
             RebuildMapLabels();
             if (!projection.units.Any(unit => unit.id == selectedId)) selectedId = projection.units.FirstOrDefault()?.id;
             world.Select(selectedId);

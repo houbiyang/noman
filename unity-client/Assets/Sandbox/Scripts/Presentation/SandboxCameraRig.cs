@@ -164,7 +164,7 @@ namespace Qiongtu.Sandbox
             if (!view.IsAirborne)
             {
                 elevatedFocus = false; framingViewport = new Rect(0, 0, 1, 1);
-                focus = target.position; distance = 40;
+                focus = target.position; distance = view.IsGarrisoned ? 180 : 40;
             }
             else
             {

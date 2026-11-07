@@ -295,6 +295,10 @@ class SandboxService:
             result["map"]["content_hash"] = map_manifest()["content_hash"]
             result["spatial_test"] = "spatial_profile" in state["manifest"]
             if result["spatial_test"]:
+                for unit in result['units']:
+                    unit['in_barracks']=movement.is_garrisoned(state,unit)
+                    if unit['in_barracks']:
+                        unit['position']=deepcopy(next(camp['position'] for camp in state['camps'] if camp['camp_id']==unit['camp_id']))
                 spatial.map_data(state)
                 result["routes"] = [deepcopy(route) for route in state["routes"] if route["unit_id"] in visible_units]
                 result["movement_paths"] = [dict(unit_id=route['unit_id'], route_id=route['route_id'], status=route['status'],
