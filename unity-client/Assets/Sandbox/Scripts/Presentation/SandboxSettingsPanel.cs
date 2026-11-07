@@ -68,6 +68,7 @@ namespace Qiongtu.Sandbox
             SettingsNav(nav, "red", "红方 AI");
             SettingsNav(nav, "blue", "蓝方 AI");
             SettingsNav(nav, "display", "沙盘显示");
+            SettingsNav(nav, "logs", "运行日志");
             AddText(nav, "AI 参数保存为本机草稿\n显示偏好保存后生效", "settings-nav-note");
             settingsContent = new ScrollView(ScrollViewMode.Vertical) { name = "settingsContent" };
             settingsContent.AddToClassList("settings-content"); body.Add(settingsContent);
@@ -79,6 +80,7 @@ namespace Qiongtu.Sandbox
             AddButton(actions, "校验", () => ValidateSettings(false), "settings-secondary").name = "validateSettings";
             AddButton(actions, "关闭", () => RequestCloseSettings(), "settings-secondary").name = "cancelSettings";
             settingsSaveButton = AddButton(actions, "保存设置", SaveSettings, "settings-primary"); settingsSaveButton.name = "saveSettings";
+            serverClient.LogChanged += RefreshSettingsLogs;
             RenderSettingsSection(); UpdateSettingsDirty(); close.Focus();
         }
 
@@ -106,6 +108,7 @@ namespace Qiongtu.Sandbox
                 case "red": BuildSideSettings(settingsDraft.red, "red", "红方"); break;
                 case "blue": BuildSideSettings(settingsDraft.blue, "blue", "蓝方"); break;
                 case "display": BuildDisplaySettings(); break;
+                case "logs": BuildLogsSettings(); break;
             }
             ShowSettingsErrors();
         }
@@ -199,6 +202,26 @@ namespace Qiongtu.Sandbox
             SettingsFact(rules, "出兵流程", "待接入仿真 / AI 指令后由对应兵营出发");
             SettingsFact(rules, "当前单位限制", "本地演示沿用红蓝合计 10 个，非正式契约上限");
             AddText(rules, "初始六个单位和已有存档继续保留。本次不增加自动出兵计时器。", "settings-note");
+        }
+        /// <summary>查看本页会话最近的后端连接和命令结果，不展示凭据或原始报文。</summary>
+        private void BuildLogsSettings()
+        {
+            SettingsSectionTitle("运行日志", "本次页面会话的最近 100 条连接与命令记录；刷新网页后重新开始记录。");
+            var card = SettingsCard("操作记录", "仅显示时间、命令类型、HTTP 状态及后端公开错误信息。最新记录在前。");
+            var entries = serverClient.RecentLogs;
+            if (entries.Count == 0) { AddText(card, "暂无记录。连接后端或执行命令后会在这里显示结果。", "settings-note"); return; }
+            for (int index = entries.Count - 1; index >= 0; index--)
+            {
+                SandboxClientLogEntry entry = entries[index];
+                var line = AddText(card, entry.Time + "  " + entry.Message, "settings-log-line");
+                line.EnableInClassList("settings-log-error", entry.IsError);
+            }
+        }
+
+        /// <summary>日志页打开时同步显示新记录，其他配置页不重新绘制。</summary>
+        private void RefreshSettingsLogs()
+        {
+            if (settingsOverlay != null && settingsSection == "logs") RenderSettingsSection();
         }
         private static void SettingsFact(VisualElement parent, string title, string value)
         {
@@ -295,6 +318,7 @@ namespace Qiongtu.Sandbox
         private void CloseSettings()
         {
             CancelHealthCheck(); settingsOverlay?.RemoveFromHierarchy(); settingsOverlay = null; settingsDraft = null;
+            if (serverClient != null) serverClient.LogChanged -= RefreshSettingsLogs;
             settingsFields.Clear(); settingsErrors.Clear();
         }
         private void StartHealthCheck()

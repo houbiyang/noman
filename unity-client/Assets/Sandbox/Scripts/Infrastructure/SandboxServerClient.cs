@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -11,6 +12,24 @@ using System.Net.Http.Headers;
 
 namespace Qiongtu.Sandbox
 {
+    /// <summary>仅保存可展示的本机连接与命令摘要。</summary>
+    public sealed class SandboxClientLogEntry
+    {
+        public string Time { get; }
+        public string Message { get; }
+        public bool IsError { get; }
+
+        /// <summary>创建不含席位凭据和请求正文的运行记录。</summary>
+        /// <param name="message">供页面展示的操作摘要。</param>
+        /// <param name="isError">该记录是否表示失败。</param>
+        public SandboxClientLogEntry(string message, bool isError)
+        {
+            Time = DateTime.Now.ToString("HH:mm:ss");
+            Message = message;
+            IsError = isError;
+        }
+    }
+
     /// <summary>只在成功读取并校验后发布权威视图，不把请求中的目标当作已提交事实。</summary>
     public sealed class SandboxServerClient : MonoBehaviour
     {
@@ -21,6 +40,8 @@ namespace Qiongtu.Sandbox
         private string automaticRole;
         private string queuedMovementKind;
         private object queuedMovementPayload;
+        private readonly List<SandboxClientLogEntry> recentLogs = new List<SandboxClientLogEntry>();
+        private string lastConnectionIssue;
 #if UNITY_WEBGL && !UNITY_EDITOR
         private bool webComplete;
         private int webSequence;
@@ -30,11 +51,23 @@ namespace Qiongtu.Sandbox
         public event Action Changed;
         public event Action<string> Feedback;
         public event Action<string, bool> CommandFinished;
+        public event Action LogChanged;
+        public IReadOnlyList<SandboxClientLogEntry> RecentLogs => recentLogs;
         public SandboxServerView View { get; private set; }
         public bool Busy { get; private set; }
         public bool Healthy { get; private set; }
         public bool HasPending => pendingBody != null || queuedMovementKind != null;
         public string Status { get; private set; } = "尚未连接后端";
+
+        /// <summary>保留最近一百条公开摘要，避免轮询和长时间运行占用无限内存。</summary>
+        /// <param name="message">不包含凭据、请求正文或原始响应的摘要。</param>
+        /// <param name="isError">是否显示为失败记录。</param>
+        private void AddLog(string message, bool isError = false)
+        {
+            recentLogs.Add(new SandboxClientLogEntry(message, isError));
+            if (recentLogs.Count > 100) recentLogs.RemoveAt(0);
+            LogChanged?.Invoke();
+        }
 
         /// <summary>配置本地显示地图身份，服务端版本不一致时禁止发布画面。</summary>
         public void Initialize(string expectedMapId, string expectedHash) { mapId = expectedMapId; mapHash = expectedHash; }
@@ -47,6 +80,7 @@ namespace Qiongtu.Sandbox
             if (Busy || HasPending || (role != "red" && role != "blue" && role != "host")) return false;
             automaticRole = role; endpoint = null; bearer = null; gameId = null; View = null; Healthy = false;
             Status = "正在自动接入后端…";
+            AddLog("开始接入本机后端 · " + role);
             StartCoroutine(AutomaticConnect());
             return true;
         }
@@ -66,6 +100,7 @@ namespace Qiongtu.Sandbox
             if (launch == null || launch.role != automaticRole || !Connect(launch.api_url, launch.game_id, launch.access_token))
             {
                 Healthy = false; Status = responseCode == 200 ? "接入信息无效，正在等待重试" : PublicError();
+                if (lastConnectionIssue != Status) { lastConnectionIssue = Status; AddLog("接入失败 · " + Status, true); }
                 nextPoll = Time.realtimeSinceStartup + 3;
                 Changed?.Invoke();
             }
@@ -107,6 +142,7 @@ namespace Qiongtu.Sandbox
             pendingKey = Guid.NewGuid().ToString();
             pendingCommandType = kind;
             pendingBranchId = context.branch_id;
+            AddLog("提交命令 · " + kind);
             StartCoroutine(Commit());
         }
 
@@ -174,10 +210,12 @@ namespace Qiongtu.Sandbox
         {
             Busy = true; Changed?.Invoke();
             yield return Fetch("POST", "/commands", pendingBody, pendingKey);
-            SandboxServerReceipt receipt = responseCode >= 200 && responseCode < 300 ? ReadJson<SandboxServerReceipt>() : null;
+            long commandCode = responseCode;
+            SandboxServerReceipt receipt = responseCode >= 200 && responseCode < 500 ? ReadJson<SandboxServerReceipt>() : null;
             if (responseCode == 0 || responseCode >= 500 || (responseCode >= 200 && responseCode < 300 && receipt?.status != "succeeded" && receipt?.status != "rejected"))
             {
                 Status = "命令结果待核对；正在自动查询原请求";
+                AddLog("命令 " + pendingCommandType + " · 结果待核对 · HTTP " + commandCode, true);
                 Feedback?.Invoke(Status);
             }
             else
@@ -185,6 +223,8 @@ namespace Qiongtu.Sandbox
                 string commandType = pendingCommandType;
                 bool succeeded = receipt?.status == "succeeded";
                 string message = succeeded ? "后端已提交，正在读取保存后的状态" : PublicError();
+                AddLog("命令 " + commandType + " · HTTP " + commandCode + " · "
+                    + (succeeded ? "执行成功" : "失败 " + (receipt?.error?.code ?? "UNKNOWN") + " · " + message), !succeeded);
                 pendingBody = null; pendingKey = null; pendingBranchId = null;
                 yield return Fetch("GET", "/view", null, null);
                 PublishResponse();
@@ -208,6 +248,8 @@ namespace Qiongtu.Sandbox
                 string commandType = pendingCommandType;
                 bool succeeded = receipt.status == "succeeded";
                 string message = succeeded ? "后端已确认命令，正在读取最新状态" : receipt.error?.message ?? "后端已拒绝命令";
+                AddLog("命令 " + commandType + " · 核对完成 · "
+                    + (succeeded ? "执行成功" : "失败 " + (receipt.error?.code ?? "UNKNOWN") + " · " + message), !succeeded);
                 pendingBody = null; pendingKey = null; pendingBranchId = null;
                 yield return Fetch("GET", "/view", null, null);
                 PublishResponse();
@@ -306,6 +348,7 @@ namespace Qiongtu.Sandbox
             if (responseCode != 200)
             {
                 Healthy = false; Status = PublicError();
+                if (lastConnectionIssue != Status) { lastConnectionIssue = Status; AddLog("状态读取失败 · HTTP " + responseCode + " · " + Status, true); }
                 if (responseCode == 401 || responseCode == 403 || responseCode == 404) View = null;
                 if (responseCode == 401 && automaticRole != null && !HasPending)
                 { endpoint = null; bearer = null; gameId = null; }
@@ -313,10 +356,18 @@ namespace Qiongtu.Sandbox
             }
             SandboxServerView candidate = ReadJson<SandboxServerView>();
             string failure = SandboxServerProjection.Validate(candidate, gameId, mapId, mapHash);
+            bool wasHealthy = Healthy;
             Healthy = failure.Length == 0;
-            if (!Healthy) { Status = failure; return; }
+            if (!Healthy)
+            {
+                Status = failure;
+                if (lastConnectionIssue != Status) { lastConnectionIssue = Status; AddLog("状态校验失败 · " + Status, true); }
+                return;
+            }
             View = candidate;
             Status = HasPending ? "后端已同步；原命令结果仍待核对" : "已连接后端 · PostgreSQL 已持久化";
+            lastConnectionIssue = null;
+            if (!wasHealthy) AddLog("后端连接正常 · 状态已同步");
         }
 
         private string PublicError()
