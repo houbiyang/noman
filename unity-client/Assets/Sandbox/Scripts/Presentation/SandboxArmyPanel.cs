@@ -17,6 +17,7 @@ namespace Qiongtu.Sandbox
         private string pendingMoveId;
         private Action refreshArmyManagement;
         private string movementMode = "move", pendingMovementMode = "move", deploymentMovingUnit;
+        private int spawnQuantity = 1;
         private float nextDeploymentMovement;
         private readonly List<SandboxServerPosition> movementWaypoints = new List<SandboxServerPosition>();
 
@@ -54,7 +55,7 @@ namespace Qiongtu.Sandbox
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); panel.Add(footer);
             var summary = new VisualElement(); summary.style.flexGrow = 1; footer.Add(summary);
             AddText(summary, "点击兵种图标 → 点击地图放置兵营", "army-footnote");
-            AddText(summary, "单位由后续仿真指令从对应兵营出发", "army-footnote");
+            AddText(summary, "输入本次新增数量，从对应兵营生成单位；移动时出营", "army-footnote");
         }
         private void BuildArmyCard(VisualElement parent, int index)
         {
@@ -69,7 +70,7 @@ namespace Qiongtu.Sandbox
             var details = new VisualElement(); details.AddToClassList("army-card-details"); card.Add(details);
             AddText(details, camp == null ? DemoSandboxViewSource.BarracksName(type) : BarracksDisplayName(camp), "army-card-title");
             AddText(details, DemoSandboxViewSource.ArmyName(type), "army-troop-name");
-            AddText(details, camp == null ? "尚未建造" : "已建造 · 等待仿真指令", "army-current");
+            AddText(details, camp == null ? "尚未建造" : "已建造 · 可设置出兵数量", "army-current");
             AddButton(details, camp == null ? "选点建造兵营" : "重新选址", () => BeginDeploy(type), "army-deploy")
                 .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
             AddButton(details, "查看兵种 / 管理单位", () => OpenArmyManagement(armySide, type), "army-manage");
@@ -134,6 +135,12 @@ namespace Qiongtu.Sandbox
                 modes.RegisterValueChangedCallback(_ => movementMode = new[] { "move", "fast_move", "reverse_move" }[modes.index]);
                 if (serverClient.View.clock.phase == "preparing") AddText(body, "部署试走：点选目标后自动试走；对局时间和正式能源不变。Ctrl＋点击可添加途经点。", "army-footnote");
             }
+            var spawn = new VisualElement(); spawn.AddToClassList("army-spawn"); body.Add(spawn);
+            var quantityInput = new IntegerField("本次新增出兵数量") { value = spawnQuantity };
+            quantityInput.AddToClassList("army-spawn-input"); spawn.Add(quantityInput);
+            quantityInput.RegisterValueChangedCallback(change => spawnQuantity = change.newValue);
+            var spawnLimit = AddText(spawn, "", "army-footnote");
+            var spawnButton = AddButton(spawn, "按输入数量从兵营出兵", () => SpawnFromBarracks(type, quantityInput.value), "army-spawn-button");
             var summary = new VisualElement(); summary.name = "barracksSummary"; summary.AddToClassList("army-summary"); body.Add(summary);
             var search = new TextField("查找单位") { value = unitSearch, maxLength = 60 }; search.AddToClassList("field"); body.Add(search);
             var list = new VisualElement { name = "barracksUnits" }; body.Add(list);
@@ -142,6 +149,12 @@ namespace Qiongtu.Sandbox
             {
                 summary.Clear(); list.Clear();
                 var units = SandboxArmyLayout.UnitsForBarracks(projection.units, armySide, type);
+                int remaining = serverMode ? Math.Max(0, 10 - units.Length) : source.ArmyCapacityRemaining;
+                bool canSpawn = hasCamp && (!serverMode || serverClient.View?.clock.phase == "preparing"
+                    && serverClient.View.camps.Any(item => item.side == ServerSide(armySide) && item.unit_type == ServerType(type) && item.deployment_validated));
+                spawnLimit.text = !canSpawn ? "请先建造该兵种兵营；仅准备阶段可新增单位"
+                    : remaining == 0 ? "该兵种已达到当前数量上限" : "该兵种已有 " + units.Length + " 个 · 本次可新增 1–" + remaining + " 个";
+                spawnButton.SetEnabled(canSpawn && remaining > 0);
                 AddText(summary, "兵种数量  " + units.Length + " 个", "army-summary-count");
                 var known = units.Where(unit => unit.maxHealth > 0).ToArray();
                 AddText(summary, known.Length == 0 ? "血量  待接入仿真数据" :
@@ -155,7 +168,7 @@ namespace Qiongtu.Sandbox
                 else if (serverMode && serverClient.View.spatial_test)
                     AddText(summary, serverClient.View.clock.phase == "preparing" ? "部署试走可随时停止，测试能源可单独重置。" : "移动目标提交后，主持人点击“单步 +1”或“继续播放”才会推进部队。", "army-footnote");
                 var filtered = units.Where(unit => (unit.id + unit.name).IndexOf(unitSearch, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
-                if (filtered.Length == 0) AddText(list, units.Length == 0 ? "暂无该兵种单位；等待后续仿真出兵。" : "没有匹配的单位。", "army-empty");
+                if (filtered.Length == 0) AddText(list, units.Length == 0 ? "暂无该兵种单位；可在上方输入数量出兵。" : "没有匹配的单位。", "army-empty");
                 foreach (var unit in filtered)
                 {
                     var card = new VisualElement { name = "barracks-unit-" + unit.id }; card.AddToClassList("army-unit-card");
@@ -207,8 +220,26 @@ namespace Qiongtu.Sandbox
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); armyOverlay.Add(footer);
             AddButton(footer, hasCamp ? "重新选址兵营" : "选点建造兵营", () => BeginDeploy(type), "army-deploy")
                 .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
-            AddText(footer, serverMode ? "当前席位数据 · 血量未知不推算 · 无人工出兵" : "本机演示数据 · 血量未知不推算 · 无人工出兵", "army-footnote");
+            AddText(footer, serverMode ? "当前席位数据 · 新增单位先在兵营待命，点击移动后出营" : "本机演示数据 · 可按输入数量从兵营出兵", "army-footnote");
             header.Q<Button>().Focus();
+        }
+        /// <summary>核对本次新增数量，再由当前席位的兵营生成单位。</summary>
+        /// <param name="type">当前兵营的兵种。</param>
+        /// <param name="quantity">本次输入的新增单位数。</param>
+        private void SpawnFromBarracks(SandboxUnitType type, int quantity)
+        {
+            int current = SandboxArmyLayout.UnitsForBarracks(projection.units, armySide, type).Length;
+            int remaining = serverMode ? Math.Max(0, 10 - current) : source.ArmyCapacityRemaining;
+            if (quantity < 1 || quantity > remaining) { Notify("本次出兵数量须为 1–" + remaining + "，请修改输入框"); return; }
+            if (serverMode)
+            {
+                SendServerCommand("spawn_from_barracks", new SandboxServerBarracksSpawn {
+                    side = ServerSide(armySide), unit_type = ServerType(type), quantity = quantity });
+                return;
+            }
+            if (source.TrySpawnArmy(role, armySide, type, quantity, out string message))
+            { RefreshProjection(); RenderArmy(); }
+            Notify(message);
         }
         private Rect UnitLocateViewport()
         {

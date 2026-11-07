@@ -172,6 +172,38 @@ def place_barracks(state: dict, actor: str, payload: dict) -> tuple[dict, dict]:
                        side=side, visibility=side, private_plan=False)
 
 
+def spawn_from_barracks(state: dict, actor: str, payload: dict) -> tuple[dict, dict]:
+    """准备阶段按输入数量从已验证的兵种兵营新增待命单位。"""
+    side, unit_type, quantity = payload["side"], payload["unit_type"], payload["quantity"]
+    own_side(actor, side)
+    require("spatial_profile" in state["manifest"], "SPATIAL_TEST_REQUIRED", "此局未启用兵营空间测试")
+    require(state["lifecycle"]["phase"] == "preparing", "PHASE_CONFLICT", "只能在准备阶段从兵营出兵")
+    selected_camp = next((item for item in state["camps"] if item["camp_id"] == barracks_id(side, unit_type)
+                          and item.get("position") and item.get("deployment_validated")), None)
+    require(selected_camp is not None, "CAMP_REQUIRED", "请先建造并验证该兵种的兵营")
+    state = deepcopy(state)
+    existing_ids = {unit["unit_id"] for unit in state["units"]}
+    available = [new_unit(side, unit_type, number, selected_camp["position"]) for number in range(1, 11)]
+    available = [unit for unit in available if unit["unit_id"] not in existing_ids]
+    require(quantity <= len(available), "UNIT_CAPACITY_EXCEEDED", "该兵种最多保留 10 个单位，请减少本次出兵数量")
+    limits = state["manifest"]["spatial_profile"]["unit_profiles"][unit_type]
+    formation_id = side + "-" + unit_type
+    formation = next((item for item in state["formations"] if item["formation_id"] == formation_id), None)
+    if formation is None:
+        formation = dict(formation_id=formation_id, side=side, unit_type=unit_type, unit_ids=[])
+        state["formations"].append(formation)
+    for unit in available[:quantity]:
+        unit.update(camp_id=selected_camp["camp_id"], formation_id=formation_id, navigation_status="test_route",
+                    status="兵营待命", movement_departed=False, movement_test_energy=limits["energy"], movement_test_steps=0)
+        unit.update({name: limits[name] for name in ("energy", "supply", "durability")})
+        state["units"].append(unit)
+        formation["unit_ids"].append(unit["unit_id"])
+    state["lifecycle"]["ready"][side] = False
+    reset_plan(state, side)
+    return state, dict(title="兵营单位已生成", detail=unit_type + "新增 " + str(quantity) + " 个单位，等待移动指令出营",
+                       side=side, visibility=side, private_plan=False)
+
+
 def set_preparation(state: dict, actor: str, payload: dict) -> tuple[dict, dict]:
     """在准备阶段整体替换本方兵营和单位，旧已准备状态失效。"""
     own_side(actor, payload["side"])

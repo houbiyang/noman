@@ -486,6 +486,9 @@ class SandboxService:
         if kind == "place_barracks":
             state, event = spatial.place_barracks(state, actor, payload)
             world_revision += 1
+        elif kind == "spawn_from_barracks":
+            state, event = spatial.spawn_from_barracks(state, actor, payload)
+            world_revision += 1
         elif kind == "movement_order":
             unit = movement.order(state, actor, payload)
             event.update(title=unit['status'], detail='部署试走独立于对局时钟和正式能源' if state['lifecycle']['phase']=='preparing'

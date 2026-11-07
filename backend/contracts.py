@@ -89,6 +89,14 @@ class DeployArmy(StrictModel):
     position: Position
 
 
+class SpawnFromBarracks(StrictModel):
+    """准备阶段从本方指定兵种兵营新增测试单位。"""
+
+    side: Side
+    unit_type: UnitType
+    quantity: StrictInt = Field(ge=1, le=10)
+
+
 class MoveUnit(StrictModel):
     """记录现有演示的机动目标，不接收坐标以外的权威能力字段。"""
 
@@ -212,7 +220,7 @@ class ExitPayload(SavePayload):
 
 PAYLOAD_MODELS = {
     "movement_order": MovementOrder, "advance_deployment_movement": DeploymentMovementStep,
-    "place_barracks": PlaceBarracks, "delete_unit": DeleteUnit,
+    "place_barracks": PlaceBarracks, "spawn_from_barracks": SpawnFromBarracks, "delete_unit": DeleteUnit,
     "set_preparation": TestPreparation,
     "configure_army": ConfigureArmy, "deploy_army": DeployArmy, "move_unit": MoveUnit,
     "set_ready": ReadyPayload, "set_tasks": TaskPayload, "review_proposal": ReviewProposal,

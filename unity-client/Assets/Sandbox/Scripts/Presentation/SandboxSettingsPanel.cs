@@ -199,8 +199,8 @@ namespace Qiongtu.Sandbox
             var rules = new Foldout { text = "仿真与操作说明", value = false }; rules.AddToClassList("settings-card"); settingsContent.Add(rules);
             SettingsFact(rules, "时间", "每次推进 1 分钟 · 截止第 60 分钟");
             SettingsFact(rules, "人工确认", "首次方案与重大调整必须确认");
-            SettingsFact(rules, "本地兵营", "只建造或重新选址 · 无手动出兵选项");
-            SettingsFact(rules, "出兵流程", "待接入仿真 / AI 指令后由对应兵营出发");
+            SettingsFact(rules, "兵营管理", "准备阶段可输入本次新增数量，从对应兵营生成单位");
+            SettingsFact(rules, "出兵流程", "新增单位先在兵营待命，点击移动后出营");
             SettingsFact(rules, "当前单位限制", "本地演示沿用红蓝合计 10 个，非正式契约上限");
             AddText(rules, "初始六个单位和已有存档继续保留。本次不增加自动出兵计时器。", "settings-note");
         }

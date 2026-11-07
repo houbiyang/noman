@@ -154,6 +154,8 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerDeploymentStep { public string unit_id; }
     /// <summary>地图选址后的单兵种兵营输入，由服务端核对完整占地和权限。</summary>
     [Serializable] public sealed class SandboxServerBarracks { public string side, unit_type; public SandboxServerPosition position; }
+    /// <summary>准备阶段按本次输入数量从指定兵种兵营新增单位。</summary>
+    [Serializable] public sealed class SandboxServerBarracksSpawn { public string side, unit_type; public int quantity; }
     /// <summary>单个单位的删除输入，服务端保留兵营及历史记录。</summary>
     [Serializable] public sealed class SandboxServerDeleteUnit { public string unit_id; }
     /// <summary>三类数量配置。</summary>

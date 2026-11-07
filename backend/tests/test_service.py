@@ -190,6 +190,41 @@ class CurrentFeatureTests(unittest.TestCase):
         self.command("delete_unit", dict(unit_id="R-U01"), "red")
         self.assertFalse(any(unit["unit_id"] == "R-U01" for unit in self.view("red")["units"]))
 
+    def test_21_typed_barracks_spawn_quantity_and_departure(self):
+        """输入数量只新增本方待命单位，权限、上限、幂等和出营均由后端确认。"""
+        response = self.client.post("/api/v1/games", headers=dict(self.bootstrap, **{"Idempotency-Key": str(uuid4())}),
+                                    json=dict(title="兵营数量出兵", is_demo=True, spatial_test=True))
+        self.assertEqual(response.status_code, 201, response.text)
+        self.game_id = response.json()["game_id"]
+        self.path = "/api/v1/games/" + self.game_id
+        for role in ("host", "red", "blue"):
+            seat = self.client.post(f"/api/v1/bootstrap/games/{self.game_id}/sessions", headers=self.bootstrap, json=dict(role=role)).json()
+            self.headers[role] = {"Authorization": "Bearer " + seat["access_token"]}
+        self.command("spawn_from_barracks", dict(side="red", unit_type="ground", quantity=1), "red", expected=409)
+        for kind, (x, y) in {"recon": ("10.3", "26.2"), "ground": ("10.9", "26.2"), "support": ("10.3", "26.7")}.items():
+            self.command("place_barracks", dict(side="red", unit_type=kind, position=dict(x=x, y=y)), "red")
+        body = dict(context=self.view("red")["context"], command_type="spawn_from_barracks",
+                    payload=dict(side="red", unit_type="recon", quantity=2))
+        request_key = str(uuid4())
+        self.command("spawn_from_barracks", role="red", body=body, key=request_key)
+        self.assertTrue(self.command("spawn_from_barracks", role="red", body=body, key=request_key)["replayed"])
+        self.command("spawn_from_barracks", dict(side="red", unit_type="ground", quantity=2), "red")
+        self.command("spawn_from_barracks", dict(side="red", unit_type="support", quantity=1), "red")
+        units = self.view("red")["units"]
+        self.assertEqual(len(units), 8)
+        self.assertEqual({unit["unit_id"] for unit in units if unit["unit_type"] == "recon"}, {"R-U01", "R-U02", "R-U03"})
+        self.assertTrue(all(unit["in_barracks"] and unit["camp_id"] and unit["energy"] is not None for unit in units))
+        self.assertEqual(len(self.view("blue")["units"]), 3)
+        before = self.view("red")["context"]
+        self.command("spawn_from_barracks", dict(side="red", unit_type="recon", quantity=8), "red", expected=409)
+        self.command("spawn_from_barracks", dict(side="blue", unit_type="recon", quantity=1), "red", expected=403)
+        self.command("spawn_from_barracks", dict(side="red", unit_type="recon", quantity=True), "red", expected=422)
+        self.assertEqual(self.view("red")["context"], before)
+        self.command("movement_order", dict(unit_id="R-U02", mode="move", position=dict(x="35", y="44")), "red")
+        departed = next(unit for unit in self.view("red")["units"] if unit["unit_id"] == "R-U02")
+        self.assertFalse(departed["in_barracks"])
+        self.assertGreater(departed["movement_test_steps"], 0)
+
     def test_03_context_fence_and_duplicate_concurrency(self):
         body = dict(context=self.view("red")["context"], command_type="set_ready", payload=dict(ready=True))
         key = str(uuid4())
