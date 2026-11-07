@@ -74,10 +74,31 @@ class MovementTests(TestCase):
             self.grid[:]=bytearray([value])*len(self.grid)
             self.assertFalse(movement.Navigator(self.state,self.unit,'move').clear((200,500)))
 
+    def test_circular_clearance_respects_unit_radius(self):
+        """同一斜角禁行格按真实圆形占地判定，不扩大成方形阻挡。"""
+        self.grid[101*300+41]=5
+        point=(202.5,502.5)
+        self.assertTrue(movement.Navigator(self.state,self.unit,'move').clear(point))
+        self.unit['unit_type']='support'
+        self.assertFalse(movement.Navigator(self.state,self.unit,'move').clear(point))
+
     def test_mid_segment_checks_water(self):
         """起终点合法也不能直接穿过中间河道。"""
         for row in range(300): self.grid[row*300+100:row*300+104]=bytes([5])*4
         self.assertIsNone(movement.Navigator(self.state,self.unit,'move').segment((200,500),(800,500)))
+
+    def test_search_cost_matches_confirmed_route_cost(self):
+        """搜索边权与最终逐段证据的预计耗时保持一致。"""
+        points=[(200,500),(700,500),(1200,500)]
+        for mode in ('move','fast_move','reverse_move'):
+            navigator=movement.Navigator(self.state,self.unit,mode)
+            pieces=navigator.segments(points)
+            self.assertIsNotNone(pieces)
+            expected=sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces)
+            self.assertAlmostEqual(navigator.path_cost(points),expected,8)
+        self.grid[100*300+100]=5
+        navigator=movement.Navigator(self.state,self.unit,'move')
+        self.assertIsNone(navigator.path_cost(points))
 
     def test_slope_limits(self):
         """坡度比例不是角度，分别验证轮式与履带阈值。"""

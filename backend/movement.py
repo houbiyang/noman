@@ -57,6 +57,9 @@ class Navigator:
         self.cell, self.columns, self.rows = self.meta['cell_m'], self.meta['columns'], self.meta['rows']
         self.radius = self.parameters['radius_m'] + self.rules['safety_margin_m']
         self.cache = {}
+        self.heights = {}
+        self.allowed_terrain = {index for index, name in enumerate(self.meta['terrain_names'])
+                                if name in self.rules['terrain_factors'].get(self.kind, {})}
         self.camps = [(camp, spatial.meters(camp['position'])) for camp in state['camps'] if camp.get('position')]
 
     def terrain(self, point):
@@ -88,13 +91,19 @@ class Navigator:
                 if inside:
                     return False
             return True
-        allowed = self.rules['terrain_factors'][self.kind]
-        column, row = int(point[0]/self.cell), int(point[1]/self.cell)
+        point_x, point_z = point
+        column, row = int(point_x/self.cell), int(point_z/self.cell)
+        radius_squared = self.radius*self.radius
         for dz in (-1, 0, 1):
             for dx in (-1, 0, 1):
-                left, top = (column+dx)*self.cell, (row+dz)*self.cell
-                nearest = (max(left, min(point[0], left+self.cell)), max(top, min(point[1], top+self.cell)))
-                if math.dist(point, nearest) < self.radius and self.terrain((left+self.cell/2, top+self.cell/2)) not in allowed:
+                next_column, next_row = column+dx, row+dz
+                if (0 <= next_column < self.columns and 0 <= next_row < self.rows
+                        and self.grid[next_row*self.columns+next_column] in self.allowed_terrain):
+                    continue
+                left, top = next_column*self.cell, next_row*self.cell
+                nearest_x = max(left, min(point_x, left+self.cell))
+                nearest_z = max(top, min(point_z, top+self.cell))
+                if (point_x-nearest_x)**2+(point_z-nearest_z)**2 < radius_squared:
                     return False
         for camp, center in self.camps:
             extent = camp.get('half_extent_m', 30)
@@ -110,13 +119,21 @@ class Navigator:
         if self.terrain(start) == 'bridge' or self.terrain(end) == 'bridge':
             return 0
         length = math.dist(start, end)
-        return abs(spatial.height(self.data, end)-spatial.height(self.data, start))/length if length else 0
+        return abs(self.height(end)-self.height(start))/length if length else 0
 
-    def segment(self, start, end):
-        """采样完整路径，返回通行成本；不可通行返回空。"""
+    def height(self, point):
+        """在单次规划中复用道路与网格相同采样点的冻结高程。"""
+        key = tuple(point)
+        if key not in self.heights:
+            self.heights[key] = spatial.height(self.data, point)
+        return self.heights[key]
+
+    def segment(self, start, end, cost_only=False):
+        """采样完整路径；搜索阶段只累计时间，最终路线保留完整证据。"""
         distance = math.dist(start, end)
         count = max(1, math.ceil(distance/(self.cell/2)))
-        pieces = []
+        pieces = [] if not cost_only else None
+        total_time = 0.0
         previous = tuple(start)
         for index in range(1, count+1):
             point = tuple(start[axis]+(end[axis]-start[axis])*index/count for axis in (0, 1))
@@ -136,11 +153,24 @@ class Navigator:
                 mode_speed, mode_energy = self.rules['reverse_speed_factors'][self.kind], self.rules['reverse_energy_factor']
             length = math.dist(previous, point)
             speed = self.parameters['speed_m_per_step']*factor*slope*mode_speed
-            energy = self.parameters['energy_per_km']/1000*mode_energy/(factor*slope)
-            pieces.append(dict(start=list(previous), end=list(point), length_m=length,
-                               speed_m_per_step=speed, energy_per_m=energy, terrain=terrain))
+            if cost_only:
+                total_time += length/speed
+            else:
+                energy = self.parameters['energy_per_km']/1000*mode_energy/(factor*slope)
+                pieces.append(dict(start=list(previous), end=list(point), length_m=length,
+                                   speed_m_per_step=speed, energy_per_m=energy, terrain=terrain))
             previous = point
-        return pieces
+        return total_time if cost_only else pieces
+
+    def path_cost(self, points):
+        """只计算搜索边权，逐段使用与最终路线一致的通行判定。"""
+        total_time = 0.0
+        for start, end in zip(points, points[1:]):
+            segment_time = self.segment(start, end, cost_only=True)
+            if segment_time is None:
+                return None
+            total_time += segment_time
+        return total_time
 
     def grid_path(self, start, end):
         """在有界局部搜索中按通行时间寻路，不以直线代替搜索失败。"""
@@ -169,14 +199,15 @@ class Navigator:
                     continue
                 start_point = tuple(start) if current == origin else center(current)
                 end_point = tuple(end) if next_cell == destination else center(next_cell)
-                pieces = self.segment(start_point, end_point)
-                if pieces is None:
+                segment_time = self.segment(start_point, end_point, cost_only=True)
+                if segment_time is None:
                     continue
-                candidate = costs[current]+sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces)
+                candidate = costs[current]+segment_time
                 if candidate+1e-12 >= costs.get(next_cell, math.inf):
                     continue
                 costs[next_cell], parents[next_cell] = candidate, current
-                heuristic = math.dist(end_point, end)/(self.parameters['speed_m_per_step']*1.25)
+                # 局部网格只用于普通移动，最快地表系数为 1；该下界保持可采纳并减少无关扩展。
+                heuristic = math.dist(end_point, end)/self.parameters['speed_m_per_step']
                 heapq.heappush(queue, (candidate+heuristic, next_cell))
         return None
 
@@ -227,7 +258,7 @@ class Navigator:
                 ratio = max(0,min(1,sum((point[axis]-first[axis])*delta[axis] for axis in (0,1))/squared))
                 projected = tuple(first[axis]+ratio*delta[axis] for axis in (0,1))
                 if math.dist(point,projected) <= self.rules['road_access_limit_m']:
-                    access = self.segment(point,projected)
+                    access = self.segment(point,projected,cost_only=True)
                     if access is not None:
                         candidates[side].append((math.dist(point,projected),road,projected))
         if not all(candidates):
@@ -239,10 +270,9 @@ class Navigator:
             for _, road, projected in sorted(candidates[side],key=lambda item:(item[0],item[1]['id']))[:8]:
                 for node_id in (road['startId'],road['endId']):
                     points = [point,projected,nodes[node_id]]
-                    pieces = self.segments(points)
-                    if pieces is None:
+                    cost = self.path_cost(points)
+                    if cost is None:
                         continue
-                    cost = sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces)
                     if side == 0:
                         graph[label].append((node_id,cost,points))
                     else:
@@ -251,9 +281,9 @@ class Navigator:
             for _, last_road, last in candidates[1]:
                 if first_road['id'] == last_road['id']:
                     points = [start,first,last,end]
-                    pieces = self.segments(points)
-                    if pieces is not None:
-                        graph['@start'].append(('@end',sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces),points))
+                    cost = self.path_cost(points)
+                    if cost is not None:
+                        graph['@start'].append(('@end',cost,points))
         queue, costs, previous = [(0,'@start')], {'@start':0}, {}
         edge_costs={}
         while queue:
@@ -269,8 +299,7 @@ class Navigator:
                 if weight is None:
                     key=tuple(sorted((current,next_id)))
                     if key not in edge_costs:
-                        pieces=self.segments(points)
-                        edge_costs[key]=None if pieces is None else sum(piece['length_m']/piece['speed_m_per_step'] for piece in pieces)
+                        edge_costs[key]=self.path_cost(points)
                     weight=edge_costs[key]
                     if weight is None:
                         continue
