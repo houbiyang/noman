@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 import json
+import math
 from pathlib import Path
 import sys
 import unittest
@@ -13,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from fastapi.testclient import TestClient
 import psycopg
 
-from backend import database
+from backend import database, spatial
 from backend.main import create_app
 from backend.contracts import CommandRequest
 from backend.runtime import Settings
@@ -224,6 +225,73 @@ class CurrentFeatureTests(unittest.TestCase):
         departed = next(unit for unit in self.view("red")["units"] if unit["unit_id"] == "R-U02")
         self.assertFalse(departed["in_barracks"])
         self.assertGreater(departed["movement_test_steps"], 0)
+
+    def test_22_barracks_formation_departs_in_queue(self):
+        """同兵营单位一次接收纵队试走，保持顺序并分别记录位置和测试能源。"""
+        response = self.client.post("/api/v1/games", headers=dict(self.bootstrap, **{"Idempotency-Key": str(uuid4())}),
+                                    json=dict(title="兵营集群试走", is_demo=True, spatial_test=True))
+        self.assertEqual(response.status_code, 201, response.text)
+        self.game_id = response.json()["game_id"]
+        self.path = "/api/v1/games/" + self.game_id
+        for role in ("host", "red", "blue"):
+            seat = self.client.post(f"/api/v1/bootstrap/games/{self.game_id}/sessions", headers=self.bootstrap,
+                                    json=dict(role=role)).json()
+            self.headers[role] = {"Authorization": "Bearer " + seat["access_token"]}
+        self.command("place_barracks", dict(side="red", unit_type="ground", position=dict(x="10.9", y="26.2")), "red")
+        self.command("spawn_from_barracks", dict(side="red", unit_type="ground", quantity=6), "red")
+        before = self.view("red")
+        self.command("movement_order", dict(unit_id="R-G01", mode="move", formation=True,
+                                            position=dict(x="35", y="44")), "red")
+        after = self.view("red")
+        routes = [route for route in after["movement_paths"] if route.get("formation_leader_id") == "R-G01"]
+        self.assertEqual({route["unit_id"] for route in routes}, {"R-G01", "R-G02", "R-G03", "R-G04",
+                                                                 "R-G05", "R-G06", "R-G07"})
+        self.assertEqual(after["clock"], before["clock"])
+        self.assertEqual([unit["energy"] for unit in after["units"]], [unit["energy"] for unit in before["units"]])
+        self.command("advance_deployment_movement", dict(unit_id="R-G01", formation=True), "red")
+        advanced = self.view("red")
+        ground = [unit for unit in advanced["units"] if unit["unit_type"] == "ground"]
+        self.assertEqual(len(ground), 7)
+        self.assertTrue(all(not unit["in_barracks"] for unit in ground))
+        self.assertEqual(len({(unit["position"]["x"], unit["position"]["y"]) for unit in ground}), 7)
+        camp_position = spatial.meters(next(camp["position"] for camp in advanced["camps"] if camp["unit_type"] == "ground"))
+        distances = [math.dist(spatial.meters(unit["position"]), camp_position) for unit in ground]
+        self.assertTrue(all(front > rear + 5 for front, rear in zip(distances, distances[1:])))
+        self.assertTrue(all(unit["movement_test_steps"] > 0 for unit in ground))
+        self.assertEqual(advanced["clock"], before["clock"])
+        for _ in range(24):
+            if all(route["status"] == "arrived" for route in advanced["movement_paths"] if route.get("formation_leader_id") == "R-G01"):
+                break
+            self.command("advance_deployment_movement", dict(unit_id="R-G01", formation=True), "red")
+            advanced = self.view("red")
+        self.assertTrue(all(route["status"] == "arrived" for route in advanced["movement_paths"]
+                            if route.get("formation_leader_id") == "R-G01"),
+                        [(route["unit_id"], route["status"], route["traveled_m"], route["distance_m"],
+                          route["segment_index"], len(route["segments"])) for route in advanced["routes"]])
+        self.command("advance_deployment_movement", dict(unit_id="R-G01", formation=True), "blue", expected=403)
+
+    def test_23_formation_rejoins_a_departed_member(self):
+        """已有一辆车先出营时，同兵营待命车辆仍可接入纵队路线。"""
+        response = self.client.post("/api/v1/games", headers=dict(self.bootstrap, **{"Idempotency-Key": str(uuid4())}),
+                                    json=dict(title="兵营重新集结", is_demo=True, spatial_test=True))
+        self.assertEqual(response.status_code, 201, response.text)
+        self.game_id = response.json()["game_id"]
+        self.path = "/api/v1/games/" + self.game_id
+        for role in ("host", "red", "blue"):
+            seat = self.client.post(f"/api/v1/bootstrap/games/{self.game_id}/sessions", headers=self.bootstrap,
+                                    json=dict(role=role)).json()
+            self.headers[role] = {"Authorization": "Bearer " + seat["access_token"]}
+        self.command("place_barracks", dict(side="red", unit_type="ground", position=dict(x="10.9", y="26.2")), "red")
+        self.command("spawn_from_barracks", dict(side="red", unit_type="ground", quantity=2), "red")
+        self.command("movement_order", dict(unit_id="R-G01", mode="move", position=dict(x="35", y="44")), "red")
+        self.assertFalse(next(unit for unit in self.view("red")["units"] if unit["unit_id"] == "R-G01")["in_barracks"])
+        self.command("movement_order", dict(unit_id="R-G01", mode="move", formation=True,
+                                            position=dict(x="35", y="44")), "red")
+        routes = [route for route in self.view("red")["movement_paths"] if route.get("formation_leader_id") == "R-G01"]
+        self.assertEqual({route["unit_id"] for route in routes}, {"R-G01", "R-G02", "R-G03"})
+        self.command("advance_deployment_movement", dict(unit_id="R-G01", formation=True), "red")
+        self.assertTrue(all(not unit["in_barracks"] for unit in self.view("red")["units"]
+                            if unit["unit_type"] == "ground"))
 
     def test_03_context_fence_and_duplicate_concurrency(self):
         body = dict(context=self.view("red")["context"], command_type="set_ready", payload=dict(ready=True))

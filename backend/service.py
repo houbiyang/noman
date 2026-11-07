@@ -303,6 +303,7 @@ class SandboxService:
                 result["routes"] = [deepcopy(route) for route in state["routes"] if route["unit_id"] in visible_units]
                 result["movement_paths"] = [dict(unit_id=route['unit_id'], route_id=route['route_id'], status=route['status'],
                     mode=route['mode'], deployment_test=route['deployment_test'], trace_sequence=route['trace_sequence'],
+                    formation_leader_id=route.get('formation_leader_id'),
                     estimated_steps=route['estimated_steps'], estimated_energy=route['estimated_energy'],
                     points=[dict(x=point[0],z=point[1]) for point in route.get('last_trace',[])],
                     route_points=[dict(x=point[0],z=point[1]) for point in route['points']])
@@ -490,20 +491,29 @@ class SandboxService:
             state, event = spatial.spawn_from_barracks(state, actor, payload)
             world_revision += 1
         elif kind == "movement_order":
-            unit = movement.order(state, actor, payload)
+            unit, member_count = (movement.order_formation(state, actor, payload) if payload.get('formation')
+                                  else (movement.order(state, actor, payload), 1))
             event.update(title=unit['status'], detail='部署试走独立于对局时钟和正式能源' if state['lifecycle']['phase']=='preparing'
                          else '按已保存的兵种移动规则执行', side=unit['side'], visibility=unit['side'])
+            if member_count > 1:
+                event['title'] = '集群移动指令已执行'
+                event['detail'] = str(member_count) + ' 个同兵营单位执行 ' + payload['mode'] + '；各自记录位置与测试能源'
             world_revision += 1
         elif kind == "advance_deployment_movement":
             require(state['lifecycle']['phase']=='preparing', 'PHASE_CONFLICT', '试走推进仅允许在部署阶段使用')
-            unit = next((value for value in state['units'] if value['unit_id']==payload['unit_id'] and (actor=='host' or value['side']==actor)),None)
-            require(unit is not None, 'UNIT_NOT_FOUND', '单位不存在或无权操作',404)
-            active = next((route for route in state['routes'] if route['unit_id']==unit['unit_id'] and route.get('deployment_test')),None)
-            require(active is not None and active['status'] in ('queued','moving','waiting'), 'TEST_ROUTE_REQUIRED', '没有待推进的部署试走路线')
-            require(unit['durability']>0, 'UNIT_UNAVAILABLE', '单位已经失效')
-            movement.advance_unit(state,unit,active,deployment=True)
-            event.update(title=unit['status'],detail='试走步 '+str(unit.get('movement_test_steps',0))+'；对局时间与正式能源不变',
-                         side=unit['side'],visibility=unit['side'])
+            if payload.get('formation'):
+                unit, member_count = movement.advance_formation(state, actor, payload['unit_id'])
+                event.update(title='集群部署试走中',detail=str(member_count)+' 个同兵营单位按纵队推进',
+                             side=unit['side'],visibility=unit['side'])
+            else:
+                unit = next((value for value in state['units'] if value['unit_id']==payload['unit_id'] and (actor=='host' or value['side']==actor)),None)
+                require(unit is not None, 'UNIT_NOT_FOUND', '单位不存在或无权操作',404)
+                active = next((route for route in state['routes'] if route['unit_id']==unit['unit_id'] and route.get('deployment_test')),None)
+                require(active is not None and active['status'] in ('queued','moving','waiting'), 'TEST_ROUTE_REQUIRED', '没有待推进的部署试走路线')
+                require(unit['durability']>0, 'UNIT_UNAVAILABLE', '单位已经失效')
+                movement.advance_unit(state,unit,active,deployment=True)
+                event.update(title=unit['status'],detail='试走步 '+str(unit.get('movement_test_steps',0))+'；对局时间与正式能源不变',
+                             side=unit['side'],visibility=unit['side'])
             world_revision += 1
         elif kind == "delete_unit":
             state, event = delete_unit(state, actor, payload["unit_id"])

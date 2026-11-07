@@ -357,7 +357,7 @@ def plan(state, unit, target, mode='move', waypoints=None):
                 trace_sequence=0,last_trace=[])
 
 
-def advance_unit(state, unit, active, deployment=False):
+def advance_unit(state, unit, active, deployment=False, distance_limit=None):
     """推进一份独立移动时间预算；部署试走只扣测试能源，不改变对局时钟。"""
     remaining = 1.0
     current = spatial.meters(unit['position'])
@@ -373,15 +373,19 @@ def advance_unit(state, unit, active, deployment=False):
         distance = math.dist(current,piece['end'])
         if distance < 1e-8:
             active['segment_index'] += 1; continue
-        amount = min(distance,remaining*piece['speed_m_per_step'],energy/piece['energy_per_m'] if piece['energy_per_m'] else math.inf)
+        amount = min(distance,remaining*piece['speed_m_per_step'],energy/piece['energy_per_m'] if piece['energy_per_m'] else math.inf,
+                     distance_limit-moved if distance_limit is not None else math.inf)
         if amount <= 1e-9:
+            if distance_limit is not None and moved >= distance_limit-1e-9:
+                break
             active['status']='blocked'; unit['status']='移动能源耗尽'; break
         next_point = tuple(current[axis]+(piece['end'][axis]-current[axis])*amount/distance for axis in (0,1))
         radius = active['movement_profile']['unit_profiles'][unit['unit_type']]['radius_m']
         blocked = False
         if unit['unit_type'] != 'recon':
             for other in state['units']:
-                if other['unit_id']==unit['unit_id'] or other['unit_type']=='recon' or is_garrisoned(state,other):
+                if (other['unit_id']==unit['unit_id'] or other['unit_type']=='recon' or is_garrisoned(state,other)
+                    or other['unit_id'] in active.get('formation_member_ids',())):
                     continue
                 other_point=spatial.meters(other['position'])
                 separation=radius+active['movement_profile']['unit_profiles'][other['unit_type']]['radius_m']+1
@@ -402,7 +406,10 @@ def advance_unit(state, unit, active, deployment=False):
     active['traveled_m']=round(active['traveled_m']+moved,6)
     active['last_trace']=trace; active['trace_sequence']+=1
     active['waiting_steps']=0 if moved else active.get('waiting_steps',0)+1
-    if active['segment_index'] == len(active['segments']):
+    if active['segment_index'] == len(active['segments']) or active['distance_m']-active['traveled_m'] <= 0.000001:
+        active['segment_index']=len(active['segments'])
+        active['traveled_m']=active['distance_m']
+        unit['position']=spatial.business(tuple(active['points'][-1]))
         active['status']='arrived'; unit['status']='部署试走已到达' if deployment else '移动已到达'
     elif active['status'] not in ('waiting','blocked'):
         active['status']='moving'; unit['status']='部署试走中' if deployment else '沿规则路线移动'
@@ -410,7 +417,7 @@ def advance_unit(state, unit, active, deployment=False):
         unit['movement_test_steps']=unit.get('movement_test_steps',0)+1
 
 
-def order(state, actor, payload):
+def order(state, actor, payload, formation_member_ids=None):
     """统一处理部署与开局后的模式移动，权限和阶段均由服务端判断。"""
     require('spatial_profile' in state['manifest'],'SPATIAL_TEST_REQUIRED','此局未启用空间测试')
     require(state['lifecycle']['phase'] in ('preparing','paused','running'),'PHASE_CONFLICT','当前阶段不能安排移动')
@@ -455,6 +462,8 @@ def order(state, actor, payload):
         candidate['position']=spatial.business(center)
         waypoints.insert(0,spatial.business((center[0],center[1]+camp.get('half_extent_m',30)+10)))
     active=plan(state,candidate,target,mode,waypoints)
+    if formation_member_ids:
+        active['formation_member_ids']=formation_member_ids
     if departing:
         unit['position']=candidate['position']
     unit['movement_departed']=True
@@ -465,3 +474,128 @@ def order(state, actor, payload):
         reset_plan(state,unit['side'])
         advance_unit(state,unit,active,deployment=True)
     return unit
+
+
+def route_prefix(active, distance):
+    """沿已校验路线截取纵队成员的终点与分段，不重新猜测地形通行。"""
+    remaining = distance
+    segments = []
+    for original in active['segments']:
+        if remaining <= 1e-8:
+            break
+        piece = deepcopy(original)
+        if piece['length_m'] > remaining:
+            ratio = remaining / piece['length_m']
+            piece['end'] = [piece['start'][axis] + (piece['end'][axis] - piece['start'][axis]) * ratio for axis in (0, 1)]
+            piece['length_m'] = remaining
+        segments.append(piece)
+        remaining -= piece['length_m']
+    points = [list(active['points'][0])]
+    remaining = distance
+    for start, end in zip(active['points'], active['points'][1:]):
+        length = math.dist(start, end)
+        if remaining >= length - 1e-8:
+            points.append(list(end))
+            remaining -= length
+        else:
+            ratio = remaining / length
+            points.append([start[axis] + (end[axis] - start[axis]) * ratio for axis in (0, 1)])
+            break
+    return segments, points
+
+
+def advance_formation(state, actor, leader_id, initial=False):
+    """按路线前后间距推进整支部署纵队，每个成员分别记录位置与测试能源。"""
+    require(state['lifecycle']['phase']=='preparing','PHASE_CONFLICT','集群试走仅允许在部署阶段使用')
+    active_routes = sorted((route for route in state['routes'] if route.get('formation_leader_id')==leader_id),
+                           key=lambda route:route['formation_slot'])
+    require(active_routes and active_routes[0]['formation_slot']==0,'TEST_ROUTE_REQUIRED','没有待推进的集群试走路线')
+    units = {unit['unit_id']:unit for unit in state['units']}
+    leader = units[active_routes[0]['unit_id']]
+    require(actor=='host' or leader['side']==actor,'ROLE_FORBIDDEN','只能操作本方集群',403)
+    require(any(route['status'] in ('queued','moving','waiting') for route in active_routes),
+            'TEST_ROUTE_REQUIRED','集群试走已经完成或停止')
+    if not initial and active_routes[0]['status'] in ('queued','moving','waiting'):
+        advance_unit(state,leader,active_routes[0],deployment=True)
+    leader_progress = active_routes[0]['traveled_m']
+    for active in active_routes[1:]:
+        if active['status'] not in ('queued','moving','waiting'):
+            continue
+        unit = units[active['unit_id']]
+        allowed = min(active['distance_m'], max(0,active['join_distance_m']+leader_progress
+                                               -active['formation_slot']*active['formation_gap_m']))-active['traveled_m']
+        if allowed <= 1e-8:
+            continue
+        advance_unit(state,unit,active,deployment=True,distance_limit=allowed)
+        if active['traveled_m'] > 1e-8:
+            unit['movement_departed']=True
+    return leader, len(active_routes)
+
+
+def order_formation(state, actor, payload):
+    """以同兵营同兵种单位组成纵队，一次目标命令为每辆生成独立试走进度。"""
+    require(state['lifecycle']['phase']=='preparing','PHASE_CONFLICT','集群试走仅允许在部署阶段使用')
+    anchor = next((unit for unit in state['units'] if unit['unit_id']==payload['unit_id']
+                   and (actor=='host' or unit['side']==actor)),None)
+    require(anchor is not None,'UNIT_NOT_FOUND','单位不存在或无权操作',404)
+    require(anchor.get('camp_id'),'CAMP_REQUIRED','集群单位须归属同一兵营')
+    members = sorted((unit for unit in state['units'] if unit['side']==anchor['side']
+                      and unit['unit_type']==anchor['unit_type'] and unit.get('camp_id')==anchor['camp_id']),
+                     key=lambda unit:unit['unit_id'])
+    if len(members)==1:
+        return order(state,actor,payload),1
+    mode = payload['mode']
+    require(mode in ('move','fast_move','stop_move','return_to_barracks','reset_test_energy'),
+            'MODE_UNAVAILABLE','该移动方式暂不支持集群试走',422)
+    if mode in ('stop_move','reset_test_energy'):
+        for member in members:
+            order(state,actor,dict(payload,unit_id=member['unit_id']))
+        return anchor,len(members)
+    require(all(unit.get('durability',0)>0 and unit.get('energy') is not None for unit in members),
+            'UNIT_UNAVAILABLE','集群中有单位缺少资源或已经失效')
+    vanguard = anchor
+    camp = next(item for item in state['camps'] if item['camp_id']==anchor['camp_id'])
+    leader_start = deepcopy(camp['position'] if is_garrisoned(state,vanguard) else vanguard['position'])
+    member_ids = [unit['unit_id'] for unit in members]
+    order(state,actor,dict(payload,unit_id=vanguard['unit_id']),formation_member_ids=member_ids)
+    leader_route = next(route for route in state['routes'] if route['unit_id']==vanguard['unit_id'])
+    tail_clearance = camp.get('half_extent_m',30)+10 if any(is_garrisoned(state,unit) for unit in members if unit is not vanguard) else 0
+    gap = min(35,(leader_route['distance_m']-tail_clearance)/(len(members)-1)) if len(members)>1 else 0
+    require(len(members)==1 or gap>=8,'FORMATION_TARGET_TOO_CLOSE','目标距离不足，无法让全部单位排队出营')
+    leader_route.update(formation_leader_id=anchor['unit_id'],formation_slot=0,formation_gap_m=gap,
+                        join_distance_m=0)
+    followers = [unit for unit in members if unit['unit_id']!=vanguard['unit_id']]
+    for slot, follower in enumerate(followers,1):
+        distance = leader_route['distance_m']-slot*gap
+        prefix_segments,prefix_points = route_prefix(leader_route,distance)
+        candidate = deepcopy(follower)
+        departing = is_garrisoned(state,follower)
+        if departing:
+            candidate['position']=deepcopy(camp['position'])
+        join = None
+        if spatial.meters(candidate['position']) != spatial.meters(leader_start):
+            join_waypoints = []
+            if departing:
+                center = spatial.meters(camp['position'])
+                join_waypoints.append(spatial.business((center[0],center[1]+camp.get('half_extent_m',30)+10)))
+            join = plan(state,candidate,leader_start,'move',join_waypoints)
+        join_segments = join['segments'] if join else []
+        segments = deepcopy(join_segments)+prefix_segments
+        energy = sum(piece['length_m']*piece['energy_per_m'] for piece in segments)
+        available = follower.get('movement_test_energy',follower.get('energy',0))
+        require(energy<=available+.000001,'MOVEMENT_ENERGY_INSUFFICIENT',
+                '集群中有单位的试走能源不足，请缩短目标或重置测试能源')
+        points = (join['points'][:-1] if join else [])+prefix_points
+        active = deepcopy(leader_route)
+        active.update(unit_id=follower['unit_id'],route_id=sha256(dict(unit_id=follower['unit_id'],
+            leader_route_id=leader_route['route_id'],slot=slot,start=candidate['position'])),
+            points=points,segments=segments,segment_index=0,distance_m=round(sum(piece['length_m'] for piece in segments),6),
+            traveled_m=0,estimated_steps=sum(piece['length_m']/piece['speed_m_per_step'] for piece in segments),
+            estimated_energy=energy,status='queued',trace_sequence=0,last_trace=[],formation_leader_id=anchor['unit_id'],
+            formation_slot=slot,formation_gap_m=gap,join_distance_m=sum(piece['length_m'] for piece in join_segments))
+        if departing:
+            follower['position']=deepcopy(camp['position'])
+        state['routes']=[route for route in state['routes'] if route['unit_id']!=follower['unit_id']]+[active]
+        follower['status']='集群部署试走已排队'
+    advance_formation(state,actor,anchor['unit_id'],initial=True)
+    return vanguard,len(members)

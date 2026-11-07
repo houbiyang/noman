@@ -17,6 +17,7 @@ namespace Qiongtu.Sandbox
         private string pendingMoveId;
         private Action refreshArmyManagement;
         private string movementMode = "move", pendingMovementMode = "move", deploymentMovingUnit;
+        private bool pendingFormationMovement, deploymentMovingFormation;
         private int spawnQuantity = 1;
         private float nextDeploymentMovement;
         private readonly List<SandboxServerPosition> movementWaypoints = new List<SandboxServerPosition>();
@@ -132,15 +133,29 @@ namespace Qiongtu.Sandbox
             {
                 var modes = new DropdownField("移动方式", new List<string> { "普通移动", "快速移动", "倒车" }, movementMode == "fast_move" ? 1 : movementMode == "reverse_move" ? 2 : 0);
                 modes.AddToClassList("field"); body.Add(modes);
-                modes.RegisterValueChangedCallback(_ => movementMode = new[] { "move", "fast_move", "reverse_move" }[modes.index]);
-                if (serverClient.View.clock.phase == "preparing") AddText(body, "部署试走：点选目标后自动试走；对局时间和正式能源不变。Ctrl＋点击可添加途经点。", "army-footnote");
+                modes.RegisterValueChangedCallback(_ => { movementMode = new[] { "move", "fast_move", "reverse_move" }[modes.index];
+                    refreshArmyManagement?.Invoke(); });
+                if (serverClient.View.clock.phase == "preparing") AddText(body, "集群试走：同兵营单位按纵队出发，各自记录位置和测试能源；对局时间不变。Ctrl＋点击可添加途经点。", "army-footnote");
             }
             var spawn = new VisualElement(); spawn.AddToClassList("army-spawn"); body.Add(spawn);
             var quantityInput = new IntegerField("本次新增出兵数量") { value = spawnQuantity };
             quantityInput.AddToClassList("army-spawn-input"); spawn.Add(quantityInput);
-            quantityInput.RegisterValueChangedCallback(change => spawnQuantity = change.newValue);
             var spawnLimit = AddText(spawn, "", "army-footnote");
             var spawnButton = AddButton(spawn, "按输入数量从兵营出兵", () => SpawnFromBarracks(type, quantityInput.value), "army-spawn-button");
+            Action updateSpawn = () =>
+            {
+                int current = SandboxArmyLayout.UnitsForBarracks(projection.units, armySide, type).Length;
+                int remaining = serverMode ? Math.Max(0, 10 - current) : source.ArmyCapacityRemaining;
+                bool canSpawn = hasCamp && (!serverMode || serverClient.View?.clock.phase == "preparing"
+                    && serverClient.View.camps.Any(item => item.side == ServerSide(armySide) && item.unit_type == ServerType(type) && item.deployment_validated));
+                spawnLimit.text = !canSpawn ? "请先建造该兵种兵营；仅准备阶段可新增单位"
+                    : remaining == 0 ? "该兵种已达到当前数量上限"
+                    : quantityInput.value < 1 || quantityInput.value > remaining
+                        ? "本次最多可新增 " + remaining + " 个，请修改输入数量"
+                        : "该兵种已有 " + current + " 个 · 本次可新增 1–" + remaining + " 个";
+                spawnButton.SetEnabled(canSpawn && quantityInput.value >= 1 && quantityInput.value <= remaining);
+            };
+            quantityInput.RegisterValueChangedCallback(change => { spawnQuantity = change.newValue; updateSpawn(); });
             var summary = new VisualElement(); summary.name = "barracksSummary"; summary.AddToClassList("army-summary"); body.Add(summary);
             var search = new TextField("查找单位") { value = unitSearch, maxLength = 60 }; search.AddToClassList("field"); body.Add(search);
             var list = new VisualElement { name = "barracksUnits" }; body.Add(list);
@@ -149,12 +164,7 @@ namespace Qiongtu.Sandbox
             {
                 summary.Clear(); list.Clear();
                 var units = SandboxArmyLayout.UnitsForBarracks(projection.units, armySide, type);
-                int remaining = serverMode ? Math.Max(0, 10 - units.Length) : source.ArmyCapacityRemaining;
-                bool canSpawn = hasCamp && (!serverMode || serverClient.View?.clock.phase == "preparing"
-                    && serverClient.View.camps.Any(item => item.side == ServerSide(armySide) && item.unit_type == ServerType(type) && item.deployment_validated));
-                spawnLimit.text = !canSpawn ? "请先建造该兵种兵营；仅准备阶段可新增单位"
-                    : remaining == 0 ? "该兵种已达到当前数量上限" : "该兵种已有 " + units.Length + " 个 · 本次可新增 1–" + remaining + " 个";
-                spawnButton.SetEnabled(canSpawn && remaining > 0);
+                updateSpawn();
                 AddText(summary, "兵种数量  " + units.Length + " 个", "army-summary-count");
                 var known = units.Where(unit => unit.maxHealth > 0).ToArray();
                 AddText(summary, known.Length == 0 ? "血量  待接入仿真数据" :
@@ -195,20 +205,26 @@ namespace Qiongtu.Sandbox
                     }
                     var actions = new VisualElement(); actions.AddToClassList("army-unit-actions"); card.Add(actions);
                     AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id, UnitLocateViewport()); RefreshProjection(); }, "army-unit-action");
-                    var move = AddButton(actions, serverMode && serverClient.View?.clock.phase == "preparing" ? "部署试走" : "地图移动", () => BeginMove(unit.id), "army-unit-action");
+                    bool formationMovement = serverMode && serverClient.View?.clock.phase == "preparing" && units.Length > 1
+                        && movementMode != "reverse_move";
+                    var move = AddButton(actions, formationMovement ? "集群部署试走" : serverMode && serverClient.View?.clock.phase == "preparing" ? "部署试走" : "地图移动",
+                        () => BeginMove(unit.id, formationMovement), "army-unit-action");
                     move.SetEnabled(moveRestriction.Length == 0);
                     move.tooltip = moveRestriction;
                     AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection(); }, "army-unit-action");
                     if (serverMode && serverClient.View?.spatial_test == true)
                     {
-                        AddButton(actions, "停止移动", () => SubmitMovement(unit.id, "stop_move"), "army-unit-action").SetEnabled(moveRestriction.Length == 0);
-                        AddButton(actions, "返回兵营", () => SubmitMovement(unit.id, "return_to_barracks"), "army-unit-action").SetEnabled(moveRestriction.Length == 0);
+                        AddButton(actions, "停止移动", () => SubmitMovement(unit.id, "stop_move", formation: formationMovement), "army-unit-action").SetEnabled(moveRestriction.Length == 0);
+                        AddButton(actions, "返回兵营", () => SubmitMovement(unit.id, "return_to_barracks", formation: formationMovement), "army-unit-action").SetEnabled(moveRestriction.Length == 0);
                         if (serverClient.View.clock.phase == "preparing")
                         {
                             AddButton(actions, "设置试走起点", () => { BeginMove(unit.id); pendingMovementMode = "deploy_start";
                                 ShowArmyCommand("设置 " + unit.id + " 的试走起点", "部署测试定位 · 单击合法位置 · 不模拟行进 · Esc 取消"); }, "army-unit-action");
-                            AddButton(actions, "继续试走", () => { deploymentMovingUnit = unit.id; nextDeploymentMovement = 0; }, "army-unit-action");
-                            AddButton(actions, "重置试走能源", () => SubmitMovement(unit.id, "reset_test_energy"), "army-unit-action");
+                            AddButton(actions, "继续试走", () => { var route = serverClient.View.movement_paths?.FirstOrDefault(item => item.unit_id == unit.id);
+                                deploymentMovingFormation = !string.IsNullOrEmpty(route?.formation_leader_id);
+                                deploymentMovingUnit = deploymentMovingFormation ? route.formation_leader_id : unit.id;
+                                nextDeploymentMovement = 0; }, "army-unit-action");
+                            AddButton(actions, "重置试走能源", () => SubmitMovement(unit.id, "reset_test_energy", formation: formationMovement), "army-unit-action");
                         }
                     }
                     AddButton(actions, "删除单位", () => OpenDeleteArmyUnitModal(unit), "army-unit-delete")
@@ -284,17 +300,20 @@ namespace Qiongtu.Sandbox
             ClosePanel(); RenderArmy();
             ShowArmyCommand("放置" + DemoSandboxViewSource.BarracksName(type), "点击空地建造 · 拖动平移 · Esc 取消");
         }
-        private void BeginMove(string id)
+        /// <summary>选择单兵或同兵营纵队的地图目标。</summary>
+        /// <param name="id">当前选中的单位编号。</param>
+        /// <param name="formation">准备阶段是否让同兵营单位一起试走。</param>
+        private void BeginMove(string id, bool formation = false)
         {
             string restriction = ArmyMoveRestriction();
             if (restriction.Length > 0) { Notify(restriction); return; }
-            PausePlayback(); pendingMoveId = id; selectedId = id; pendingArmyType = null; world.Select(id);
+            PausePlayback(); pendingMoveId = id; pendingFormationMovement = formation; selectedId = id; pendingArmyType = null; world.Select(id);
             if (serverMode && serverClient.View?.units?.Any(item => item.unit_id == id && item.in_barracks) == true)
                 cameraRig.Locate(id, UnitLocateViewport());
             pendingMovementMode = movementMode; movementWaypoints.Clear();
             ClosePanel(); CloseArmy();
-            ShowArmyCommand("移动 " + id, serverMode && serverClient.View.spatial_test
-                ? serverClient.View.clock.phase == "preparing" ? "部署试走 · 单击目标开始 · Ctrl＋点击添加途经点 · Esc 取消" : "单击目标位置排队 · 主持人推进后移动 · Esc 取消"
+            ShowArmyCommand((formation ? "集群移动 " : "移动 ") + id, serverMode && serverClient.View.spatial_test
+                ? serverClient.View.clock.phase == "preparing" ? (formation ? "同兵营单位排队出发 · 单击目标开始 · Ctrl＋点击添加途经点 · Esc 取消" : "部署试走 · 单击目标开始 · Ctrl＋点击添加途经点 · Esc 取消") : "单击目标位置排队 · 主持人推进后移动 · Esc 取消"
                 : "单击目标位置 · 地面单位自动寻路 · Esc 取消");
         }
 
@@ -325,7 +344,7 @@ namespace Qiongtu.Sandbox
         private void CancelArmyCommand()
         {
             movementWaypoints.Clear();
-            pendingArmyType = null; pendingMoveId = null; armyCommand?.RemoveFromHierarchy(); armyCommand = null;
+            pendingArmyType = null; pendingMoveId = null; pendingFormationMovement = false; armyCommand?.RemoveFromHierarchy(); armyCommand = null;
             armyOverlay?.Query<VisualElement>(className: "army-card-selected").ForEach(card => card.RemoveFromClassList("army-card-selected"));
         }
         private void HandleArmyMapClick(Vector3 point)
@@ -363,7 +382,7 @@ namespace Qiongtu.Sandbox
                             if (movementWaypoints.Count >= 7 || pendingMovementMode == "reverse_move") { Notify("途经点最多 7 个，倒车不支持途经点"); return; }
                             movementWaypoints.Add(ServerPosition(position.x, position.y)); Notify("已添加途经点 " + movementWaypoints.Count + "，单击最终目标提交"); return;
                         }
-                        SubmitMovement(id, pendingMoveId == null ? movementMode : pendingMovementMode, ServerPosition(position.x, position.y), movementWaypoints.ToArray());
+                        SubmitMovement(id, pendingMoveId == null ? movementMode : pendingMovementMode, ServerPosition(position.x, position.y), movementWaypoints.ToArray(), pendingFormationMovement);
                         CancelArmyCommand(); return;
                     }
                     CancelArmyCommand(); SendServerCommand("move_unit", new SandboxServerMove { unit_id = id, position = ServerPosition(position.x, position.y) }); return;
@@ -379,18 +398,22 @@ namespace Qiongtu.Sandbox
         /// <param name="mode">移动、停止、返营或测试能源重置模式。</param>
         /// <param name="target">可选的地图业务坐标。</param>
         /// <param name="waypoints">当前用户添加的途经点。</param>
-        private void SubmitMovement(string id, string mode, SandboxServerPosition target = null, SandboxServerPosition[] waypoints = null)
+        /// <param name="formation">是否让当前兵营的单位作为纵队执行。</param>
+        private void SubmitMovement(string id, string mode, SandboxServerPosition target = null, SandboxServerPosition[] waypoints = null, bool formation = false)
         {
             if (!serverClient.Healthy || serverClient.HasPending) { Notify("请等待原指令完成后再操作，目标尚未提交"); return; }
             deploymentMovingUnit = serverClient.View.clock.phase == "preparing" && mode != "stop_move" && mode != "reset_test_energy" && mode != "deploy_start" ? id : null;
+            deploymentMovingFormation = formation && deploymentMovingUnit != null;
             nextDeploymentMovement = Time.unscaledTime + .85f;
             if (target == null)
             {
                 SendServerCommand("movement_order", new SandboxServerMovementOrderWithoutPosition { unit_id = id, mode = mode,
+                    formation = formation,
                     waypoints = waypoints ?? Array.Empty<SandboxServerPosition>() });
                 return;
             }
             SendServerCommand("movement_order", new SandboxServerMovementOrder { unit_id = id, mode = mode, position = target,
+                formation = formation,
                 waypoints = waypoints ?? Array.Empty<SandboxServerPosition>() });
         }
 
@@ -400,10 +423,16 @@ namespace Qiongtu.Sandbox
             if (!serverMode || deploymentMovingUnit == null || serverClient.View == null) return;
             if (serverClient.View.clock.phase != "preparing" || !serverClient.Healthy) { deploymentMovingUnit = null; return; }
             if (serverClient.Busy || serverClient.HasPending || Time.unscaledTime < nextDeploymentMovement) return;
-            var route = serverClient.View.movement_paths?.FirstOrDefault(item => item.unit_id == deploymentMovingUnit);
-            if (route == null || (route.status != "queued" && route.status != "moving" && route.status != "waiting")) { deploymentMovingUnit = null; return; }
+            var routes = serverClient.View.movement_paths;
+            bool active = deploymentMovingFormation
+                ? routes?.Any(item => item.formation_leader_id == deploymentMovingUnit &&
+                    (item.status == "queued" || item.status == "moving" || item.status == "waiting")) == true
+                : routes?.Any(item => item.unit_id == deploymentMovingUnit &&
+                    (item.status == "queued" || item.status == "moving" || item.status == "waiting")) == true;
+            if (!active) { deploymentMovingUnit = null; return; }
             nextDeploymentMovement = Time.unscaledTime + .85f;
-            SendServerCommand("advance_deployment_movement", new SandboxServerDeploymentStep { unit_id = deploymentMovingUnit });
+            SendServerCommand("advance_deployment_movement", new SandboxServerDeploymentStep { unit_id = deploymentMovingUnit,
+                formation = deploymentMovingFormation });
         }
 
         /// <summary>兼容旧版共用测试兵营的名称，三类新兵营沿用协作者的命名。</summary>

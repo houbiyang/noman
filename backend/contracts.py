@@ -111,12 +111,14 @@ class MovementOrder(StrictModel):
     mode: Literal["move", "fast_move", "reverse_move", "stop_move", "return_to_barracks", "reset_test_energy", "deploy_start"] = "move"
     position: Position | None = None
     waypoints: list[Position] = Field(default_factory=list, max_length=7)
+    formation: StrictBool = False
 
 
 class DeploymentMovementStep(StrictModel):
     """仅推进指定单位的部署试走，不推进对局时钟或消耗正式能源。"""
 
     unit_id: str = Field(min_length=1, max_length=40)
+    formation: StrictBool = False
 
 
 class PlaceBarracks(StrictModel):

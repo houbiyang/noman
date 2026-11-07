@@ -58,7 +58,7 @@ namespace Qiongtu.Sandbox
     /// <summary>角色过滤后的移动路线、单次试走轨迹和预计成本。</summary>
     [Serializable] public sealed class SandboxServerMovementPath
     {
-        public string unit_id, route_id, mode, status;
+        public string unit_id, route_id, mode, status, formation_leader_id;
         public bool deployment_test;
         public int trace_sequence;
         public double estimated_steps, estimated_energy;
@@ -141,6 +141,7 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerMovementOrder
     {
         public string unit_id, mode;
+        public bool formation;
         public SandboxServerPosition position;
         public SandboxServerPosition[] waypoints = Array.Empty<SandboxServerPosition>();
     }
@@ -148,10 +149,11 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerMovementOrderWithoutPosition
     {
         public string unit_id, mode;
+        public bool formation;
         public SandboxServerPosition[] waypoints = Array.Empty<SandboxServerPosition>();
     }
     /// <summary>推进一个指定单位的独立部署试走步。</summary>
-    [Serializable] public sealed class SandboxServerDeploymentStep { public string unit_id; }
+    [Serializable] public sealed class SandboxServerDeploymentStep { public string unit_id; public bool formation; }
     /// <summary>地图选址后的单兵种兵营输入，由服务端核对完整占地和权限。</summary>
     [Serializable] public sealed class SandboxServerBarracks { public string side, unit_type; public SandboxServerPosition position; }
     /// <summary>准备阶段按本次输入数量从指定兵种兵营新增单位。</summary>
