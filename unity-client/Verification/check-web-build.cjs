@@ -39,6 +39,7 @@ async function main() {
         new vm.Script(source, { filename: resource });
         assert.ok(source.includes("qiongtu:sandbox:v1:"), "浏览器存储桥接应进入最终构建");
         assert.ok(source.includes("qiongtu-exit"), "网页退出桥接应进入最终构建");
+        assert.ok(source.includes("qiongtu:history:v1:"), "历史归档桥接应进入最终构建");
       }
     }
     process.stdout.write("通过：HTTP 及构建内容 " + resource + "\n");
