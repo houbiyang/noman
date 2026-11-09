@@ -16,6 +16,9 @@
 .army-current { font-size:12px; color:rgb(181,199,211); margin:4px 0 8px; padding:0; white-space:normal; }
 .army-deploy { min-height:44px; margin:0; padding:8px; font-size:14px; color:rgb(226,238,246); background-color:rgb(35,49,62); border-width:1px; border-color:rgb(79,104,124); border-radius:6px; }
 .army-deploy:hover, .army-switch:hover, .army-secondary:hover { background-color:rgb(51,72,90); }
+.army-drag-preview { position:absolute; width:152px; height:112px; align-items:center; background-color:rgba(21,31,41,0.88); border-width:1px; border-color:rgb(153,197,213); border-radius:8px; opacity:0.9; }
+.army-drag-preview-image { width:148px; height:82px; }
+.army-drag-preview-label { color:rgb(236,244,241); font-size:12px; -unity-font-style:bold; margin-top:-2px; }
 .army-footer { flex-shrink:0; padding:12px 16px; background-color:rgb(21,31,41); border-top-width:1px; border-top-color:rgb(58,77,93); }
 .army-footnote { font-size:12px; color:rgb(164,184,200); margin-top:4px; white-space:normal; }
 .army-command { position:absolute; left:18px; right:434px; top:104px; flex-direction:row; align-items:center; padding:12px; background-color:rgb(21,31,41); border-radius:8px; border-width:1px; border-color:rgb(115,163,188); }

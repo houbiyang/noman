@@ -561,6 +561,7 @@ namespace Qiongtu.Sandbox
             }
             Keyboard keyboard = Keyboard.current;
             UpdateDeploymentMovement();
+            UpdateBarracksDragPreview();
             if (keyboard == null) return;
             if (connectionOverlay != null)
             {

@@ -10,6 +10,7 @@ namespace Qiongtu.Sandbox
     {
         private VisualElement armyOverlay;
         private VisualElement armyCommand;
+        private VisualElement barracksDragPreview;
         private SandboxRole armySide;
         private SandboxUnitType? managedArmyType;
         private SandboxUnitType? pendingArmyType;
@@ -72,8 +73,6 @@ namespace Qiongtu.Sandbox
             AddText(details, camp == null ? DemoSandboxViewSource.BarracksName(type) : BarracksDisplayName(camp), "army-card-title");
             AddText(details, DemoSandboxViewSource.ArmyName(type), "army-troop-name");
             AddText(details, camp == null ? "尚未建造" : "已建造 · 可设置出兵数量", "army-current");
-            AddButton(details, "点击并拖动放置", () => BeginDeploy(type), "army-deploy")
-                .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
             AddButton(details, "查看兵种 / 管理单位", () => OpenArmyManagement(armySide, type), "army-manage");
         }
 
@@ -234,8 +233,7 @@ namespace Qiongtu.Sandbox
             refreshArmyManagement = render;
             search.RegisterValueChangedCallback(change => { unitSearch = change.newValue; render(); }); render();
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); armyOverlay.Add(footer);
-            AddButton(footer, "点击并拖动放置兵营", () => BeginDeploy(type), "army-deploy")
-                .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
+            AddButton(footer, "关闭", CloseArmy, "army-switch");
             AddText(footer, serverMode ? "当前席位数据 · 新增单位先在兵营待命，点击移动后出营" : "本机演示数据 · 可按输入数量从兵营出兵", "army-footnote");
             header.Q<Button>().Focus();
         }
@@ -294,11 +292,41 @@ namespace Qiongtu.Sandbox
         }
         private void BeginDeploy(SandboxUnitType type)
         {
-            if (serverMode && serverClient.View?.capabilities.can_place_barracks != true) { Notify("兵营只能在准备阶段建造或重新选址"); return; }
+            if (serverMode && serverClient.View?.capabilities.can_place_barracks != true) { Notify("兵营只能在准备阶段拖动放置"); return; }
             managedArmyType = null;
             pendingArmyType = type; pendingArmySide = armySide; pendingMoveId = null;
-            ClosePanel(); RenderArmy();
-            ShowArmyCommand("拖动放置" + DemoSandboxViewSource.BarracksName(type), "在地图上按住左键拖到目标位置并松开 · Esc 取消");
+            ClosePanel(); CloseArmy();
+            ShowArmyCommand("拖动放置" + DemoSandboxViewSource.BarracksName(type), "拖动中的兵营会跟随光标 · 在合法空地松开左键放置 · Esc 取消");
+            ShowBarracksDragPreview(type);
+        }
+        private void ShowBarracksDragPreview(SandboxUnitType type)
+        {
+            barracksDragPreview?.RemoveFromHierarchy();
+            var preview = new VisualElement();
+            preview.AddToClassList("army-drag-preview");
+            preview.pickingMode = PickingMode.Ignore;
+            var image = new Image { image = Resources.Load<Texture2D>("Army/" + DemoSandboxViewSource.ArmyKey(type) + "-barracks-card"),
+                scaleMode = ScaleMode.ScaleToFit };
+            image.AddToClassList("army-drag-preview-image");
+            preview.Add(image);
+            AddText(preview, DemoSandboxViewSource.BarracksName(type), "army-drag-preview-label");
+            root.Add(preview);
+            barracksDragPreview = preview;
+            UpdateBarracksDragPreview();
+        }
+        private void UpdateBarracksDragPreview()
+        {
+            if (!pendingArmyType.HasValue || barracksDragPreview == null || root?.panel == null) return;
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            if (mouse == null) return;
+            Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(root.panel, mouse.position.ReadValue());
+            barracksDragPreview.style.left = panelPosition.x - 76;
+            barracksDragPreview.style.top = panelPosition.y - 54;
+        }
+        private void HideBarracksDragPreview()
+        {
+            barracksDragPreview?.RemoveFromHierarchy();
+            barracksDragPreview = null;
         }
         /// <summary>选择单兵或同兵营纵队的地图目标。</summary>
         /// <param name="id">当前选中的单位编号。</param>
@@ -345,6 +373,7 @@ namespace Qiongtu.Sandbox
         {
             movementWaypoints.Clear();
             pendingArmyType = null; pendingMoveId = null; pendingFormationMovement = false; armyCommand?.RemoveFromHierarchy(); armyCommand = null;
+            HideBarracksDragPreview();
             armyOverlay?.Query<VisualElement>(className: "army-card-selected").ForEach(card => card.RemoveFromClassList("army-card-selected"));
         }
         private void HandleArmyMapClick(Vector3 point)
