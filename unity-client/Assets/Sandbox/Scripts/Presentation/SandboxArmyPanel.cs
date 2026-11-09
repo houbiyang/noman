@@ -11,6 +11,7 @@ namespace Qiongtu.Sandbox
         private VisualElement armyOverlay;
         private VisualElement armyCommand;
         private VisualElement barracksDragPreview;
+        private EventCallback<PointerMoveEvent> barracksDragPreviewMoveHandler;
         private SandboxRole armySide;
         private SandboxUnitType? managedArmyType;
         private SandboxUnitType? pendingArmyType;
@@ -68,7 +69,7 @@ namespace Qiongtu.Sandbox
             var stage = new VisualElement(); stage.AddToClassList("army-stage"); card.Add(stage);
             var image = new Image { image = Resources.Load<Texture2D>("Army/" + DemoSandboxViewSource.ArmyKey(type) + "-barracks-card"), scaleMode = ScaleMode.ScaleToFit };
             image.AddToClassList("army-model"); stage.Add(image);
-            stage.RegisterCallback<ClickEvent>(evt => { BeginDeploy(type); evt.StopPropagation(); });
+            stage.RegisterCallback<ClickEvent>(evt => { BeginDeploy(type, evt.position); evt.StopPropagation(); });
             var details = new VisualElement(); details.AddToClassList("army-card-details"); card.Add(details);
             AddText(details, camp == null ? DemoSandboxViewSource.BarracksName(type) : BarracksDisplayName(camp), "army-card-title");
             AddText(details, DemoSandboxViewSource.ArmyName(type), "army-troop-name");
@@ -290,16 +291,16 @@ namespace Qiongtu.Sandbox
             root.Q("modalBackdrop").RemoveFromClassList("hidden");
             root.Q<Button>("cancelModalButton").Focus();
         }
-        private void BeginDeploy(SandboxUnitType type)
+        private void BeginDeploy(SandboxUnitType type, Vector2 pointerPosition)
         {
             if (serverMode && serverClient.View?.capabilities.can_place_barracks != true) { Notify("兵营只能在准备阶段拖动放置"); return; }
             managedArmyType = null;
             pendingArmyType = type; pendingArmySide = armySide; pendingMoveId = null;
             ClosePanel(); CloseArmy();
             ShowArmyCommand("拖动放置" + DemoSandboxViewSource.BarracksName(type), "拖动中的兵营会跟随光标 · 在合法空地松开左键放置 · Esc 取消");
-            ShowBarracksDragPreview(type);
+            ShowBarracksDragPreview(type, pointerPosition);
         }
-        private void ShowBarracksDragPreview(SandboxUnitType type)
+        private void ShowBarracksDragPreview(SandboxUnitType type, Vector2 pointerPosition)
         {
             barracksDragPreview?.RemoveFromHierarchy();
             var preview = new VisualElement();
@@ -312,19 +313,21 @@ namespace Qiongtu.Sandbox
             AddText(preview, DemoSandboxViewSource.BarracksName(type), "army-drag-preview-label");
             root.Add(preview);
             barracksDragPreview = preview;
-            UpdateBarracksDragPreview();
+            barracksDragPreviewMoveHandler = evt => UpdateBarracksDragPreview(evt.position);
+            root.RegisterCallback(barracksDragPreviewMoveHandler, TrickleDown.TrickleDown);
+            UpdateBarracksDragPreview(pointerPosition);
         }
-        private void UpdateBarracksDragPreview()
+        private void UpdateBarracksDragPreview(Vector2 panelPosition)
         {
-            if (!pendingArmyType.HasValue || barracksDragPreview == null || root?.panel == null) return;
-            var mouse = UnityEngine.InputSystem.Mouse.current;
-            if (mouse == null) return;
-            Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(root.panel, mouse.position.ReadValue());
+            if (!pendingArmyType.HasValue || barracksDragPreview == null) return;
             barracksDragPreview.style.left = panelPosition.x - 76;
             barracksDragPreview.style.top = panelPosition.y - 54;
         }
         private void HideBarracksDragPreview()
         {
+            if (root != null && barracksDragPreviewMoveHandler != null)
+                root.UnregisterCallback(barracksDragPreviewMoveHandler, TrickleDown.TrickleDown);
+            barracksDragPreviewMoveHandler = null;
             barracksDragPreview?.RemoveFromHierarchy();
             barracksDragPreview = null;
         }
