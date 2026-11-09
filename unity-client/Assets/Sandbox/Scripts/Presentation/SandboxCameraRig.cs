@@ -47,6 +47,7 @@ namespace Qiongtu.Sandbox
         public event Action<string> UnitSelected;
         public event Action<string> BarracksSelected;
         public Func<bool> IsMapCommand;
+        public Func<bool> IsBarracksPlacement { get; set; }
         public event Action<Vector3> MapClicked;
         public bool TryMapPoint(Vector2 screen, out Vector3 point)
         {
@@ -282,7 +283,11 @@ namespace Qiongtu.Sandbox
                 pointerDragged = true;
             if (pointerDragged)
             {
-                if (pointerGesture == PointerGesture.Rotate)
+                if (pointerGesture == PointerGesture.SelectOrPan && IsBarracksPlacement?.Invoke() == true)
+                {
+                    // 放置兵营时左键拖动用于拖放建筑，镜头保持不动。
+                }
+                else if (pointerGesture == PointerGesture.Rotate)
                 {
                     Vector2 movement = (pointer - previousPointerPosition) * pixelScale;
                     yaw = Mathf.Repeat(yaw + movement.x * 0.2f, 360);
@@ -312,6 +317,11 @@ namespace Qiongtu.Sandbox
                     if (campId != null) BarracksSelected?.Invoke(campId);
                     else UnitSelected?.Invoke(PickUnit(pointer));
                 }
+            }
+            else if (pointerGesture == PointerGesture.SelectOrPan && pointerDragged && IsBarracksPlacement?.Invoke() == true
+                     && TryMapPoint(pointer, out Vector3 placementPoint))
+            {
+                MapClicked?.Invoke(placementPoint);
             }
             CancelPointerGesture();
         }

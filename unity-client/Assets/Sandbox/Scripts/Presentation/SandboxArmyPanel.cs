@@ -55,7 +55,7 @@ namespace Qiongtu.Sandbox
             for (int i = 0; i < 3; i++) BuildArmyCard(cards, i);
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); panel.Add(footer);
             var summary = new VisualElement(); summary.style.flexGrow = 1; footer.Add(summary);
-            AddText(summary, "点击兵种图标 → 点击地图放置兵营", "army-footnote");
+            AddText(summary, "点击兵营卡片 → 在地图上拖动并放置", "army-footnote");
             AddText(summary, "输入本次新增数量，从对应兵营生成单位；移动时出营", "army-footnote");
         }
         private void BuildArmyCard(VisualElement parent, int index)
@@ -72,7 +72,7 @@ namespace Qiongtu.Sandbox
             AddText(details, camp == null ? DemoSandboxViewSource.BarracksName(type) : BarracksDisplayName(camp), "army-card-title");
             AddText(details, DemoSandboxViewSource.ArmyName(type), "army-troop-name");
             AddText(details, camp == null ? "尚未建造" : "已建造 · 可设置出兵数量", "army-current");
-            AddButton(details, camp == null ? "选点建造兵营" : "重新选址", () => BeginDeploy(type), "army-deploy")
+            AddButton(details, "点击并拖动放置", () => BeginDeploy(type), "army-deploy")
                 .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
             AddButton(details, "查看兵种 / 管理单位", () => OpenArmyManagement(armySide, type), "army-manage");
         }
@@ -234,7 +234,7 @@ namespace Qiongtu.Sandbox
             refreshArmyManagement = render;
             search.RegisterValueChangedCallback(change => { unitSearch = change.newValue; render(); }); render();
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); armyOverlay.Add(footer);
-            AddButton(footer, hasCamp ? "重新选址兵营" : "选点建造兵营", () => BeginDeploy(type), "army-deploy")
+            AddButton(footer, "点击并拖动放置兵营", () => BeginDeploy(type), "army-deploy")
                 .SetEnabled(!serverMode || serverClient.View?.capabilities.can_place_barracks == true);
             AddText(footer, serverMode ? "当前席位数据 · 新增单位先在兵营待命，点击移动后出营" : "本机演示数据 · 可按输入数量从兵营出兵", "army-footnote");
             header.Q<Button>().Focus();
@@ -298,7 +298,7 @@ namespace Qiongtu.Sandbox
             managedArmyType = null;
             pendingArmyType = type; pendingArmySide = armySide; pendingMoveId = null;
             ClosePanel(); RenderArmy();
-            ShowArmyCommand("放置" + DemoSandboxViewSource.BarracksName(type), "点击空地建造 · 拖动平移 · Esc 取消");
+            ShowArmyCommand("拖动放置" + DemoSandboxViewSource.BarracksName(type), "在地图上按住左键拖到目标位置并松开 · Esc 取消");
         }
         /// <summary>选择单兵或同兵营纵队的地图目标。</summary>
         /// <param name="id">当前选中的单位编号。</param>

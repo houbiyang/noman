@@ -70,6 +70,7 @@ namespace Qiongtu.Sandbox
             cameraRig.IsPointerOverUi = IsPointerOverUi;
             cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null;
             cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null;
+            cameraRig.IsBarracksPlacement = () => pendingArmyType.HasValue;
             cameraRig.MapClicked += HandleArmyMapClick;
             root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxArmy"));
             BindButton("armyAction", OpenArmy);
