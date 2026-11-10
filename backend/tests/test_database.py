@@ -188,7 +188,7 @@ class DatabaseChecks(unittest.TestCase):
         """相同摘要的迁移重复执行不重复建表。"""
         database.apply_migrations(self.test_database)
         self.assertEqual(database.execute(self.test_database, "SELECT version FROM infrastructure.schema_migrations ORDER BY version;").splitlines(),
-            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_movement_commands", "008_barracks_spawning"])
+            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_movement_commands", "008_barracks_spawning", "009_agent_coordination"])
 
     def test_03_dangling_head(self):
         """提交时拒绝悬空有效头。"""

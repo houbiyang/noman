@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import timedelta
+from importlib.metadata import version
 import heapq
 import hmac
 import hashlib
@@ -16,16 +17,18 @@ from psycopg.types.json import Jsonb
 from pydantic import ValidationError
 
 from backend.contracts import CommandRequest, CreateGame, PAYLOAD_MODELS
+from backend.agent_contracts import EnableCoordination, ReviewAgentPlan
 from backend.demo_domain import (
     CONDITION_NAMES, TASK_NAMES, apply_interaction, delete_unit, host_only, initial_state, map_manifest,
     new_plan, require, validate_state, waiting_sides,
 )
 from backend.runtime import Settings, ServiceError, canonical, sha256, token_digest, utcnow
-from backend import spatial, movement
+from backend import spatial, movement, coordination
 from backend.map_catalog import current_map, asset_manifest, validate as validate_map
 
 
 HASH_VERSION = "qiongtu-json-v1"
+PAYLOAD_MODELS = {**PAYLOAD_MODELS, "enable_coordination": EnableCoordination, "review_agent_plan": ReviewAgentPlan}
 CURRENT_RULE = dict(mode="current-map-demo", formal_rules_available=False, task_types=list(TASK_NAMES),
     step_minutes=1, deadline_step=60, demo_army_per_type=dict(minimum=1, maximum=10),
     navigation="test_only", ai_source="fixed_demo", conditions_effects="record_only", spatial_profile=spatial.profile())
@@ -93,7 +96,9 @@ class SandboxService:
         return dict(status="ok" if tables == 20 else "not_ready", database_ready=tables == 20,
                     business_table_count=tables, pgvector_version=vector["extversion"] if vector else None,
                     mode="current-ui-demo", real_ai=False, authoritative_combat=False,
-                    authoritative_navigation=False, scheduler_enabled=self.settings.scheduler_enabled)
+                    authoritative_navigation=False, scheduler_enabled=self.settings.scheduler_enabled,
+                    agent_orchestration=dict(engine='langgraph', version=version('langgraph'), roles_per_side=4,
+                                             model_configuration='red_blue_separate', coordination_rules='opt_in_test'))
 
     def bootstrap(self, key: str) -> None:
         """独立引导密钥不通过 URL 获取，不以回环地址代替权限。"""
@@ -182,6 +187,8 @@ class SandboxService:
                 continue
             if old:
                 connection.execute("UPDATE proposals SET status='stale',updated_at=clock_timestamp() WHERE id=%s AND status IN ('draft','ready','pending_review')", (old["proposal_id"],))
+            if plan.get('source') == 'multi_agent':
+                continue
             view = input_view(state, side)
             source_id = plan.get("source_proposal_id")
             run_id = None
@@ -255,7 +262,8 @@ class SandboxService:
         own = lambda values: deepcopy([value for value in values if role == "host" or value["side"] == role])
         wait = waiting_sides(state)
         clock = {key: value for key, value in state["lifecycle"].items() if key != "controller_session_id"}
-        decisions = dict(source="fixed_demo", real_ai=False, waiting_sides=wait)
+        source = state['decisions']['plans'][role].get('source', 'fixed_demo') if role != 'host' else 'role_filtered'
+        decisions = dict(source=source, real_ai=source == 'multi_agent', waiting_sides=wait)
         if role != "host":
             decisions["own_plan"] = deepcopy(state["decisions"]["plans"][role])
         phase = state["lifecycle"]["phase"]
@@ -289,6 +297,12 @@ class SandboxService:
             game = self._game(connection, game_id)
             result = self._project(game, principal, game["state_payload"])
             state = game["state_payload"]
+            if 'coordination' in state:
+                result['coordination'] = {key: deepcopy(value) for key, value in state['coordination'].items() if key != 'plans'}
+                result['coordination']['plans'] = ({principal['role']: deepcopy(state['coordination']['plans'][principal['role']])}
+                    if principal['role'] in state['coordination']['plans'] else {})
+                result['scores'] = deepcopy(state['scores'])
+                result['service_status'].update(scoring=True, coordination_test=True, real_ai=result['decisions']['real_ai'])
             visible_units = {unit["unit_id"] for unit in result["units"]}
             result["conditions"] = [dict(condition) for condition in state["conditions"]["instances"]
                 if condition["condition_type"] == "weather_change" or condition["target_unit_id"] in visible_units]
@@ -483,8 +497,21 @@ class SandboxService:
         revision = game["snapshot_revision"] + 1
         world_revision = game["world_revision"]
         save_id = None
+        agent_review = None
         event = dict(title="演示操作已提交", detail="", side=actor, visibility="public", private_plan=False)
-        if kind == "place_barracks":
+        if kind == 'enable_coordination':
+            host_only(actor)
+            coordination.enable(state, payload['rules'])
+            world_revision += 1
+            event.update(title='协同测试规则已启用', detail='占点、观察和保障使用冻结的测试参数；原地图点位保留')
+        elif kind == 'review_agent_plan':
+            from backend.agent_service import review_plan
+            agent_review = review_plan(connection, game, state, principal, payload)
+            if state['lifecycle']['phase'] == 'awaiting_confirmation' and not waiting_sides(state):
+                state['lifecycle']['phase'] = 'paused'
+            event.update(title=agent_review['summary'], detail='仅采用任务图；实际动作在后续仿真步执行',
+                         side=actor, visibility=actor, private_plan=True)
+        elif kind == "place_barracks":
             state, event = spatial.place_barracks(state, actor, payload)
             world_revision += 1
         elif kind == "spawn_from_barracks":
@@ -613,12 +640,16 @@ class SandboxService:
                     event.update(title="测试路线已保存", detail="按仿真步推进，测试能源随距离扣减", side=unit["side"], visibility=unit["side"])
                 else:
                     # 复用生命周期校验；替换旧演示预置位移，避免两种移动叠加。
+                    agent_actions = coordination.prepare_step(state) if kind == 'advance_step' else {}
                     before_units = deepcopy(state["units"])
                     state, event = apply_interaction(state, actor, kind, payload)
                     if kind == "advance_step":
                         state["units"] = before_units
                         spatial.advance(state)
+                        coordination.finish_step(state, agent_actions)
                         event.update(title="测试空间步已推进", detail="路线进度和能源已保存；任务与战斗未裁决")
+                        if 'coordination' in state:
+                            event.update(title='协同测试步已推进', detail='移动、观察、保障、占点和胜负由后端统一结算')
             else:
                 state, event = apply_interaction(state, actor, kind, payload)
             if kind == "continue":
@@ -634,6 +665,11 @@ class SandboxService:
             insert(connection, "proposal_reviews", dict(id=uuid4(), game_id=game["id"], branch_id=branch_id,
                 proposal_id=payload["proposal_id"], reviewer_member_id=principal["member_id"], decision=payload["decision"],
                 submitted_changes=payload["changes"], adopted_plan=plan if plan["status"] == "adopted" else None,
+                command_id=command_id, result_snapshot_id=snapshot_id))
+        if agent_review:
+            insert(connection, 'proposal_reviews', dict(id=uuid4(), game_id=game['id'], branch_id=branch_id,
+                proposal_id=agent_review['proposal_id'], reviewer_member_id=principal['member_id'], decision=payload['decision'],
+                submitted_changes={}, adopted_plan=deepcopy(state['coordination']['plans'].get(actor)) if agent_review['adopted'] else None,
                 command_id=command_id, result_snapshot_id=snapshot_id))
         connection.execute("""UPDATE games SET active_branch_id=%s,head_snapshot_id=%s,control_revision=control_revision+1,
             execution_epoch=%s,updated_at=clock_timestamp() WHERE id=%s""", (branch_id, snapshot_id, epoch, game["id"]))
@@ -753,7 +789,8 @@ class SandboxService:
             self._principal(connection, bearer, game_id)
             game = self._game(connection, game_id)
             require(game["state_payload"]["lifecycle"]["phase"] == "finished", "RESULT_NOT_READY", "当前演示尚未结束")
-            return dict(game_id=game_id, is_demo=game["is_demo"], result_status="not_adjudicated",
+            status = 'test_adjudicated' if game['state_payload'].get('coordination') else 'not_adjudicated'
+            return dict(game_id=game_id, is_demo=game["is_demo"], result_status=status,
                         simulation_step=game["state_payload"]["lifecycle"]["simulation_step"], **game["state_payload"]["scores"])
 
     def tick(self) -> int:

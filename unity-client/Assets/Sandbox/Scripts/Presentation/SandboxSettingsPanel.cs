@@ -89,6 +89,16 @@ namespace Qiongtu.Sandbox
         {
             var element = new VisualElement(); element.AddToClassList(style); parent.Add(element); return element;
         }
+        /// <summary>从沙盘设置打开多智能体协同工作台。</summary>
+        /// <remarks>网页版沿用当前页面的服务地址；桌面客户端使用本机网页入口。</remarks>
+        private void OpenAgentWorkbench()
+        {
+            string address = "http://127.0.0.1:18766/agents";
+            if (Uri.TryCreate(Application.absoluteURL, UriKind.Absolute, out Uri page)
+                && (page.Scheme == Uri.UriSchemeHttp || page.Scheme == Uri.UriSchemeHttps))
+                address = new Uri(page, "/agents").AbsoluteUri;
+            Application.OpenURL(address);
+        }
         private void SettingsNav(VisualElement parent, string key, string title)
         {
             var button = AddButton(parent, title, () => { settingsSection = key; RenderSettingsSection(); }, "settings-nav-item");
@@ -136,6 +146,7 @@ namespace Qiongtu.Sandbox
             SettingsFact(facts, "当前席位", RoleLabel(role));
             SettingsFact(facts, "对局阶段", serverMode ? ServerPhaseLabel() : "演示已暂停");
             AddText(session, "会话由本机启动入口自动接入。", "settings-note");
+            AddButton(session, "多智能体协同工作台", OpenAgentWorkbench, "settings-secondary").name = "openAgentWorkbench";
             var technical = new Foldout { text = "查看接口信息", value = false }; technical.AddToClassList("settings-details"); session.Add(technical);
             SettingsFact(technical, "角色视图", "GET /games/{game_id}/view");
             SettingsFact(technical, "提交入口", "POST /games/{game_id}/commands");

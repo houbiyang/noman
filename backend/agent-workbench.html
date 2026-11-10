@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>穹图 · 多智能体协同工作台</title>
+<style>
+:root {
+    color-scheme: dark;
+    font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    font-size: clamp(15px, .95vw, 20px);
+    --canvas: #0a1b16;
+    --surface: #10251d;
+    --card: #173024;
+    --field: #0c1d17;
+    --line: #375238;
+    --line-soft: #294333;
+    --gold: #d0be84;
+    --gold-bright: #e4d4a2;
+    --text: #e5e7ca;
+    --muted: #9aaf9b;
+    --red: #cb9783;
+    --blue: #a3c7bf;
+    background: var(--canvas);
+    color: var(--text);
+    scrollbar-color: #64794f #0c2118;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { width: 100%; padding: 22px 3vw 24px; }
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
+button, a.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px; border: 1px solid #526344; border-radius: 5px; background: #1b3023; color: var(--text); font-size: .88rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s; }
+button:hover:not(:disabled), a.button:hover { background: #2c422c; border-color: #8c996d; }
+button.primary { background: var(--gold); border-color: var(--gold); color: #17291b; font-weight: 700; }
+button.primary:hover:not(:disabled) { background: var(--gold-bright); }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+svg { flex-shrink: 0; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.brand-mark { display: grid; place-items: center; width: 52px; height: 52px; flex-shrink: 0; color: var(--gold); background: #243320; border-radius: 8px; }
+.eyebrow { display: none; }
+h1 { margin: 0; font-size: clamp(26px, 1.9vw, 36px); font-weight: 600; line-height: 1.35; letter-spacing: 1px; }
+.page-subtitle { margin-top: 7px; color: var(--muted); font-size: .82rem; }
+.back-link { white-space: nowrap; background: transparent !important; }
+.panel { padding: 24px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 8px; }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 15px 20px; background: #142a20; border-radius: 8px 8px 0 0; }
+.toolbar-title { display: none; }
+.toolbar label { order: 1; display: flex; align-items: center; gap: 12px; margin: 0; white-space: nowrap; }
+.toolbar select { width: 175px; margin: 0; }
+.toolbar button { order: 2; }
+.connection-state { order: 0; margin-right: auto; color: var(--muted); font-size: .85rem; line-height: 1.6; }
+.connection-state::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 10px; border-radius: 50%; background: #a9ad78; }
+.metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 16px 0; border: 1px solid var(--line-soft); border-top: 0; border-radius: 0 0 8px 8px; background: #10251c; }
+.metric { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; min-width: 0; padding: 0 24px; border-right: 1px solid var(--line-soft); color: var(--muted); font-size: .82rem; }
+.metric:last-child { border-right: 0; }
+.metric strong { display: block; margin: 0; color: var(--text); font-size: 1.4rem; font-weight: 500; line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#redScore { color: var(--red); }
+#blueScore { color: var(--blue); }
+#ruleStatus { font-size: 1rem; color: var(--gold); }
+.status { margin: 8px 0 16px; padding: 6px 0; color: #b9c4a4; font-size: .82rem; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.status::before { content: "提示"; display: inline-block; margin-right: 12px; color: var(--gold); }
+.status.error { color: #efb79b; }
+.status.error::before { content: "注意"; color: #efb79b; }
+.flow-panel { display: flex; align-items: center; gap: 24px; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--line-soft); }
+.flow-caption { flex-shrink: 0; color: var(--muted); font-size: .8rem; }
+.flow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; counter-reset: stage; color: #637d64; font-size: .8rem; }
+.flow span { display: inline-flex; gap: 7px; align-items: center; color: #b7c5a9; counter-increment: stage; }
+.flow span::before { content: counter(stage, decimal-leading-zero); color: #a89e6b; font-size: .7rem; }
+.layout { display: grid; grid-template-columns: clamp(320px, 26%, 480px) minmax(0, 1fr); align-items: start; gap: 28px; }
+.layout > *, .operations-column { min-width: 0; }
+.layout aside { align-self: start; }
+.layout:has(#configPanel[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.layout:has(#configPanel[hidden]) > aside, .agent-overview:has(#roles:empty) { display: none; }
+.operations-column { display: grid; gap: 22px; }
+.card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+h2 { margin: 0; font-size: 1.08rem; font-weight: 600; line-height: 1.5; }
+.section-note { color: var(--muted); font-size: .75rem; }
+.section-tag { flex-shrink: 0; color: #bbbf94; font-size: .72rem; font-weight: 400; }
+p { line-height: 1.8; }
+.muted { color: var(--muted); font-size: .82rem; }
+.config-description { margin: 0 0 24px; }
+label { display: block; margin-bottom: 20px; color: #c0cdb4; font-size: .85rem; line-height: 1.5; }
+input, select, textarea { display: block; width: 100%; min-width: 0; min-height: 44px; margin-top: 9px; padding: 11px 12px; border: 1px solid #40583e; border-radius: 5px; outline: none; background: var(--field); color: #edf1dd; font-size: .85rem; line-height: 1.6; }
+input::placeholder, textarea::placeholder { color: #7c927b; }
+input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 2px #cabb7812; }
+textarea { resize: vertical; min-height: 88px; }
+input[type=checkbox] { display: inline-block; width: 17px; height: 17px; min-height: 17px; margin: 0; accent-color: var(--gold); }
+.enable-row { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; padding-bottom: 20px; border-bottom: 1px solid var(--line-soft); }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.wide { grid-column: 1 / -1; }
+details { padding: 16px 0; border-top: 1px solid var(--line-soft); }
+summary { cursor: pointer; color: #c7d0ae; font-size: .85rem; line-height: 1.7; }
+summary::marker { color: #9b9d6c; }
+details[open] > summary { margin-bottom: 18px; color: var(--gold-bright); }
+.advanced-settings { margin-bottom: 20px; padding-bottom: 0; }
+#policies details:last-child { padding-bottom: 0; }
+#saveConfig { width: 100%; }
+#modelStatus { margin: 14px 0 0; color: #c0b77f; font-size: .78rem; line-height: 1.7; }
+.actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.planning-card { background: #182d20; border-color: #4c5b3a; }
+.planning-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: end; }
+.planning-body label { margin: 0; }
+.planning-body .actions { display: grid; min-width: 180px; }
+.planning-body .actions button { width: 100%; }
+.planning-card .muted { margin: 16px 0 0; font-size: .78rem; }
+.agent-overview { padding: 4px 0 0; background: transparent; border: 0; border-radius: 0; }
+.agent-overview .card-heading { margin-bottom: 16px; }
+.roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 22px 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); counter-reset: agent; }
+.role { position: relative; min-width: 0; padding: 0 20px; border-right: 1px solid var(--line-soft); counter-increment: agent; }
+.role:first-child { padding-left: 0; }
+.role:last-child { padding-right: 0; border-right: 0; }
+.role h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: .95rem; font-weight: 500; }
+.role h3::before { content: counter(agent, decimal-leading-zero); color: #899967; font-size: .78rem; }
+.role:first-child h3 { color: var(--gold-bright); }
+.badge { display: inline-block; padding: 3px 8px; border-radius: 3px; background: #223a27; color: #b6c4a5; font-size: .72rem; line-height: 1.5; }
+.role p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: 10px 0 0; font-size: .78rem; line-height: 1.8; }
+.analysis-panel { min-height: 210px; }
+#runs { min-height: 105px; display: grid; align-content: center; padding: 22px; border-radius: 5px; background: #0d2119; color: #9eaf94; font-size: .88rem; line-height: 1.8; text-align: center; }
+#runs:has(details) { display: block; padding: 0; background: transparent; text-align: left; }
+#runs details { padding: 18px; border: 1px solid var(--line); border-radius: 5px; background: #173024; }
+#runs details + details { margin-top: 12px; }
+#runs .actions { margin: 14px 0; }
+.execution-panel { padding: 0; background: transparent; border: 0; }
+.execution-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
+.execution-section { min-width: 0; padding: 22px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--surface); }
+.execution-section .card-heading { min-height: 28px; flex-wrap: wrap; margin-bottom: 16px; }
+.execution-section h2 { font-size: 1rem; }
+.table-wrap { width: 100%; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+th, td { padding: 12px 8px; text-align: left; vertical-align: top; line-height: 1.7; }
+th { border-bottom: 1px solid #3b5438; color: #a7b998; font-size: .72rem; font-weight: 400; white-space: nowrap; }
+td { border-bottom: 1px solid var(--line-soft); overflow-wrap: anywhere; }
+.points-table:has(#points:empty)::after, .tasks-table:has(#tasks:empty)::after { display: block; padding: 30px 8px; color: #899f80; text-align: center; font-size: .78rem; line-height: 1.8; }
+.points-table:has(#points:empty)::after { content: "启用协同测试后显示控制点状态"; }
+.tasks-table:has(#tasks:empty)::after { content: "采用方案后显示单位任务与执行进度"; }
+#result { margin: 12px 0 0; font-size: .75rem; }
+pre { max-height: 360px; overflow: auto; padding: 16px; border-radius: 4px; background: #0b2017; color: #b8c9ac; white-space: pre-wrap; overflow-wrap: anywhere; font-family: "Cascadia Code", Consolas, "Microsoft YaHei", monospace; font-size: .78rem; line-height: 1.8; }
+.rules-panel { padding: 14px 0; border: 0; border-top: 1px solid var(--line-soft); border-radius: 0; background: transparent; }
+.rules-panel summary { color: var(--muted); font-size: .8rem; }
+.hint { padding: 14px 18px; border-left: 3px solid #b2a16b; background: #283622; color: #d4cd9c; font-size: .85rem; line-height: 1.8; }
+#hostPanel { margin-bottom: 22px; }
+.danger { color: #efb48e; }
+.page-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line-soft); color: #7f9579; font-size: .72rem; }
+[hidden] { display: none !important; }
+@media (min-width: 1700px) { .planning-body .actions { min-width: 220px; } .panel { padding: 28px; } .execution-panel { padding: 0; } .agent-overview { padding: 4px 0 0; } .rules-panel { padding: 14px 0; } }
+@media (max-width: 1250px) { main { padding: 24px; } .layout { grid-template-columns: 320px minmax(0, 1fr); gap: 22px; } .execution-grid { grid-template-columns: minmax(0, 1fr); } .planning-body { grid-template-columns: minmax(0, 1fr); gap: 14px; } .planning-body .actions { display: flex; } .planning-body .actions button { width: auto; } .roles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 0; } .role:nth-child(2) { border: 0; padding-right: 0; } .role:nth-child(3) { padding-left: 0; } }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .layout aside { position: static; } .toolbar label { margin-left: auto; } .connection-state { flex-basis: 100%; } .page-header { align-items: flex-start; } .page-subtitle { line-height: 1.8; } .flow-panel { align-items: flex-start; gap: 14px; } .flow { gap: 8px; line-height: 1.8; } .roles { grid-template-columns: repeat(4, minmax(0, 1fr)); } .role:nth-child(2) { padding-right: 20px; border-right: 1px solid var(--line-soft); } .role:nth-child(3) { padding-left: 20px; } }
+@media (max-width: 600px) { main { padding: 20px 16px; } .brand-mark, .eyebrow { display: none; } h1 { font-size: 23px; } .page-header { flex-wrap: wrap; gap: 16px; } .page-subtitle { font-size: .78rem; } .back-link { min-height: 36px !important; padding: 7px 12px !important; } .toolbar { padding: 16px; gap: 10px; } .toolbar label { flex-basis: 100%; margin: 0; } .toolbar select { flex: 1; } .toolbar button { flex: 1; padding: 10px; } .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 0; } .metric { display: block; padding: 0 14px; } .metric strong { margin-top: 8px; } .metric:nth-child(3) { border: 0; } .metric:last-child { grid-column: span 2; } .metric strong { font-size: 1.3rem; } #ruleStatus { font-size: 1rem; } .flow-panel { display: block; } .flow-caption { display: block; margin-bottom: 10px; } .panel { padding: 20px; } .card-heading { gap: 8px; flex-wrap: wrap; } .planning-body .actions button { flex: 1; } .roles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .role:nth-child(2) { border: 0; padding-right: 0; } .role:nth-child(3) { padding-left: 0; } .agent-overview { padding: 0; } .execution-panel { padding: 0; } .execution-section { padding: 18px; } .rules-panel { padding: 14px 0; } .fields { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { button, a.button { transition: none; } }
+</style>
+<main>
+<header class="page-header">
+    <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 2v6m0 16v6M2 16h6m16 0h6M8 8l16 16M24 8 8 24" stroke="currentColor" stroke-width="1"/><path d="m16 7 9 9-9 9-9-9 9-9Z" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="16" r="3" fill="currentColor"/></svg></div>
+        <div><div class="eyebrow">穹图 / 协同控制中心</div><h1>多智能体协同工作台</h1><div class="page-subtitle">独立配置红蓝模型 · 规则工具校验 · 本方确认后执行</div></div>
+    </div>
+    <a class="button back-link" href="/"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m7 3-5 5 5 5M2 8h12" stroke="currentColor" stroke-width="1.3"/></svg>返回三维沙盘</a>
+</header>
+<section class="panel toolbar" aria-label="席位接入">
+    <div class="toolbar-title"><strong>席位接入</strong><span>选择本方身份，连接当前沙盘对局</span></div>
+    <label>当前席位<select id="role"><option value="red">红方操作员</option><option value="blue">蓝方操作员</option><option value="host">中立主持人</option></select></label>
+    <button id="connect" class="primary">连接当前对局</button><button id="refresh">刷新状态</button>
+    <span id="connection" class="connection-state">尚未连接，令牌仅在本页内存中保留</span>
+</section>
+<div class="metrics" aria-label="对局概览">
+    <div class="metric">对局阶段<strong id="phase">—</strong></div>
+    <div class="metric">当前仿真步<strong id="step">—</strong></div>
+    <div class="metric red-metric">红方胜利分<strong id="redScore">—</strong></div>
+    <div class="metric blue-metric">蓝方胜利分<strong id="blueScore">—</strong></div>
+    <div class="metric">运行规则<strong id="ruleStatus">未连接</strong></div>
+</div>
+<div id="feedback" class="status" role="status">先在三维沙盘完成兵营与单位部署。主持人可以在准备阶段启用协同测试规则。</div>
+<section id="hostPanel" class="panel" hidden><div class="card-heading"><h2>主持人控制</h2><span class="section-tag">对局管理</span></div><p class="hint">“启用协同测试”仅对当前准备中的空间测试局生效，冻结占点、观察和补给测试参数。保留地图点位；交战、维修、运输及事件效果未启用。桥上桥下与地图公平性仍需正式验收。</p><div class="actions"><button id="enableRules">启用协同测试</button><button data-command="start_game">开始对局</button><button data-command="pause">暂停</button><button data-command="advance_step" class="primary">推进一步</button><button data-command="continue">继续播放</button></div></section>
+<div class="layout">
+    <aside>
+        <section id="configPanel" class="panel">
+            <div class="card-heading"><h2 id="configTitle">本方模型配置</h2><span class="section-tag">独立配置</span></div>
+            <p class="muted config-description">配置本方模型服务，红蓝参数分别保存。实际密钥从后端进程的环境变量读取。</p>
+            <label>官方服务快速填写<select id="providerPreset"><option value="">保留当前配置</option><option value="kimi">Kimi 官方接口</option><option value="deepseek">DeepSeek 官方接口</option></select></label><p class="muted">填写后请核对账户已开通的模型，再保存本方配置。</p>
+            <label class="enable-row"><input id="enabled" type="checkbox">启用本方模型服务</label>
+            <label>接口根地址<input id="base_url" placeholder="https://你的模型服务/v1" autocomplete="off"></label>
+            <label>模型标识<input id="model" placeholder="填写服务中的模型名"></label>
+            <label>密钥环境变量名<input id="credential_ref" placeholder="RED_AI_API_KEY" autocomplete="off"></label>
+            <details class="advanced-settings"><summary>调用参数与角色策略</summary>
+                <div class="fields"><label>采样温度（留空使用服务默认）<input id="temperature" type="number" step="0.1" min="0" max="2"></label><label>单次输出上限<input id="max_output_tokens" type="number" min="256" max="8192"></label><label>单次超时 / 秒<input id="timeout_seconds" type="number" min="1" max="120"></label><label>总 token 预算<input id="max_total_tokens" type="number" min="1024" max="200000"></label></div>
+                <div class="fields"><label>输出上限参数<select id="output_token_parameter"><option value="max_tokens">max_tokens</option><option value="max_completion_tokens">max_completion_tokens</option></select></label><label>推理强度<select id="reasoning_effort"><option value="">使用服务默认</option><option value="low">低</option><option value="high">高</option><option value="max">最高</option></select></label></div>
+                <div id="policies"></div>
+            </details>
+            <button id="saveConfig" class="primary">保存本方配置</button><p id="modelStatus" class="muted">模型未配置</p>
+        </section>
+
+    </aside>
+    <div class="operations-column">
+        <section id="planningPanel" class="panel planning-card">
+            <div class="card-heading"><h2>规划与准备</h2><span class="section-tag">人工确认</span></div>
+            <div class="planning-body"><label>本次规划目标<textarea id="reason" rows="3">围绕三个共享控制点，协调侦察、陆兵与保障，生成可执行且资源足够的分工方案。</textarea></label>
+            <div class="actions"><button id="plan" class="primary">启动四角色规划</button><button id="ready">本方准备完成</button><button id="checkPending" hidden>核对原请求结果</button></div></div>
+            <p class="muted">分析不会自动采用或移动单位。已成功的报告可从检查点复用；恢复分析可能再次调用未完成的模型请求。</p>
+        </section>
+        <section class="panel agent-overview">
+            <div class="card-heading"><h2>协同智能体</h2><span class="section-note">三个兵种并行 · 总指挥汇总</span></div>
+            <section class="roles" id="roles" aria-label="四角色运行状态">
+                <article class="role"><h3>总指挥</h3><span class="badge">待接入</span><p class="muted">汇总局势，协调目标与任务分工</p></article>
+                <article class="role"><h3>侦察</h3><span class="badge">待接入</span><p class="muted">维护观察信息，报告态势与未知项</p></article>
+                <article class="role"><h3>陆兵</h3><span class="badge">待接入</span><p class="muted">执行地面机动、占领与守点任务</p></article>
+                <article class="role"><h3>保障</h3><span class="badge">待接入</span><p class="muted">统筹资源需求，安排补给与服务</p></article>
+            </section>
+        </section>
+        <section class="panel analysis-panel"><div class="card-heading"><h2>本方分析与待确认方案</h2><span class="section-tag">本方建议</span></div><div id="runs" class="muted">连接红方或蓝方后，在此查看运行记录与待确认方案。</div></section>
+        <section class="execution-panel">
+            <div class="execution-grid">
+                <section class="execution-section">
+                    <div class="card-heading"><h2>控制点状态</h2><span class="section-note">共享控制区 A / B / C</span></div>
+                    <div class="table-wrap points-table"><table><thead><tr><th>控制点</th><th>归属</th><th>状态</th><th>连续进度</th><th>导航检查</th></tr></thead><tbody id="points"></tbody></table></div>
+                </section>
+                <section class="execution-section">
+                    <div class="card-heading"><h2>单位任务队列</h2><span class="section-note">依赖完成后按步执行</span></div>
+                    <div class="table-wrap tasks-table"><table><thead><tr><th>任务 / 单位</th><th>动作</th><th>依赖</th><th>状态及原因</th></tr></thead><tbody id="tasks"></tbody></table></div>
+                </section>
+            </div>
+            <p id="result" class="muted"></p>
+        </section>
+
+        <div class="flow-panel"><span class="flow-caption">协同执行流程</span><div class="flow"><span>冻结本方局势</span>→<span>兵种并行分析</span>→<span>总指挥协调</span>→<span>规则校验</span>→<span>本方确认</span>→<span>按步执行</span></div></div>
+        <details class="panel rules-panel"><summary>当前规则与限制</summary><pre id="limitations">尚未启用协同测试。</pre></details>
+    </div>
+</div>
+<footer class="page-footer"><span>穹图 · 多智能体协同控制台</span><span>本方确认后执行 / 规则工具统一校验</span></footer>
+</main>
+<script>
+'use strict';
+const apiBase='__AGENT_API_BASE__', mapHash='__AGENT_MAP_HASH__';
+const roleNames={commander:'总指挥',recon:'侦察',ground:'陆兵',support:'保障'};
+const statusNames={queued:'排队',running:'执行中',waiting:'等待条件',waiting_human:'等待本方确认',succeeded:'完成',failed:'失败',stale:'依据失效',cancelled:'取消',preparing:'准备',paused:'暂停',awaiting_confirmation:'等待方案确认',finished:'结束',neutral:'中立',controlled:'已控制',capturing:'占领中',neutralizing:'中立化中',contested:'争夺中',test_surface_verified:'测试地表通过',needs_verification:'待核验'};
+const actionNames={move:'移动',observe:'观察',capture:'占领',hold:'守点',resupply:'补给',wait:'等待'};
+let session=null,view=null,configuration=null,pending=null,refreshing=false;
+const element=id=>document.getElementById(id);
+const text=value=>String(value??'—');
+const escaped=value=>text(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+function feedback(message,error=false){element('feedback').textContent=message;element('feedback').classList.toggle('error',error);}
+async function request(path,options={}){if(!session)throw Error('请先连接席位');const response=await fetch(apiBase+'/games/'+session.game_id+path,{...options,headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...options.headers}});const body=await response.json();if(!response.ok){const error=Error(body.error?.message||'请求未完成');error.httpStatus=response.status;error.response=body;throw error;}return body;}
+async function connect(){session=null;view=null;pending=null;element('checkPending').hidden=true;const response=await fetch('/api/local-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:element('role').value,map_hash:mapHash})});const body=await response.json();if(!response.ok)throw Error(body.error?.message||'本机连接失败');session=body;const host=element('role').value==='host';element('hostPanel').hidden=!host;element('configPanel').hidden=host;element('planningPanel').hidden=host;element('connection').textContent=(host?'主持人':element('role').value==='red'?'红方':'蓝方')+'已连接当前对局';if(!host){const data=await request('/agents/configuration');configuration=data.configuration;renderConfiguration(data);}await refresh();feedback('席位已连接。红蓝模型独立配置，未配置时不会生成固定建议冒充模型。');}
+function renderConfiguration(data){element('configTitle').textContent=(data.side==='red'?'红方':'蓝方')+'模型配置';for(const name of ['base_url','model','credential_ref','temperature','max_output_tokens','timeout_seconds'])element(name).value=configuration.model[name];element('temperature').value=configuration.model.temperature??'';element('output_token_parameter').value=configuration.model.output_token_parameter||'max_tokens';element('reasoning_effort').value=configuration.model.reasoning_effort||'';element('providerPreset').value='';element('enabled').checked=configuration.model.enabled;element('max_total_tokens').value=configuration.max_total_tokens;element('modelStatus').textContent=data.configured?'模型配置及环境变量已就绪，远端可用性将在实际请求时验证':'模型未配置，或后端进程没有读取到对应密钥环境变量';element('policies').innerHTML=Object.entries(roleNames).map(([role,title])=>`<details><summary>${title}策略与预算</summary><div class="fields"><label>风险偏好<select data-role="${role}" data-policy="risk_preference"><option value="conservative">保守</option><option value="balanced">均衡</option><option value="active">积极</option></select></label>${[['reserve_energy','保留能源'],['information_max_age_steps','信息最大年龄 / 步'],['planning_horizon_steps','规划范围 / 步'],['max_tool_calls','工具调用上限'],['max_model_calls','模型调用上限']].map(([name,label])=>`<label>${label}<input type="number" data-role="${role}" data-policy="${name}"></label>`).join('')}</div></details>`).join('');document.querySelectorAll('[data-policy]').forEach(input=>input.value=configuration[input.dataset.role][input.dataset.policy]);}
+async function saveConfiguration(){const updated=structuredClone(configuration);for(const name of ['base_url','model','credential_ref'])updated.model[name]=element(name).value.trim();for(const name of ['max_output_tokens','timeout_seconds'])updated.model[name]=Number(element(name).value);updated.model.temperature=element('temperature').value.trim()===''?null:Number(element('temperature').value);updated.model.output_token_parameter=element('output_token_parameter').value;updated.model.reasoning_effort=element('reasoning_effort').value||null;updated.model.enabled=element('enabled').checked;updated.max_total_tokens=Number(element('max_total_tokens').value);document.querySelectorAll('[data-policy]').forEach(input=>updated[input.dataset.role][input.dataset.policy]=input.dataset.policy==='risk_preference'?input.value:Number(input.value));const data=await request('/agents/configuration',{method:'POST',body:JSON.stringify(updated)});configuration=data.configuration;renderConfiguration(data);feedback('已保存本方配置，另一方配置保持独立。');}
+async function command(kind,payload={}){if(pending)throw Error('原请求结果尚未核对，请先点击核对按钮');await refresh();pending={kind:'command',key:crypto.randomUUID(),body:{context:view.context,command_type:kind,payload}};element('checkPending').hidden=false;return sendPending();}
+async function sendPending(){const current=pending;if(!current)return;try{const path=current.kind==='run'?'/agents/runs':'/commands';const result=await request(path,{method:'POST',headers:{'Idempotency-Key':current.key},body:JSON.stringify(current.body)});pending=null;element('checkPending').hidden=true;if(result.status==='rejected')throw Error(result.error?.message||'规则拒绝操作');feedback(current.kind==='run'?'已登记四角色规划，请查看运行进度。':'操作已由后端确认。');await refresh();}catch(error){if(error.httpStatus>=400&&error.httpStatus<500){pending=null;element('checkPending').hidden=true;await refresh();}feedback(error.message+(pending?'；结果不确定，请核对原请求。':''),true);throw error;}}
+async function checkPending(){if(!pending)return;if(pending.kind==='run')return sendPending();try{const result=await request('/commands/by-request?origin_branch_id='+encodeURIComponent(pending.body.context.branch_id)+'&request_key='+encodeURIComponent(pending.key));pending=null;element('checkPending').hidden=true;feedback(result.status==='succeeded'?'原命令已成功。':result.error?.message||'原命令已拒绝。',result.status!=='succeeded');await refresh();}catch(error){if(error.httpStatus===404)return sendPending();feedback(error.message+'；保留原请求。再次点击可继续查询。',true);}}
+async function plan(){if(pending)throw Error('请先核对原请求');await refresh();pending={kind:'run',key:crypto.randomUUID(),body:{context:view.context,reason:element('reason').value.trim()}};element('checkPending').hidden=false;return sendPending();}
+async function refresh(){if(!session||refreshing)return;refreshing=true;try{view=await request('/view');element('phase').textContent=statusNames[view.clock.phase]||view.clock.phase;element('step').textContent=view.clock.simulation_step;element('redScore').textContent=text(view.scores?.red);element('blueScore').textContent=text(view.scores?.blue);element('ruleStatus').textContent=view.coordination?'协同测试 v1':'原有演示';element('points').innerHTML=(view.coordination?.points||[]).map(point=>`<tr><td>${escaped(point.name)}</td><td>${point.owner==='red'?'红方':point.owner==='blue'?'蓝方':'中立'}</td><td>${escaped(statusNames[point.status]||point.status)}</td><td>${point.progress_steps}</td><td>${escaped(statusNames[point.navigation_status]||point.navigation_status)}</td></tr>`).join('');const ownPlan=view.coordination?.plans?.[element('role').value];element('tasks').innerHTML=(ownPlan?.tasks||[]).map(task=>`<tr><td>${escaped(task.task_id)}<br>${escaped(task.unit_id)}</td><td>${escaped(actionNames[task.action])}</td><td>${escaped(task.depends_on.join('、')||'无')}</td><td>${escaped(statusNames[task.status]||task.status)}<br>${escaped(task.blocked_reason||'')}</td></tr>`).join('');element('limitations').textContent=JSON.stringify({rules:view.coordination?.rules,limitations:view.coordination?.limitations},null,2);element('result').textContent=view.clock.phase==='finished'?'对局结束：'+(view.scores?.winner==='red'?'红方获胜':view.scores?.winner==='blue'?'蓝方获胜':'平局')+'；原因 '+text(view.scores?.reason):'任务按仿真步执行，等待人工或暂停期间不计时、不计分。';if(element('role').value!=='host'){const runs=await request('/agents/runs');renderRuns(runs.items);}else{element('roles').innerHTML='';element('runs').textContent='主持人不读取红蓝私有建议，请在各自席位查看。';}}finally{refreshing=false;}}
+function renderRuns(items){element('roles').innerHTML=Object.entries(roleNames).map(([role,title])=>{const latest=items.find(item=>item.role===role);return `<article class="role"><h3>${title}</h3><span class="badge">${escaped(statusNames[latest?.status]||'尚未运行')}</span><p class="muted">${escaped(latest?.error?.message||latest?.output?.output?.summary||'等待本方规划')}</p></article>`;}).join('');element('runs').innerHTML=items.filter(item=>item.role==='commander').slice(0,8).map(run=>`<details ${run.status==='waiting_human'?'open':''}><summary>${escaped(statusNames[run.status]||run.status)} · ${escaped(run.output?.output?.summary||'四角色协同分析')}</summary><p class="muted">${escaped(run.run_id)}</p>${run.error?`<p class="danger">${escaped(run.error.message)}</p>`:''}<div class="actions">${run.status==='waiting_human'?`<button data-review="approve" data-run="${run.run_id}" class="primary">批准采用</button><button data-review="reject" data-run="${run.run_id}">驳回</button>`:''}${['queued','running','waiting_human','failed'].includes(run.status)?`<button data-cancel="${run.run_id}">取消分析</button>`:''}${['failed','running','queued'].includes(run.status)?`<button data-resume="${run.run_id}">恢复检查点</button>`:''}</div><pre>${escaped(JSON.stringify(run.output||run.stages,null,2))}</pre></details>`).join('')||'尚无本方分析。';}
+async function safely(action){try{await action();}catch(error){feedback(error.message,true);}}
+element('providerPreset').onchange=()=>{const provider=element('providerPreset').value;if(!provider)return;const kimi=provider==='kimi';element('base_url').value=kimi?'https://api.moonshot.cn/v1':'https://api.deepseek.com';element('model').value=kimi?'kimi-k3.1-pro':'deepseek-flash';element('credential_ref').value=kimi?'MOONSHOT_API_KEY':'DEEPSEEK_API_KEY';element('temperature').value='';element('output_token_parameter').value=kimi?'max_completion_tokens':'max_tokens';element('reasoning_effort').value='low';feedback('已填写官方接口示例，请核对模型权限和预算，再启用并保存本方配置。');};
+element('connect').onclick=()=>safely(connect);element('refresh').onclick=()=>safely(refresh);element('saveConfig').onclick=()=>safely(saveConfiguration);element('plan').onclick=()=>safely(plan);element('checkPending').onclick=()=>safely(checkPending);element('ready').onclick=()=>safely(()=>command('set_ready',{ready:true}));element('enableRules').onclick=()=>safely(()=>command('enable_coordination',{}));document.querySelectorAll('[data-command]').forEach(button=>button.onclick=()=>safely(()=>command(button.dataset.command)));
+element('runs').onclick=event=>{const button=event.target.closest('button');if(!button)return;safely(async()=>{if(button.dataset.review)await command('review_agent_plan',{run_id:button.dataset.run,decision:button.dataset.review});else if(button.dataset.cancel)await request('/agents/runs/'+button.dataset.cancel+'/cancel',{method:'POST'});else if(button.dataset.resume)await request('/agents/runs/'+button.dataset.resume+'/resume',{method:'POST'});await refresh();});};
+element('role').onchange=()=>{session=null;view=null;feedback('席位已切换，请重新连接以取得本方权限。');};
+setInterval(()=>{if(session)safely(refresh);},3000);
+</script>
+</html>

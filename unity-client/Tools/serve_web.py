@@ -36,6 +36,22 @@ class SandboxWebHandler(http.server.SimpleHTTPRequestHandler):
         self.send_error(404, "Not Found")
         return None
 
+    def do_GET(self):
+        """提供固定协同工作台入口，不公开工程目录、配置或会话凭据。"""
+        if self.path in ('/agents', '/agents/'):
+            from backend.demo_domain import map_manifest
+            page = Path(__file__).resolve().parents[2] / 'backend' / 'agent-workbench.html'
+            content = page.read_text(encoding='utf-8').replace('__AGENT_MAP_HASH__', map_manifest()['content_hash'])
+            content = content.replace('__AGENT_API_BASE__', self.server.launch_provider.base_url)
+            payload = content.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            return
+        super().do_GET()
+
     def do_POST(self):
         """仅允许本机页面同源申请一个席位，不公开引导密钥或其他角色令牌。"""
         if self.path != "/api/local-session":

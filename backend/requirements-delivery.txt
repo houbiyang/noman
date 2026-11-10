@@ -1,0 +1,8 @@
+# -*- coding: utf-8 -*-
+# 仅记录本机交付已有的运行依赖，不引入新的第三方组件。
+-r requirements-agents.txt
+fastapi==0.115.6
+uvicorn==0.34.0
+psycopg==3.3.6
+psycopg-binary==3.3.6
+pydantic==2.14.1

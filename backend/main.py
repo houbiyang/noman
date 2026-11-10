@@ -7,7 +7,7 @@ from threading import Event, Thread
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, Header, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,11 +20,15 @@ from backend.contracts import CommandRequest, ConditionPreview, CreateGame, Sess
 from backend.demo_domain import map_manifest
 from backend.runtime import Settings, ServiceError, initialize_runtime
 from backend.service import SandboxService
+from backend.agent_contracts import AgentConfiguration, AgentRunRequest
+from backend.agent_service import AgentCoordinator
+from backend.agent_graph import AGENT_RUNTIME_REVISION
 
 
 def create_app(settings: Settings) -> FastAPI:
     """以显式配置构造应用，导入不会建库、创建对局或启动线程。"""
     service = SandboxService(settings)
+    agents = AgentCoordinator(service)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -47,9 +51,10 @@ def create_app(settings: Settings) -> FastAPI:
         if worker.is_alive():
             worker.join(timeout=1)
 
-    app = FastAPI(title="穹图现有功能后端", version="1.0.0", lifespan=lifespan,
-                  description="固定演示、持久化及角色隔离；正式 AI、地形规则与交战裁决尚未实现。")
+    app = FastAPI(title="穹图沙盘与多智能体后端", version="1.1.0", lifespan=lifespan,
+                  description="演示与协同测试、持久化及角色隔离；模型按红蓝配置调用，正式交战尚未实现。")
     app.state.service = service
+    app.state.agents = agents
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
     app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:18766", "http://localhost:18766"],
                        allow_methods=["GET", "POST", "DELETE"],
@@ -90,6 +95,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/v1/health")
     def health():
         result = service.health()
+        result['agent_orchestration']['runtime_revision'] = AGENT_RUNTIME_REVISION
         return JSONResponse(status_code=200 if result["database_ready"] else 503, content=result)
 
     @app.get("/api/v1/bootstrap/games", dependencies=[Depends(bootstrap)])
@@ -177,6 +183,47 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/v1/games/{game_id}/result")
     def result(game_id: UUID, access_token: token):
         return service.result(str(game_id), access_token)
+
+    @app.get('/api/v1/games/{game_id}/agents/configuration')
+    def agent_configuration(game_id: UUID, access_token: token):
+        """读取当前席位的非秘密配置，红蓝相互隔离。"""
+        return agents.configuration(str(game_id), access_token)
+
+    @app.post('/api/v1/games/{game_id}/agents/configuration')
+    def save_agent_configuration(game_id: UUID, body: AgentConfiguration, access_token: token):
+        """保存本方模型和四角色策略，不接收实际密钥。"""
+        return agents.save_configuration(str(game_id), access_token, body)
+
+    @app.get('/api/v1/games/{game_id}/agents/runs')
+    def agent_runs(game_id: UUID, access_token: token):
+        """读取本方有界的运行历史和检查点状态。"""
+        return agents.runs(str(game_id), access_token)
+
+    @app.post('/api/v1/games/{game_id}/agents/runs', status_code=202)
+    def request_agent_run(game_id: UUID, body: AgentRunRequest, access_token: token, idempotency_key: request_key,
+                          background_tasks: BackgroundTasks):
+        """登记请求后在后台执行，网络调用不持有对局锁。"""
+        result, replayed = agents.request(str(game_id), access_token, idempotency_key, body)
+        if not replayed:
+            background_tasks.add_task(agents.execute, result['run_id'])
+        return dict(result, replayed=replayed)
+
+    @app.get('/api/v1/games/{game_id}/agents/runs/{run_id}')
+    def agent_run(game_id: UUID, run_id: UUID, access_token: token):
+        """查询本方单次运行，不暴露对方运行存在性。"""
+        return agents.get(str(game_id), access_token, str(run_id))
+
+    @app.post('/api/v1/games/{game_id}/agents/runs/{run_id}/cancel')
+    def cancel_agent_run(game_id: UUID, run_id: UUID, access_token: token):
+        """撤销本方分析资格，晚到响应不能发布方案。"""
+        return agents.cancel(str(game_id), access_token, str(run_id))
+
+    @app.post('/api/v1/games/{game_id}/agents/runs/{run_id}/resume', status_code=202)
+    def resume_agent_run(game_id: UUID, run_id: UUID, access_token: token, background_tasks: BackgroundTasks):
+        """显式恢复有效检查点，不重调已成功的兵种报告。"""
+        result = agents.resume(str(game_id), access_token, str(run_id))
+        background_tasks.add_task(agents.execute, str(run_id))
+        return result
 
     return app
 

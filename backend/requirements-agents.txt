@@ -1,0 +1,7 @@
+# -*- coding: utf-8 -*-
+# 固定已经安装并通过编排恢复验证的 LangGraph 组件，不增加新的第三方组件。
+langgraph==1.2.20
+langgraph-checkpoint==4.3.1
+langgraph-prebuilt==1.1.1
+langgraph-sdk==0.4.14
+langchain-core==1.7.6

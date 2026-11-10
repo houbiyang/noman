@@ -186,6 +186,7 @@ def migration_sql(database: str, enable_vectors: bool = True) -> str:
     files.append(BACKEND_ROOT / "migrations" / "006_barracks_commands.sql")
     files.append(BACKEND_ROOT / "migrations" / "007_movement_commands.sql")
     files.append(BACKEND_ROOT / "migrations" / "008_barracks_spawning.sql")
+    files.append(BACKEND_ROOT / "migrations" / "009_agent_coordination.sql")
     pieces = ["BEGIN; SELECT pg_advisory_xact_lock(80644, 1103);",
               "CREATE SCHEMA IF NOT EXISTS infrastructure; REVOKE ALL ON SCHEMA infrastructure FROM PUBLIC;",
               "CREATE TABLE IF NOT EXISTS infrastructure.schema_migrations ("
