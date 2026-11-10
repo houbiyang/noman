@@ -39,12 +39,21 @@ namespace Qiongtu.Sandbox
         public SandboxServerCapabilities capabilities;
         public bool spatial_test;
         public SandboxServerMovementPath[] movement_paths;
+        public SandboxVictoryEvidence victory;
+        public SandboxServerBattleResult battle_result;
     }
+
+    [Serializable] public sealed class SandboxServerBattleResult { public bool final; public string verdict, reason; public int redPoints, bluePoints, scoreMaximum; public double redScore100, blueScore100, redPercent, bluePercent; public string[] calculations, milestones; public SandboxStageScore[] stageScores; }
+    [Serializable] public sealed class SandboxServerGoalDecision { public string goal_id, evidence; public bool red_completed, blue_completed; }
+    [Serializable] public sealed class SandboxServerSettleStage { public int stage; public string evidence; public SandboxServerGoalDecision[] goals; }
+    [Serializable] public sealed class SandboxServerArchive { public string id, title, branch_id, snapshot_id, created_at, role, phase; public int simulation_step; public bool automatic; public SandboxServerView projection; }
+    [Serializable] public sealed class SandboxServerArchiveList { public SandboxServerArchive[] items; public int total, offset, limit; }
+    [Serializable] public sealed class SandboxServerArchiveDetail { public SandboxServerArchive item; }
 
     /// <summary>对局公开身份。</summary>
     [Serializable] public sealed class SandboxServerGame { public string game_id, title; public bool is_demo; }
     /// <summary>权威时钟及双方准备状态。</summary>
-    [Serializable] public sealed class SandboxServerClock { public int simulation_step; public string phase; public SandboxServerReady ready; }
+    [Serializable] public sealed class SandboxServerClock { public int simulation_step, deadline_step; public string phase; public SandboxServerReady ready; }
     /// <summary>双方已持久化的准备状态。</summary>
     [Serializable] public sealed class SandboxServerReady { public bool red, blue; }
     /// <summary>地图版本和业务坐标命名空间。</summary>
@@ -86,7 +95,7 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxServerCapabilities
     {
         public bool can_control_time, can_start_game, can_advance, can_review_proposal, can_set_ready, can_manage_units, can_move_unit;
-        public bool can_place_barracks, can_delete_unit;
+        public bool can_place_barracks, can_delete_unit, can_settle_goal_stage, can_surrender;
         public bool can_test_movement;
     }
     /// <summary>可公开的稳定错误信息。</summary>

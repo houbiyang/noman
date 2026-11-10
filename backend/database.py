@@ -16,7 +16,8 @@ from datetime import datetime, timezone
 
 BACKEND_ROOT = Path(__file__).resolve().parent
 LOCAL_ROOT = BACKEND_ROOT / ".local"
-POSTGRES_BIN = Path(r"D:\PostgreSQL\18\bin")
+POSTGRES_BIN = Path(os.environ.get("QIONGTU_POSTGRES_BIN", r"D:\PostgreSQL\18\bin"))
+POSTGRES_PORT = int(os.environ.get("QIONGTU_POSTGRES_PORT", "55433"))
 DATABASE_NAME = "qiongtu_sandbox_v1"
 APPLICATION_ROLE = "qiongtu_app_v1"
 CONFIG_PATH = LOCAL_ROOT / "database-v1.json"
@@ -26,7 +27,7 @@ EXPECTED_TABLES = frozenset({
     "rule_versions", "scenario_versions", "games", "game_members", "access_sessions",
     "game_branches", "game_snapshots", "game_commands", "game_events", "game_saves",
     "ai_runs", "proposals", "proposal_reviews", "proposal_evidence", "background_jobs",
-    "knowledge_documents", "document_versions", "document_chunks", "embedding_spaces", "chunk_embeddings",
+    "knowledge_documents", "document_versions", "document_chunks", "embedding_spaces", "chunk_embeddings", "match_archives",
 })
 
 
@@ -69,10 +70,10 @@ def psql_arguments(database: str, role: str = "battle_admin") -> list[str]:
     """构造明确限定本地实例的 psql 参数。"""
     identifier(database)
     identifier(role)
-    executable = POSTGRES_BIN / "psql.exe"
+    executable = POSTGRES_BIN / ("psql.exe" if os.name == "nt" else "psql")
     if not executable.is_file():
-        raise DatabaseError("未找到现有 psql.exe；本工具不会自动安装依赖")
-    return [str(executable), "-X", "-w", "-h", "127.0.0.1", "-p", "55433", "-U", role,
+        raise DatabaseError("未找到 psql；请显式配置 PostgreSQL 工具目录")
+    return [str(executable), "-X", "-w", "-h", "127.0.0.1", "-p", str(POSTGRES_PORT), "-U", role,
             "-d", database, "-At", "-v", "ON_ERROR_STOP=1"]
 
 
@@ -91,7 +92,10 @@ def execute(database: str, statement: str, *, role: str = "battle_admin", passwo
 
 
 def protect_file(path: Path) -> None:
-    """使用 Windows ACL 将私有文件访问限定为当前用户与 SYSTEM。"""
+    """Windows 限制 ACL；POSIX 私有文件使用 0600。"""
+    if os.name != "nt":
+        path.chmod(0o600)
+        return
     owner = subprocess.run(["whoami.exe", "/user", "/fo", "csv", "/nh"], capture_output=True,
                            text=True, encoding="utf-8", errors="replace", check=True).stdout
     matched_sid = re.search(r"S-1-5-[0-9-]+", owner)
@@ -187,6 +191,13 @@ def migration_sql(database: str, enable_vectors: bool = True) -> str:
     files.append(BACKEND_ROOT / "migrations" / "007_movement_commands.sql")
     files.append(BACKEND_ROOT / "migrations" / "008_barracks_spawning.sql")
     files.append(BACKEND_ROOT / "migrations" / "009_agent_coordination.sql")
+    files.append(BACKEND_ROOT / "migrations" / "007_battle_reports.sql")
+    files.append(BACKEND_ROOT / "migrations" / "010_history_agent_commands.sql")
+    # 两条分支的旧命令约束互不包含；统一使用最终完整约束校验，防止升级时拒绝已有合法历史。
+    constraint_pattern = r"ALTER TABLE sandbox\.game_commands ADD CONSTRAINT game_commands_command_type_check CHECK \([\s\S]*?\n\);"
+    final_constraint = re.search(constraint_pattern, files[-1].read_text(encoding="utf-8-sig"))
+    if final_constraint is None:
+        raise DatabaseError("缺少合并后的完整命令约束，未执行迁移")
     pieces = ["BEGIN; SELECT pg_advisory_xact_lock(80644, 1103);",
               "CREATE SCHEMA IF NOT EXISTS infrastructure; REVOKE ALL ON SCHEMA infrastructure FROM PUBLIC;",
               "CREATE TABLE IF NOT EXISTS infrastructure.schema_migrations ("
@@ -201,7 +212,10 @@ def migration_sql(database: str, enable_vectors: bool = True) -> str:
         pieces.append("DO $check$ BEGIN IF NOT EXISTS (SELECT 1 FROM infrastructure.schema_migrations WHERE "
                       f"version = {sql_literal(version)} AND sha256 = {sql_literal(digest)}) THEN "
                       "RAISE EXCEPTION '已应用迁移文件发生变化，请新增迁移而不是修改旧文件'; END IF; END; $check$;\n")
-        pieces.append("\\else\n" + payload.decode("utf-8-sig") + "\n")
+        statement = payload.decode("utf-8-sig")
+        if migration_file != files[-1]:
+            statement = re.sub(constraint_pattern, lambda matched: final_constraint.group(0), statement)
+        pieces.append("\\else\n" + statement + "\n")
         pieces.append("INSERT INTO infrastructure.schema_migrations(version, sha256) VALUES ("
                       + sql_literal(version) + ", " + sql_literal(digest) + ");\n\\endif\n")
     pieces.append("COMMIT;")
@@ -225,7 +239,7 @@ def configure_application_role() -> None:
     elif role_exists:
         raise DatabaseError("同名应用角色已存在但无本项目配置，拒绝接管或重置密码")
     else:
-        configuration = dict(host="127.0.0.1", port=55433, database=DATABASE_NAME,
+        configuration = dict(host="127.0.0.1", port=POSTGRES_PORT, database=DATABASE_NAME,
                              user=APPLICATION_ROLE, password=secrets.token_hex(32))
         write_private_json(APPLICATION_CONFIG_PATH, configuration)
     if not role_exists:
@@ -234,7 +248,7 @@ def configure_application_role() -> None:
     configure_privileges(DATABASE_NAME)
     execute(DATABASE_NAME, "SELECT 1;", role=APPLICATION_ROLE, password=configuration["password"])
     if not CONFIG_PATH.exists():
-        write_private_json(CONFIG_PATH, dict(host="127.0.0.1", port=55433, database=DATABASE_NAME,
+        write_private_json(CONFIG_PATH, dict(host="127.0.0.1", port=POSTGRES_PORT, database=DATABASE_NAME,
                                             schema="sandbox", application_role=APPLICATION_ROLE))
 
 
@@ -275,7 +289,7 @@ def database_status() -> dict:
     migrations = execute(DATABASE_NAME, "SELECT version FROM infrastructure.schema_migrations ORDER BY version;").splitlines()
     vector_enabled = execute(DATABASE_NAME, "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector');") == "t"
     missing_tables = sorted(EXPECTED_TABLES - set(table_names))
-    return dict(host="127.0.0.1", port=55433, database=DATABASE_NAME, server_version=execute(DATABASE_NAME, "SHOW server_version;"),
+    return dict(host="127.0.0.1", port=POSTGRES_PORT, database=DATABASE_NAME, server_version=execute(DATABASE_NAME, "SHOW server_version;"),
                 business_table_count=len(table_names), tables=table_names, migrations=migrations,
                 expected_business_table_count=len(EXPECTED_TABLES), missing_tables=missing_tables,
                 all_business_tables_created=not missing_tables,

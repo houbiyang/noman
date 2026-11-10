@@ -120,6 +120,26 @@ class AgentServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['agent_orchestration']['runtime_revision'], AGENT_RUNTIME_REVISION)
 
+    def test_history_archive_preserves_pending_agent_plan_and_private_reports(self):
+        """历史页面归档与智能体方案共存，归档不改变当前依据，也不保存私有报告。"""
+        self.configure()
+        run = self.run_agent()
+        self.assertEqual(run['status'], 'waiting_human')
+        before = self.view('red')['context']
+        archived = self.command('archive_match', dict(display_name='协同方案待确认时归档'), 'red')
+        archive_id = archived['result']['archive_id']
+        detail = self.client.get(self.path + '/archives/' + archive_id, headers=self.headers['red'])
+        self.assertEqual(detail.status_code, 200, detail.text)
+        projection = detail.json()['item']['projection']
+        self.assertNotIn('reports', projection)
+        self.assertNotIn('coordination', projection)
+        self.assertNotIn('decisions', projection)
+        self.assertNotIn('context', projection)
+        self.assertEqual(self.view('red')['context'], before)
+        self.assertEqual(self.client.get(self.path + '/archives/' + archive_id, headers=self.headers['blue']).status_code, 404)
+        self.command('review_agent_plan', dict(run_id=run['run_id'], decision='approve'), 'red')
+        self.assertEqual(self.view('red')['coordination']['plans']['red']['status'], 'adopted')
+
     def test_missing_model_is_persisted_failure_without_fixed_fallback(self):
         run = self.run_agent()
         self.assertEqual(run['status'], 'failed', run)

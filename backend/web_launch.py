@@ -63,12 +63,12 @@ class LocalWebLaunch:
             raise WebLaunchError("地图版本已变化，请刷新最新地图页面")
         try:
             with self.lock:
-                path = database.LOCAL_ROOT / ("web-launch-" + map_hash + ".json")
+                path = database.LOCAL_ROOT / ("web-launch-qinglan-control-v1-" + map_hash + ".json")
                 if path.exists():
                     record = json.loads(path.read_text(encoding="utf-8"))
                 else:
                     record = dict(map_hash=map_hash, creation_request_key=str(uuid4()),
-                                  creation_payload=dict(title="青岚地图对局", is_demo=True, spatial_test=True), sessions={})
+                                  creation_payload=dict(title="青岚三阶段驻守演示", is_demo=True, spatial_test=True, victory_mode="qinglan_control"), sessions={})
                     self.save(path, record)
                 if not record.get("game_id"):
                     game = self.request("POST", "/games", record["creation_payload"], bootstrap=True,

@@ -68,7 +68,7 @@ namespace Qiongtu.Sandbox
             root.style.unityFontDefinition = FontDefinition.FromFont(runtimeFont);
             root.RegisterCallback<GeometryChangedEvent>(_ => root.EnableInClassList("compact", root.resolvedStyle.width < 1450));
             cameraRig.IsPointerOverUi = IsPointerOverUi;
-            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null;
+            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null || reportOverlay != null;
             cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null;
             cameraRig.IsBarracksPlacement = () => pendingArmyType.HasValue;
             cameraRig.MapClicked += HandleArmyMapClick;
@@ -108,6 +108,9 @@ namespace Qiongtu.Sandbox
             RefreshProjection();
         }
 
+        private int MatchDeadline => serverMode && serverClient?.View?.clock?.deadline_step > 0
+            ? serverClient.View.clock.deadline_step : 60;
+
         /// <summary>读取并同步同一版本的三维对象、HUD 与操作能力。</summary>
         private void RefreshProjection()
         {
@@ -122,7 +125,7 @@ namespace Qiongtu.Sandbox
             SetText("roleCaption", RoleLabel(role));
             SetText("taskName", projection.taskType);
             SetText("taskDescription", TaskDescription(projection.taskType));
-            SetText("stepLabel", projection.step.ToString("00") + " / 60");
+            SetText("stepLabel", projection.step.ToString("00") + " / " + MatchDeadline);
             string phase = serverMode ? ServerPhaseLabel() : projection.step >= 60 ? "截止步 · 演示结束" : projection.waitingSummary.Length > 0 ? "等待 " + projection.waitingSummary : playing ? "演示播放中" : "演示已暂停";
             SetText("phaseLabel", phase);
             SandboxUnitData selected = projection.units.FirstOrDefault(unit => unit.id == selectedId);
@@ -142,12 +145,14 @@ namespace Qiongtu.Sandbox
             UpdateCameraButton();
             if (serverMode) RefreshServerControls();
             if (!serverMode && armyOverlay != null && managedArmyType.HasValue) RenderArmy();
+            ObserveMatchEnd();
         }
 
         /// <summary>清理旧角色私有对象、草稿和相机目标后切换角色。</summary>
         private void ChangeRole(SandboxRole next)
         {
             if (next == role) return;
+            if (reportOverlay != null) CloseReport();
             if (settingsOverlay != null) { RequestCloseSettings(() => ChangeRole(next)); return; }
             if (serverMode) { BeginServerConnection(next); return; }
             CloseArmy(); CancelArmyCommand();
@@ -549,6 +554,7 @@ namespace Qiongtu.Sandbox
         private void Update()
         {
             if (root == null) return;
+            ShowPendingEndResult();
             if (!serverMode && playing && Time.unscaledTime >= nextFrameAt)
             {
                 Advance();
@@ -570,13 +576,14 @@ namespace Qiongtu.Sandbox
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 if (modalAction != null) CloseModal();
+                else if (reportOverlay != null) CloseReport();
                 else if (settingsOverlay != null) RequestCloseSettings();
                 else if (armyOverlay != null) { CloseArmy(); CancelArmyCommand(); }
                 else if (pendingArmyType.HasValue || pendingMoveId != null) CancelArmyCommand();
                 else if (activePanel != null) ClosePanel();
                 else cameraRig.ReturnToOverview();
             }
-            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null && settingsOverlay == null) ToggleFollow();
+            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null && settingsOverlay == null && reportOverlay == null) ToggleFollow();
         }
 
         /// <summary>失焦后停止播放，避免后台继续推进演示。</summary>

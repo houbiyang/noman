@@ -247,13 +247,13 @@ def apply_interaction(state: dict, actor: str, command_type: str, payload: dict)
                 clock["phase"] = "running"
                 event.update(title="演示播放已开启", detail="由后端固定演示节奏发起单步", visibility="public")
             else:
-                require(clock["simulation_step"] < 60, "DEADLINE_REACHED", "演示已达到第六十步")
+                require(clock["simulation_step"] < clock.get("deadline_step", 60), "DEADLINE_REACHED", "已达到本局时间上限")
                 clock["simulation_step"] += 1
                 for unit in state["units"]:
                     if unit["unit_type"] == "ground":
                         delta = Decimal('0.45') if unit["side"] == "red" else Decimal('-0.45')
                         unit["position"]["x"] = format(max(Decimal(0), min(Decimal(120), Decimal(unit["position"]["x"]) + delta)), "f")
-                if clock["simulation_step"] == 60:
+                if clock["simulation_step"] == clock.get("deadline_step", 60):
                     clock.update(phase="finished", controller_session_id=None)
                 event.update(title="演示步已推进", detail="仅执行原有预置位移；未进行任务、交战或评分结算", visibility="public")
     else:

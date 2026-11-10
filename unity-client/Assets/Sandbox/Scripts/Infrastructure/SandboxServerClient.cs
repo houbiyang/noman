@@ -160,6 +160,30 @@ namespace Qiongtu.Sandbox
             StartCoroutine(LoadSavesRequest(completed, offset));
         }
 
+        public void LoadArchives(Action<SandboxServerArchiveList> completed, int offset, string search, string phase)
+        {
+            if (Busy || HasPending || !Healthy || View == null) { completed?.Invoke(null); return; }
+            StartCoroutine(ArchiveRequest("/archives?offset=" + offset + "&limit=20&search=" + Uri.EscapeDataString(search ?? "") + "&phase=" + phase, text => completed?.Invoke(text == null ? null : JsonUtility.FromJson<SandboxServerArchiveList>(text))));
+        }
+
+        public void LoadArchive(string id, Action<SandboxServerArchiveDetail> completed)
+        {
+            if (Busy || HasPending || !Healthy || View == null || !Guid.TryParse(id, out _)) { completed?.Invoke(null); return; }
+            StartCoroutine(ArchiveRequest("/archives/" + id, text => completed?.Invoke(text == null ? null : JsonUtility.FromJson<SandboxServerArchiveDetail>(text))));
+        }
+
+        private IEnumerator ArchiveRequest(string path, Action<string> completed)
+        {
+            Busy = true; Changed?.Invoke();
+            yield return Fetch("GET", path, null, null);
+            string text = responseCode == 200 ? responseBody : null;
+            if (text == null) Feedback?.Invoke(PublicError());
+            Busy = false; nextPoll = Time.realtimeSinceStartup + 1;
+            if (text != null) completed(text);
+            else completed(null);
+            Changed?.Invoke();
+        }
+
         /// <summary>事件预览绑定当时快照，调用方保留原依据用于提交。</summary>
         public void Preview(SandboxServerConditionInput condition, Action<SandboxServerPreview, SandboxServerContext> completed)
         {

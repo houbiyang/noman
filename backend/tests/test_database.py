@@ -188,7 +188,31 @@ class DatabaseChecks(unittest.TestCase):
         """相同摘要的迁移重复执行不重复建表。"""
         database.apply_migrations(self.test_database)
         self.assertEqual(database.execute(self.test_database, "SELECT version FROM infrastructure.schema_migrations ORDER BY version;").splitlines(),
-            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_movement_commands", "008_barracks_spawning", "009_agent_coordination"])
+            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_battle_reports", "007_movement_commands", "008_barracks_spawning", "009_agent_coordination", "010_history_agent_commands"])
+
+    def test_02_branch_upgrade_preserves_existing_command_history(self):
+        """分别从历史报告和智能体分支升级，已有合法命令不能被另一分支的旧约束拒绝。"""
+        for source in ("agents", "reports"):
+            with self.subTest(source=source):
+                temporary = "qiongtu_verify_" + uuid.uuid4().hex
+                database.execute("postgres", f"CREATE DATABASE {database.identifier(temporary)} TEMPLATE {database.identifier(self.test_database)};")
+                self.created_databases.append(temporary)
+                if source == "agents":
+                    missing = ("007_battle_reports", "010_history_agent_commands")
+                    database.execute(temporary, "DROP TABLE sandbox.match_archives;")
+                    command_type = "movement_order"
+                else:
+                    missing = ("007_movement_commands", "008_barracks_spawning", "009_agent_coordination", "010_history_agent_commands")
+                    command_type = "archive_match"
+                versions = ",".join(database.sql_literal(version) for version in missing)
+                values = command_values("branch-upgrade-" + source)
+                values["command_type"] = command_type
+                database.execute(temporary, "DELETE FROM infrastructure.schema_migrations WHERE version IN (" + versions + ");"
+                                 + " SET search_path=sandbox,pg_catalog; " + insert("game_commands", values))
+                database.apply_migrations(temporary)
+                self.assertEqual(database.execute(temporary, "SELECT count(*) FROM sandbox.game_commands WHERE command_type="
+                                                  + database.sql_literal(command_type) + ";"), "1")
+                self.assertEqual(database.execute(temporary, "SELECT count(*) FROM pg_constraint WHERE conname='game_commands_command_type_check' AND convalidated;"), "1")
 
     def test_03_dangling_head(self):
         """提交时拒绝悬空有效头。"""

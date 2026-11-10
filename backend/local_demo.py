@@ -14,7 +14,10 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=18080)
     parser.add_argument("--title", default="现有功能后端联调")
     parser.add_argument("--spatial-test", action="store_true", help="显式使用可配置 S2 空间测试规则")
+    parser.add_argument("--war-goals", action="store_true", help="启用文档三阶段计分及主持人目标裁定")
+    parser.add_argument("--qinglan-control", action="store_true", help="项目适配：60分钟三点驻守加权评分（自动启用空间测试）")
     arguments = parser.parse_args()
+    if arguments.war_goals and arguments.qinglan_control: parser.error("只能选择一种计分模式")
     bootstrap = (database.LOCAL_ROOT / "bootstrap-key").read_text(encoding="utf-8-sig").strip()
     base = f"http://127.0.0.1:{arguments.port}/api/v1"
 
@@ -30,6 +33,10 @@ def main() -> None:
     key = str(uuid4())
     destination = database.LOCAL_ROOT / ("demo-session-" + key + ".json")
     record = dict(base_url=base, creation_request_key=key, creation_payload=dict(title=arguments.title, is_demo=True))
+    if arguments.qinglan_control:
+        record["creation_payload"].update(victory_mode="qinglan_control", spatial_test=True)
+    if arguments.war_goals:
+        record["creation_payload"]["victory_mode"] = "war_goals"
     if arguments.spatial_test:
         record["creation_payload"]["spatial_test"] = True
     # 先保留创建键，HTTP 响应丢失时可按原键核对，不能盲目重建。

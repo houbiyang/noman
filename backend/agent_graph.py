@@ -12,7 +12,7 @@ from psycopg.types.json import Jsonb
 from backend.demo_domain import require
 
 
-AGENT_RUNTIME_REVISION = 'coordination-20261110.1'
+AGENT_RUNTIME_REVISION = 'coordination-history-20261110.2'
 
 
 class CoordinationGraphState(TypedDict, total=False):

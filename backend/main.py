@@ -180,6 +180,15 @@ def create_app(settings: Settings) -> FastAPI:
                simulation_step: int | None = Query(None, ge=0, le=60)):
         return service.replay(str(game_id), access_token, snapshot_id=snapshot_id, branch_id=branch_id, simulation_step=simulation_step)
 
+    @app.get("/api/v1/games/{game_id}/archives")
+    def archives(game_id: UUID, access_token: token, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100),
+                 search: str = Query("", max_length=80), phase: str = Query("all", pattern="^(all|active|finished)$")):
+        return service.archives(str(game_id), access_token, offset=offset, limit=limit, search=search, phase=phase)
+
+    @app.get("/api/v1/games/{game_id}/archives/{archive_id}")
+    def archive(game_id: UUID, archive_id: UUID, access_token: token):
+        return service.archives(str(game_id), access_token, archive_id=archive_id)
+
     @app.get("/api/v1/games/{game_id}/result")
     def result(game_id: UUID, access_token: token):
         return service.result(str(game_id), access_token)

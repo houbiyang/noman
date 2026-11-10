@@ -37,6 +37,7 @@ namespace Qiongtu.Sandbox
             savedSettings = settingsStore.Load(out settingsWarning);
             ApplyDisplaySettings();
             root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxSettings"));
+            root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxReports"));
             BindButton("settingsAction", OpenSettings);
         }
         private static SandboxClientSettings CopySettings(SandboxClientSettings value) => JsonUtility.FromJson<SandboxClientSettings>(JsonUtility.ToJson(value));
@@ -44,6 +45,7 @@ namespace Qiongtu.Sandbox
 
         private void OpenSettings()
         {
+            if (reportOverlay != null) { CloseReport(); return; }
             if (settingsOverlay != null) { RequestCloseSettings(); return; }
             ClosePanel(); CloseArmy(); CancelArmyCommand(); PausePlayback();
             settingsDraft = CopySettings(savedSettings);
@@ -60,7 +62,7 @@ namespace Qiongtu.Sandbox
             AddText(heading, "连接服务、配置智能体与调整观察界面", "settings-header-description");
             AddText(header, "本机配置", "settings-badge");
             var close = AddButton(header, "×", () => RequestCloseSettings(), "settings-close"); close.name = "closeSettings"; close.tooltip = "关闭设置，Esc";
-            AddText(panel, RoleLabel(role) + "  ·  第 " + projection.step + "／60 分钟  ·  "
+            AddText(panel, RoleLabel(role) + "  ·  第 " + projection.step + "／" + MatchDeadline + " 分钟  ·  "
                 + (serverMode ? ServerPhaseLabel() : "演示已暂停"), "settings-context");
             var body = SettingsGroup(panel, "settings-body");
             var nav = SettingsGroup(body, "settings-nav"); settingsNav.Clear();
@@ -69,6 +71,8 @@ namespace Qiongtu.Sandbox
             SettingsNav(nav, "red", "红方 AI");
             SettingsNav(nav, "blue", "蓝方 AI");
             SettingsNav(nav, "display", "沙盘显示");
+            SettingsNav(nav, "history", "历史记录");
+            SettingsNav(nav, "results", "演示结果");
             SettingsNav(nav, "logs", "运行日志");
             AddText(nav, "AI 参数保存为本机草稿\n显示偏好保存后生效", "settings-nav-note");
             settingsContent = new ScrollView(ScrollViewMode.Vertical) { name = "settingsContent" };
@@ -101,13 +105,14 @@ namespace Qiongtu.Sandbox
         }
         private void SettingsNav(VisualElement parent, string key, string title)
         {
-            var button = AddButton(parent, title, () => { settingsSection = key; RenderSettingsSection(); }, "settings-nav-item");
+            var button = AddButton(parent, title, () => { if (key == "history" || key == "results") OpenReport(key); else { settingsSection = key; RenderSettingsSection(); } }, "settings-nav-item");
             button.name = "settingsNav-" + key;
             if (key == "red" || key == "blue") button.AddToClassList("settings-side-" + key);
             settingsNav[key] = button;
         }
         private void RenderSettingsSection()
         {
+            if (reportOverlay != null) { RenderReport(); return; }
             settingsContent.Clear(); settingsFields.Clear(); settingsErrors.Clear();
             settingsContent.scrollOffset = Vector2.zero;
             settingsOverlay.EnableInClassList("settings-red-section", settingsSection == "red");
@@ -120,6 +125,8 @@ namespace Qiongtu.Sandbox
                 case "blue": BuildSideSettings(settingsDraft.blue, "blue", "蓝方"); break;
                 case "display": BuildDisplaySettings(); break;
                 case "logs": BuildLogsSettings(); break;
+                case "history": BuildHistorySettings(); break;
+                case "results": BuildResultSettings(); break;
             }
             ShowSettingsErrors();
         }
@@ -208,7 +215,9 @@ namespace Qiongtu.Sandbox
             SettingsToggle(grid, "showFacilities", "公共设施", settingsDraft.showFacilities, value => settingsDraft.showFacilities = value, "显示公共设施及区域标记");
             SettingsToggle(grid, "showLabels", "地图标签", settingsDraft.showLabels, value => settingsDraft.showLabels = value, "显示单位、兵营和地点名称");
             var rules = new Foldout { text = "仿真与操作说明", value = false }; rules.AddToClassList("settings-card"); settingsContent.Add(rules);
-            SettingsFact(rules, "时间", "每次推进 1 分钟 · 截止第 60 分钟");
+            SettingsFact(rules, "时间", "每次推进 1 分钟 · 截止第 " + MatchDeadline + " 分钟");
+            if (serverMode && SandboxBattleRules.IsProject(serverClient?.View?.victory)) SettingsFact(rules, "阶段驻守计分", "20 / 40 / 60 分钟自动取样；三个点位 × 阶段权重1/2/3");
+            else if (MatchDeadline == 45) SettingsFact(rules, "阶段裁定", "15 / 30 / 45 分钟暂停，由主持人确认目标依据");
             SettingsFact(rules, "人工确认", "首次方案与重大调整必须确认");
             SettingsFact(rules, "兵营管理", "准备阶段可输入本次新增数量，从对应兵营生成单位");
             SettingsFact(rules, "出兵流程", "新增单位先在兵营待命，点击移动后出营");

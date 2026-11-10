@@ -23,7 +23,7 @@ from backend.demo_domain import (
     new_plan, require, validate_state, waiting_sides,
 )
 from backend.runtime import Settings, ServiceError, canonical, sha256, token_digest, utcnow
-from backend import spatial, movement, coordination
+from backend import database, spatial, movement, coordination, battle_rules, qinglan_rules
 from backend.map_catalog import current_map, asset_manifest, validate as validate_map
 
 
@@ -34,6 +34,15 @@ CURRENT_RULE = dict(mode="current-map-demo", formal_rules_available=False, task_
     navigation="test_only", ai_source="fixed_demo", conditions_effects="record_only", spatial_profile=spatial.profile())
 RULE_ID = str(uuid5(NAMESPACE_URL, "qiongtu/current-map/rules/" + sha256(CURRENT_RULE)))
 SCENARIO_ID = str(uuid5(NAMESPACE_URL, "qiongtu/current-map/scenario/" + sha256(dict(rule=RULE_ID, map=current_map()["content_sha256"], assets=sha256(asset_manifest())))))
+
+WAR_RULE = dict(CURRENT_RULE, victory_rules=battle_rules.DEFINITION, deadline_step=45)
+WAR_RULE_ID = str(uuid5(NAMESPACE_URL, "qiongtu/current-map/rules/" + sha256(WAR_RULE)))
+WAR_SCENARIO_ID = str(uuid5(NAMESPACE_URL, "qiongtu/current-map/scenario/" + sha256(dict(rule=WAR_RULE_ID, map=current_map()["content_sha256"], assets=sha256(asset_manifest())))))
+
+
+CONTROL_RULE = dict(CURRENT_RULE, victory_rules=qinglan_rules.DEFINITION)
+CONTROL_RULE_ID = str(uuid5(NAMESPACE_URL, "qiongtu/current-map/rules/" + sha256(CONTROL_RULE)))
+CONTROL_SCENARIO_ID = str(uuid5(NAMESPACE_URL, "qiongtu/current-map/scenario/" + sha256(dict(rule=CONTROL_RULE_ID, map=current_map()["content_sha256"], assets=sha256(asset_manifest())))))
 
 
 def insert(connection, table: str, values: dict) -> None:
@@ -64,18 +73,23 @@ class SandboxService:
         self.settings = settings
 
     def seed_versions(self) -> dict:
-        """只登记当前地图及一个规则版本，重复启动不重新生成旧场景。"""
+        """登记当前地图与兼容规则版本，重复启动不重写既有场景。"""
         with self.settings.connect() as connection:
             connection.execute("SELECT pg_advisory_xact_lock(80644,1104)")
             self.seed_current_version(connection)
+            self.seed_current_version(connection, war_goals=True)
+            self.seed_current_version(connection, control=True)
         return dict(rule_version_id=RULE_ID, scenario_version_id=SCENARIO_ID, is_demo=True)
 
-    def seed_current_version(self, connection) -> None:
+    def seed_current_version(self, connection, war_goals: bool = False, control: bool = False) -> None:
         """在调用方事务中完整登记当前地图，用于初始化及授权的数据重置。"""
+        rule_id, scenario_id, rule = (WAR_RULE_ID, WAR_SCENARIO_ID, WAR_RULE) if war_goals else (RULE_ID, SCENARIO_ID, CURRENT_RULE)
+        if control: rule_id, scenario_id, rule = CONTROL_RULE_ID, CONTROL_SCENARIO_ID, CONTROL_RULE
         map_data = current_map()
         validate_map(map_data)
         scene = dict(schema_version="current-map-scene-v2", map=map_data, task_types=list(TASK_NAMES), asset_manifest_sha256=sha256(asset_manifest()))
-        for table, identity, definition in (("rule_versions", RULE_ID, CURRENT_RULE), ("scenario_versions", SCENARIO_ID, scene)):
+        if war_goals or control: scene["victory_rules"] = deepcopy(rule["victory_rules"])
+        for table, identity, definition in (("rule_versions", rule_id, rule), ("scenario_versions", scenario_id, scene)):
             existing = connection.execute(sql.SQL("SELECT payload_sha256 FROM sandbox.{} WHERE id=%s").format(sql.Identifier(table)), (identity,)).fetchone()
             if existing:
                 require(existing["payload_sha256"] == sha256(definition), "VERSION_CONTENT_CHANGED", "当前版本内容变化，不能覆盖已有版本")
@@ -85,15 +99,18 @@ class SandboxService:
             if table == "rule_versions":
                 values["rule_code"] = "current-map-test"
             else:
-                values.update(scenario_code=map_data["map_id"], rule_version_id=RULE_ID, asset_manifest=asset_manifest())
+                values.update(scenario_code=map_data["map_id"], rule_version_id=rule_id, asset_manifest=asset_manifest())
             insert(connection, table, values)
 
     def health(self) -> dict:
         """分别报告数据库就绪与当前实际功能，不伪造 AI 或规则服务就绪。"""
         with self.settings.connect() as connection:
-            tables = connection.execute("SELECT count(*) AS count FROM information_schema.tables WHERE table_schema='sandbox'").fetchone()["count"]
+            table_names = {row["table_name"] for row in connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='sandbox'").fetchall()}
+            tables = len(table_names)
             vector = connection.execute("SELECT extversion FROM pg_extension WHERE extname='vector'").fetchone()
-        return dict(status="ok" if tables == 20 else "not_ready", database_ready=tables == 20,
+        required = database.EXPECTED_TABLES - {"chunk_embeddings"}
+        ready = required <= table_names and (not vector or "chunk_embeddings" in table_names)
+        return dict(status="ok" if ready else "not_ready", database_ready=ready,
                     business_table_count=tables, pgvector_version=vector["extversion"] if vector else None,
                     mode="current-ui-demo", real_ai=False, authoritative_combat=False,
                     authoritative_navigation=False, scheduler_enabled=self.settings.scheduler_enabled,
@@ -208,11 +225,14 @@ class SandboxService:
     def create_game(self, request: CreateGame, request_key: UUID) -> tuple[dict, bool]:
         """幂等创建完整对局、席位、根快照和自动存档，不返回三方凭据。"""
         require(request.is_demo, "FORMAL_MODE_UNAVAILABLE", "当前只支持明确标记的既有功能演示，正式规则尚未实现", 409)
+        require(request.victory_mode != "qinglan_control" or request.spatial_test, "SPATIAL_MODE_REQUIRED", "青岚驻守计分必须启用空间测试", 422)
         rules = deepcopy(CURRENT_RULE["spatial_profile"]) if request.spatial_test else None
-        rule_id, scenario_id = RULE_ID, SCENARIO_ID
+        rule_id, scenario_id = (WAR_RULE_ID, WAR_SCENARIO_ID) if request.victory_mode == "war_goals" else (RULE_ID, SCENARIO_ID)
+        if request.victory_mode == "qinglan_control": rule_id, scenario_id = CONTROL_RULE_ID, CONTROL_SCENARIO_ID
         require(request.rule_version_id in (None, UUID(rule_id)) and request.scenario_version_id in (None, UUID(scenario_id)),
                 "VERSION_UNSUPPORTED", "请选择已登记的当前演示版本", 422)
         content = request.model_dump(mode="json", exclude={"spatial_test"} if not request.spatial_test else set())
+        if request.victory_mode == "none": content.pop("victory_mode", None)
         creation_hash = sha256(content)
         with self.settings.connect() as connection:
             connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (str(request_key),))
@@ -226,10 +246,12 @@ class SandboxService:
             require(versions is not None, "SCENARIO_NOT_READY", "请先显式初始化演示版本", 503)
             game_id, branch_id, snapshot_id, epoch = uuid4(), uuid4(), uuid4(), uuid4()
             state = initial_state(scenario_id, rule_id, request.task_type)
+            if request.victory_mode == "war_goals": battle_rules.initialize(state)
             if rules:
                 state["manifest"].update(spatial_profile=rules, map_source_sha256=map_manifest()["source_file_sha256"])
                 state["camps"] = []
                 state["logistics"] = dict(formal_rules_available=False, test_only=True)
+            if request.victory_mode == "qinglan_control": qinglan_rules.initialize(state)
             insert(connection, "games", dict(id=game_id, game_no="QT-" + game_id.hex[:16].upper(), title=request.title,
                    creation_request_key=request_key, creation_payload_sha256=creation_hash, creation_hash_format_version=HASH_VERSION,
                    scenario_version_id=scenario_id, rule_version_id=rule_id, active_branch_id=branch_id, head_snapshot_id=snapshot_id,
@@ -276,19 +298,23 @@ class SandboxService:
                     last_seen_records=deepcopy(state["observations"].get(role, {}).get("last_seen_records", [])), decisions=decisions,
                     capabilities=dict(can_control_time=role == "host" and phase not in ("preparing", "finished"),
                                       can_start_game=role == "host" and phase == "preparing" and all(state["lifecycle"]["ready"].values()),
-                                      can_advance=role == "host" and phase not in ("preparing", "finished") and not wait,
+                                      can_advance=role == "host" and phase not in ("preparing", "finished") and not wait and not battle_rules.pending_stage(state),
                                       can_review_proposal=role != "host" and not finished and state["decisions"]["plans"][role]["status"] == "pending_review",
                                       can_set_ready=role != "host" and phase == "preparing", can_save=role == "host",
                                       can_manage_units=phase not in ("running", "finished"),
                                       can_move_unit=phase in ("paused", "running") if "spatial_profile" in state["manifest"] else not finished,
                                       can_place_barracks=phase == "preparing", can_delete_unit=phase not in ("running", "finished"),
                                       can_test_movement=phase == "preparing" and "spatial_profile" in state["manifest"],
+                                      can_settle_goal_stage=role == "host" and battle_rules.enabled(state) and phase == "paused"
+                                          and clock["simulation_step"] in (15,30,45) and any(not s["confirmed"] and s["stage"] * 15 == clock["simulation_step"] for s in state["victory"]["stages"]),
+                                      can_surrender=role in ("red", "blue") and battle_rules.scoring_enabled(state) and phase not in ("preparing", "finished") and clock["simulation_step"] >= 5,
                                       authoritative_combat=False, authoritative_navigation=False),
                     resources=dict(instruction_budget=20, executed_instructions=None, source="demo_limit_only"),
                     map=dict(map_id=map_manifest()["map_id"], resource_url="/api/v1/maps/current", coordinate_system_id="unity-demo-120x80-v1",
                              navigation_status="visual_target_only"),
                     save_status=dict(status="persisted", snapshot_id=str(game["head_snapshot_id"])),
-                    service_status=dict(mode="current-ui-demo", real_ai=False, condition_effects="record_only", scoring=False), observed_at=utcnow())
+                    victory=battle_rules.evidence(state), battle_result=battle_rules.evaluate(battle_rules.evidence(state)),
+                    service_status=dict(mode="current-ui-demo", real_ai=False, condition_effects="record_only", scoring=battle_rules.scoring_enabled(state)), observed_at=utcnow())
 
     def view(self, game_id: str, bearer: str) -> dict:
         """返回同一提交头的角色视图。"""
@@ -391,7 +417,7 @@ class SandboxService:
             return dict(valid=True, test_only=True, preview_token=preview,
                 camp=next((camp for camp in candidate["camps"] if camp["side"] == principal["role"]), None))
 
-    def _visible_events(self, connection, game_id, branch_id, ceiling, role: str) -> list[dict]:
+    def _visible_events(self, connection, game_id, branch_id, ceiling, role: str, *, exclude_private_plans=False) -> list[dict]:
         """在指定不可变头内继承分支前缀，地图视图与事件列表共用可见性规则。"""
         segments, visited = [], set()
         while branch_id is not None:
@@ -410,7 +436,7 @@ class SandboxService:
                 OR (%s='host' AND NOT COALESCE((payload->>'private_plan')::boolean,false)))
                 ORDER BY snapshot_revision,event_index""", (game_id, branch_id, ceiling, role, role)).fetchall()
             visible.extend(dict(event_id=str(row["id"]), simulation_step=row["simulation_step"],
-                title=row["payload"]["title"], detail=row["payload"]["detail"], side=row["payload"]["side"]) for row in rows)
+                title=row["payload"]["title"], detail=row["payload"]["detail"], side=row["payload"]["side"]) for row in rows if not exclude_private_plans or not row["payload"].get("private_plan", False))
         return visible
 
     def proposal(self, game_id: str, proposal_id: UUID, bearer: str) -> dict:
@@ -499,7 +525,17 @@ class SandboxService:
         save_id = None
         agent_review = None
         event = dict(title="演示操作已提交", detail="", side=actor, visibility="public", private_plan=False)
-        if kind == 'enable_coordination':
+        if kind == "archive_match":
+            archive_id = self._archive(connection, game, principal, payload.get("display_name"), False)
+            return dict(branch_id=str(branch_id), snapshot_id=str(game["head_snapshot_id"]), simulation_step=state["lifecycle"]["simulation_step"], archive_id=str(archive_id))
+        audit = dict(command_id=str(command_id), member_id=str(principal["member_id"]), branch_id=str(branch_id), base_snapshot_id=str(game["head_snapshot_id"]))
+        if kind == "settle_goal_stage":
+            state, event = battle_rules.adjudicate(state, actor, payload, audit)
+            world_revision += 1
+        elif kind == "surrender":
+            state, event = battle_rules.surrender(state, actor, audit)
+            world_revision += 1
+        elif kind == 'enable_coordination':
             host_only(actor)
             coordination.enable(state, payload['rules'])
             world_revision += 1
@@ -619,6 +655,7 @@ class SandboxService:
             state["lifecycle"]["controller_session_id"] = None
             event.update(title="演示退出已确认", detail="对局保持暂停，已有成功存档保留")
         else:
+            if kind in ("advance_step", "continue"): battle_rules.before_advance(state)
             if "spatial_profile" in state["manifest"]:
                 if kind in ("configure_army", "deploy_army"):
                     raise ServiceError(409, "PREPARATION_REQUIRED", "测试规则仅允许在准备阶段整体提交兵营和编制")
@@ -652,6 +689,11 @@ class SandboxService:
                             event.update(title='协同测试步已推进', detail='移动、观察、保障、占点和胜负由后端统一结算')
             else:
                 state, event = apply_interaction(state, actor, kind, payload)
+            if kind == "advance_step":
+                battle_rules.after_advance(state)
+                if qinglan_rules.enabled(state) and state["lifecycle"]["simulation_step"] in (20,40,60):
+                    stage = state["victory"]["stages"][state["lifecycle"]["simulation_step"]//20-1]
+                    event.update(title=f"阶段 {stage['stage']} 驻守结算", detail=stage['evidence'], visibility="public")
             if kind == "continue":
                 state["lifecycle"]["controller_session_id"] = str(principal["session_id"])
             if kind in ("configure_army", "deploy_army", "move_unit", "set_tasks", "advance_step"):
@@ -683,6 +725,9 @@ class SandboxService:
         if state["lifecycle"]["phase"] == "finished":
             insert(connection, "game_saves", dict(id=uuid4(), game_id=game["id"], branch_id=branch_id, snapshot_id=snapshot_id,
                    save_kind="final", source_command_id=command_id))
+            final_game = self._game(connection, game["id"])
+            for member in connection.execute("SELECT id AS member_id,role FROM game_members WHERE game_id=%s", (game["id"],)).fetchall():
+                self._archive(connection, final_game, member, None, True)
         return dict(branch_id=str(branch_id), snapshot_id=str(snapshot_id), simulation_step=state["lifecycle"]["simulation_step"],
                     save_id=str(save_id) if save_id else None, is_demo=True)
 
@@ -784,14 +829,56 @@ class SandboxService:
             return frame
 
     def result(self, game_id: str, bearer: str) -> dict:
-        """截止后的演示结果明确表示未裁决，不编造胜负和分数。"""
+        """读取同一提交头的证据、算式、关键节点；旧演示仍不编造结果。"""
         with self.settings.connect() as connection:
             self._principal(connection, bearer, game_id)
             game = self._game(connection, game_id)
-            require(game["state_payload"]["lifecycle"]["phase"] == "finished", "RESULT_NOT_READY", "当前演示尚未结束")
-            status = 'test_adjudicated' if game['state_payload'].get('coordination') else 'not_adjudicated'
-            return dict(game_id=game_id, is_demo=game["is_demo"], result_status=status,
-                        simulation_step=game["state_payload"]["lifecycle"]["simulation_step"], **game["state_payload"]["scores"])
+            state = game["state_payload"]
+            value = battle_rules.evidence(state)
+            if value is None:
+                require(state["lifecycle"]["phase"] == "finished", "RESULT_NOT_READY", "当前演示尚未结束")
+                status = 'test_adjudicated' if state.get('coordination') else 'not_adjudicated'
+                return dict(game_id=game_id, is_demo=game["is_demo"], result_status=status,
+                            simulation_step=state["lifecycle"]["simulation_step"], **state["scores"])
+            calculated = battle_rules.evaluate(value)
+            return dict(game_id=game_id, branch_id=str(game["active_branch_id"]), snapshot_id=str(game["head_snapshot_id"]),
+                        is_demo=game["is_demo"], result_status="settled" if calculated["final"] else "pending_adjudication" if state["lifecycle"]["phase"] == "finished" else "in_progress",
+                        simulation_step=state["lifecycle"]["simulation_step"], victory=value, result=calculated)
+
+    def _archive(self, connection, game: dict, principal: dict, title: str | None, automatic: bool):
+        """冻结当前成员可见的观察档案，排除令牌、上下文、私有计划；不是恢复存档。"""
+        identity = uuid4()
+        if automatic:
+            existing = connection.execute("SELECT id FROM match_archives WHERE game_id=%s AND branch_id=%s AND member_id=%s AND automatic",
+                (game["id"], game["active_branch_id"], principal["member_id"])).fetchone()
+            if existing: return existing["id"]
+        state, role = game["state_payload"], principal["role"]
+        own = lambda key: deepcopy([x for x in state[key] if role == "host" or x["side"] == role])
+        clock = {k: v for k, v in state["lifecycle"].items() if k != "controller_session_id"}
+        value = battle_rules.evidence(state)
+        projection = dict(role=role, clock=clock, units=own("units"), camps=own("camps"), tasks=own("tasks"),
+            timeline=self._visible_events(connection, game["id"], game["active_branch_id"], game["snapshot_revision"], role, exclude_private_plans=True),
+            victory=value, battle_result=battle_rules.evaluate(value), read_only=True)
+        insert(connection, "match_archives", dict(id=identity, game_id=game["id"], member_id=principal["member_id"],
+            branch_id=game["active_branch_id"], snapshot_id=game["head_snapshot_id"], title=title or (("对局结束 / " if automatic else "对局记录 / ") + game["title"])[:80],
+            automatic=automatic, role=role, phase=clock["phase"], simulation_step=clock["simulation_step"], projection=projection))
+        return identity
+
+    def archives(self, game_id: str, bearer: str, *, archive_id=None, offset=0, limit=20, search="", phase="all") -> dict:
+        """成员绑定始终由会话取得，不接受客户端 role/member_id。"""
+        with self.settings.connect() as connection:
+            principal = self._principal(connection, bearer, game_id)
+            if archive_id:
+                row = connection.execute("SELECT * FROM match_archives WHERE game_id=%s AND member_id=%s AND id=%s",
+                    (game_id, principal["member_id"], archive_id)).fetchone()
+                require(row is not None, "ARCHIVE_NOT_FOUND", "档案不存在或无权读取", 404)
+                row.pop("member_id")
+                return dict(item=row)
+            where = "game_id=%s AND member_id=%s AND strpos(lower(title),lower(%s))>0 AND (%s='all' OR (%s='finished' AND phase='finished') OR (%s='active' AND phase<>'finished'))"
+            args = (game_id, principal["member_id"], search, phase, phase, phase)
+            total = connection.execute("SELECT count(*) AS n FROM match_archives WHERE " + where, args).fetchone()["n"]
+            rows = connection.execute("SELECT id,title,branch_id,snapshot_id,role,phase,simulation_step,automatic,created_at FROM match_archives WHERE " + where + " ORDER BY created_at DESC,id DESC LIMIT %s OFFSET %s", (*args, limit, offset)).fetchall()
+            return dict(items=rows, total=total, offset=offset, limit=limit, read_only=True)
 
     def tick(self) -> int:
         """由本机单进程节奏驱动持久化单步，相同依据通过请求键防重。"""

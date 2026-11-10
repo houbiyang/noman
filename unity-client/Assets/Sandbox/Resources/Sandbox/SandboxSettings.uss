@@ -12,7 +12,7 @@
 .settings-body { flex-direction:row; flex-grow:1; flex-shrink:1; min-height:0; }
 .settings-nav { width:184px; flex-shrink:0; padding:22px 12px; background-color:rgb(10,27,22); border-right-width:1px; border-right-color:rgb(47,69,49); }
 .settings-nav-caption { font-size:12px; color:rgb(123,150,127); padding:0; margin:0 12px 16px; }
-.settings-nav-item { min-height:52px; margin:0 0 8px; padding:10px 14px; border-radius:5px; border-width:1px; border-color:rgba(0,0,0,0); background-color:rgba(0,0,0,0); color:rgb(164,186,162); font-size:16px; -unity-text-align:middle-left; }
+.settings-nav-item { min-height:44px; margin:0 0 6px; padding:8px 14px; border-radius:5px; border-width:1px; border-color:rgba(0,0,0,0); background-color:rgba(0,0,0,0); color:rgb(164,186,162); font-size:16px; -unity-text-align:middle-left; }
 .settings-nav-item:hover { background-color:rgb(27,51,37); }
 .settings-nav-active { background-color:rgb(47,63,38); border-color:rgb(155,148,98); border-left-width:3px; border-left-color:rgb(218,198,137); color:rgb(239,228,183); -unity-font-style:bold; }
 .settings-side-red { border-left-width:3px; border-left-color:rgb(159,95,77); }
@@ -90,7 +90,7 @@
 .compact .settings-badge { display:none; }
 .compact .settings-context { font-size:17px; padding:0 24px 16px; }
 .compact .settings-body { flex-direction:column; }
-.compact .settings-nav { width:auto; flex-direction:row; padding:12px 16px; border-right-width:0; border-bottom-width:1px; border-bottom-color:rgb(58,79,51); }
+.compact .settings-nav { width:auto; flex-direction:row; flex-wrap:wrap; padding:12px 16px; border-right-width:0; border-bottom-width:1px; border-bottom-color:rgb(58,79,51); }
 .compact .settings-nav-caption, .compact .settings-nav-note { display:none; }
 .compact .settings-nav-item { flex-grow:1; width:19%; min-height:60px; margin:0 4px 0 0; padding:10px 6px; font-size:18px; -unity-text-align:middle-center; }
 .compact .settings-content { padding:22px; }
@@ -128,3 +128,12 @@
 .army-panel .unity-scroller__low-button, .army-panel .unity-scroller__high-button { display:none; }
 .army-panel .unity-base-slider__tracker { background-color:rgb(28,42,55); border-width:0; }
 .army-panel .unity-base-slider__dragger { background-color:rgb(84,110,131); border-width:0; border-radius:6px; }
+
+.settings-field.unity-toggle .unity-toggle__checkmark { background-color:rgb(13,22,31); border-width:1px; border-color:rgb(107,135,156); border-radius:4px; width:24px; height:24px; -unity-background-image-tint-color:rgb(224,238,246); }
+
+/* 结果审计沿用设置页字体，卡片内容不压缩。 */
+.result-hero { border-top-width:3px; border-top-color:rgb(161,198,207); background-color:rgb(27,44,55); }
+.result-verdict { font-size:24px; -unity-font-style:bold; color:rgb(225,241,243); margin:4px 0; white-space:normal; }
+.result-score { font-size:36px; -unity-font-style:bold; color:rgb(169,216,222); margin:4px 0 12px; }
+.result-calculation { font-size:14px; white-space:normal; color:rgb(222,234,242); padding:12px 8px; margin:0 0 8px; border-left-width:3px; border-left-color:rgb(100,139,161); background-color:rgb(20,30,40); flex-shrink:0; }
+.result-milestone { font-size:14px; white-space:normal; color:rgb(189,216,221); margin:0 0 12px; padding:4px 0; flex-shrink:0; }
