@@ -78,13 +78,13 @@
             <ui:Button name="tasksButton" text="任务" />
             <ui:Button name="planButton" text="建议" />
             <ui:Button name="eventsButton" text="事件" />
-            <ui:Button name="timelineButton" text="时间线" />
             <ui:Button name="savesButton" text="存档" />
             <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />
             <ui:Button name="followButton" text="跟随单位" />
             <ui:Button name="stepButton" text="单步 +1" />
             <ui:Button name="playButton" text="播放演示" class="primary-button" />
         </ui:VisualElement>
+        <ui:Button name="timelineButton" text="时间线" class="timeline-action ui-blocker" />
         <ui:VisualElement class="status-footer ui-blocker">
             <ui:Label text="左键/中键拖动 · 右键旋转 · 滚轮缩放 · R 总览" />
             <ui:VisualElement class="flex-spacer" picking-mode="Ignore" />

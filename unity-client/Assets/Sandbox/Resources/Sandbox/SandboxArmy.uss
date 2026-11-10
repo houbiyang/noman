@@ -1,4 +1,4 @@
-.army-panel { position:absolute; right:18px; top:104px; bottom:136px; width:398px; max-width:90%; background-color:rgb(18,26,35); border-radius:8px; overflow:hidden; border-width:1px; border-color:rgb(66,82,97); color:rgb(231,237,242); }
+.army-panel { position:absolute; right:18px; top:0; bottom:0; width:398px; max-width:90%; background-color:rgb(18,26,35); border-radius:8px; overflow:hidden; border-width:1px; border-color:rgb(66,82,97); color:rgb(231,237,242); }
 .army-header { flex-direction:row; align-items:center; flex-shrink:0; padding:12px 16px; border-bottom-width:1px; border-bottom-color:rgb(51,66,81); }
 .army-title { color:rgb(231,237,242); font-size:24px; -unity-font-style:bold; }
 .army-close { width:44px; min-height:44px; margin:0; padding:0; border-radius:6px; background-color:rgb(37,49,62); color:rgb(224,234,242); font-size:26px; border-width:1px; border-color:rgb(77,95,110); }

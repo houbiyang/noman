@@ -84,7 +84,8 @@
 .settings-action:hover .settings-icon { -unity-background-image-tint-color:#ffffff; }
 .battle-action { left: 24px; bottom: 148px; }
 .army-action { right: 24px; bottom: 148px; }
-.bottom-dock { position: absolute; left: 24px; right: 24px; bottom: 51px; min-height: 70px; padding: 12px 16px; flex-direction: row; align-items: center; background-color: rgba(16, 31, 32, 0.97); border-width: 1px; border-color: #4c6355; border-radius: 7px; }
+.bottom-dock { display: none; }
+.timeline-action { position: absolute; left: 24px; bottom: 92px; width: 96px; margin: 0; }
 .selected-summary { min-width: 208px; margin-right: 13px; }
 .selected-title { color: #e4e9db; -unity-font-style: bold; margin-bottom: 5px; }
 .status-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 29px; padding: 0 25px; flex-direction: row; align-items: center; color: #c2d2c8; font-size: 10px; }
@@ -143,6 +144,7 @@ Button.danger-button:hover { background-color: #754b40; border-color: #d59c85; }
 .compact .action-caption { font-size: 15px; }
 .compact .settings-action { right: 14px; top: 136px; }
 .compact .battle-action { left: 14px; bottom: 141px; }
+.compact .timeline-action { left: 14px; bottom: 90px; width: 84px; }
 .compact .army-action { right: 14px; bottom: 141px; }
 .compact .mission-title { font-size: 23px; }
 .compact .mission-card { width: 262px; padding: 18px; }
