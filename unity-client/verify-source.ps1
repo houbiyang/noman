@@ -108,9 +108,10 @@ Set-Content -LiteralPath (Join-Path $outputDirectory 'Qiongtu.Sandbox.DomainChec
 & $dotnetPath $domainAssembly
 if ($LASTEXITCODE -ne 0) { throw '前端状态检查失败' }
 $serverContracts = Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxServerContracts.cs'
+$battleResultSource = Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxBattleResult.cs'
 $serverChecks = Join-Path $clientRoot 'Verification\ServerProjectionChecks.cs'
 $serverAssembly = Join-Path $outputDirectory 'Qiongtu.Sandbox.ServerChecks.dll'
-Invoke-SourceCompiler -CompilerArguments (@('-nologo', '-noconfig', '-nostdlib+', '-langversion:9.0', '-warnaserror+', '-target:exe') + @($domainReferences) + @("-out:$serverAssembly", $domainSource, $armySource, $serverContracts, $serverChecks)) -ResponseName 'server-contracts.rsp'
+Invoke-SourceCompiler -CompilerArguments (@('-nologo', '-noconfig', '-nostdlib+', '-langversion:9.0', '-warnaserror+', '-target:exe') + @($domainReferences) + @("-out:$serverAssembly", $domainSource, $armySource, $serverContracts, $battleResultSource, $serverChecks)) -ResponseName 'server-contracts.rsp'
 if ($LASTEXITCODE -ne 0) { throw '后端地图投影检查编译失败' }
 Set-Content -LiteralPath (Join-Path $outputDirectory 'Qiongtu.Sandbox.ServerChecks.runtimeconfig.json') -Value $runtimeConfiguration -Encoding utf8
 & $dotnetPath $serverAssembly
