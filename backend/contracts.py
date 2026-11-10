@@ -26,6 +26,7 @@ class CreateGame(StrictModel):
     task_type: TaskType = "patrol"
     is_demo: StrictBool
     spatial_test: StrictBool = False
+    victory_mode: Literal["none", "war_goals", "qinglan_control"] = "none"
     scenario_version_id: UUID | None = None
     rule_version_id: UUID | None = None
 
@@ -183,6 +184,12 @@ class SavePayload(StrictModel):
     display_name: str | None = Field(default=None, max_length=80)
 
 
+class ArchivePayload(StrictModel):
+    """档案名称不得为空白；省略时由服务端生成。"""
+
+    display_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)] | None = None
+
+
 class RestorePayload(StrictModel):
     """读档仅引用后端已提交的存档标识。"""
 
@@ -195,7 +202,22 @@ class ExitPayload(SavePayload):
     choice: Literal["save_and_exit", "without_save"]
 
 
+class GoalDecision(StrictModel):
+    """每阶段六个稳定目标，各方完成与否独立登记，不等同任意击杀。"""
+    goal_id: Literal["capture-1", "capture-2", "capture-3", "destroy-1", "destroy-2", "destroy-3"]
+    red_completed: StrictBool
+    blue_completed: StrictBool
+    evidence: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
+class SettleGoalStage(StrictModel):
+    stage: StrictInt = Field(ge=1, le=3)
+    goals: list[GoalDecision] = Field(min_length=6, max_length=6)
+    evidence: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+
+
 PAYLOAD_MODELS = {
+    "settle_goal_stage": SettleGoalStage, "surrender": EmptyPayload, "archive_match": ArchivePayload,
     "place_barracks": PlaceBarracks, "delete_unit": DeleteUnit,
     "set_preparation": TestPreparation,
     "configure_army": ConfigureArmy, "deploy_army": DeployArmy, "move_unit": MoveUnit,

@@ -48,6 +48,7 @@ namespace Qiongtu.Sandbox
         /// <summary>后端保存退出成功后才结束当前客户端，失败时保留有效页面。</summary>
         private void OnServerCommandFinished(string commandType, bool succeeded)
         {
+            if (succeeded && commandType == "archive_match") { serverHistoryOwner = null; if (reportSection == "history" && reportOverlay != null) RenderSettingsSection(); }
             if (succeeded && (commandType == "create_save" || commandType == "complete_exit")) serverSavesLoaded = false;
             if (commandType != "complete_exit" || !succeeded) return;
 #if UNITY_EDITOR

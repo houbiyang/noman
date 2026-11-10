@@ -78,7 +78,10 @@
 .army-icon { background-image: url("project://database/Assets/Sandbox/Resources/Army/infantry-barracks-card.png"); }
 .settings-icon { background-image: url("project://database/Assets/Sandbox/Resources/Sandbox/Icons/Settings.png"); }
 .action-caption { color: #e4ead8; font-size: 16px; -unity-font-style: bold; -unity-text-align: middle-center; }
-.settings-action { right: 24px; top: 142px; }
+.settings-action { position:absolute; right:24px; top:142px; width:64px; height:64px; margin:0; padding:6px; align-items:center; justify-content:center; background-color:rgba(0,0,0,0); border-width:0; border-radius:0; }
+.settings-action:hover, .settings-action:active, .settings-action:focus { background-color:rgba(0,0,0,0); border-width:0; }
+.settings-action .settings-icon { width:52px; height:52px; }
+.settings-action:hover .settings-icon { -unity-background-image-tint-color:#ffffff; }
 .battle-action { left: 24px; bottom: 148px; }
 .army-action { right: 24px; bottom: 148px; }
 .bottom-dock { position: absolute; left: 24px; right: 24px; bottom: 51px; min-height: 70px; padding: 12px 16px; flex-direction: row; align-items: center; background-color: rgba(16, 31, 32, 0.97); border-width: 1px; border-color: #4c6355; border-radius: 7px; }

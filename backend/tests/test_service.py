@@ -86,7 +86,7 @@ class CurrentFeatureTests(unittest.TestCase):
     def test_01_health_and_creation_idempotency(self):
         response = self.client.get("/api/v1/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["business_table_count"], 20)
+        self.assertEqual(response.json()["business_table_count"], 21 if response.json()["pgvector_version"] else 20)
         self.assertFalse(response.json()["real_ai"])
         key = str(uuid4())
         headers = dict(self.bootstrap, **{"Idempotency-Key": key})
@@ -106,7 +106,7 @@ class CurrentFeatureTests(unittest.TestCase):
         from backend.map_catalog import current_map
         self.service.seed_versions()
         with self.settings.connect() as connection:
-            rows = connection.execute("SELECT * FROM scenario_versions").fetchall()
+            rows = connection.execute("SELECT * FROM scenario_versions WHERE id=%s", (SCENARIO_ID,)).fetchall()
             self.assertEqual(len(rows), 1)
             self.assertEqual(str(rows[0]["id"]), SCENARIO_ID)
             self.assertEqual(rows[0]["definition"]["map"], current_map())

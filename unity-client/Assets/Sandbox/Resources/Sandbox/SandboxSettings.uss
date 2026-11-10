@@ -59,3 +59,10 @@
 .settings-panel .unity-scroller__low-button, .settings-panel .unity-scroller__high-button, .army-panel .unity-scroller__low-button, .army-panel .unity-scroller__high-button { display:none; }
 .settings-panel .unity-base-slider__tracker, .army-panel .unity-base-slider__tracker { background-color:rgb(28,42,55); border-width:0; }
 .settings-panel .unity-base-slider__dragger, .army-panel .unity-base-slider__dragger { background-color:rgb(84,110,131); border-width:0; border-radius:6px; }
+
+/* Result audit trail: shared Settings typography and non-shrinking cards. */
+.result-hero { border-top-width:3px; border-top-color:rgb(161,198,207); background-color:rgb(27,44,55); }
+.result-verdict { font-size:24px; -unity-font-style:bold; color:rgb(225,241,243); margin:4px 0; white-space:normal; }
+.result-score { font-size:36px; -unity-font-style:bold; color:rgb(169,216,222); margin:4px 0 12px; }
+.result-calculation { font-size:14px; white-space:normal; color:rgb(222,234,242); padding:12px 8px; margin:0 0 8px; border-left-width:3px; border-left-color:rgb(100,139,161); background-color:rgb(20,30,40); flex-shrink:0; }
+.result-milestone { font-size:14px; white-space:normal; color:rgb(189,216,221); margin:0 0 12px; padding:4px 0; flex-shrink:0; }
