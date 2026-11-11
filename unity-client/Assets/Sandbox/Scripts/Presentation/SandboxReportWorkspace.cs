@@ -1,74 +1,48 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Qiongtu.Sandbox
 {
-    /// <summary>Prototype P-08/P-09 layout, backed only by actual seat archives and explicit rule previews.</summary>
+    /// <summary>设置内的历史与结果视图，数据来自席位档案和显式规则预演。</summary>
     public sealed partial class SandboxHudController
     {
-        private VisualElement reportOverlay;
-        private ScrollView reportContent;
         private const float ReportMouseWheelScrollSize = 10f;
-        private string reportSection;
-        private string historyFilter = "全部记录", historySearch = "";
+        private string historyFilter = "全部记录", historySearch = "", resultMessage = "";
+        private int resultScenario;
+        private bool archiveNameExpanded;
+        private static readonly string[] ResultChoices = { "当前对局", "规则预演 · 7:9", "规则预演 · 平局 9:9", "规则预演 · 40分钟未结束" };
 
+        private DropdownField ReportSelect(VisualElement parent, string label, string name, string[] choices, string value, Action<string> changed)
+        {
+            var field = new DropdownField(label, new List<string>(choices), Array.IndexOf(choices, value)) { name = name };
+            field.AddToClassList("settings-field"); field.AddToClassList("report-select");
+            field.RegisterValueChangedCallback(evt => changed(evt.newValue)); parent.Add(field); return field;
+        }
+
+        private void BuildArchiveName(VisualElement parent, string fieldName)
+        {
+            var options = new Foldout { text = "自定义档案名称（可选）", value = archiveNameExpanded, name = "archiveNameOptions" };
+            options.AddToClassList("settings-details");
+            options.RegisterValueChangedCallback(evt => archiveNameExpanded = evt.newValue);
+            var name = new TextField { value = historyName, maxLength = 80, name = fieldName, label = "留空则自动命名" };
+            name.AddToClassList("settings-field"); name.RegisterValueChangedCallback(evt => historyName = evt.newValue);
+            options.Add(name); parent.Add(options);
+        }
+
+        /// <summary>历史和结果共用设置面板，不另建全屏工作区，不覆盖未保存的草稿。</summary>
         private void OpenReport(string section)
         {
-            ClosePanel(); CloseArmy(); CancelArmyCommand(); PausePlayback();
-            if (reportOverlay == null)
-            {
-                // Suspend, do not discard or save the Settings draft while browsing a report.
-                if (settingsOverlay != null) settingsOverlay.style.display = DisplayStyle.None;
-                reportOverlay = new VisualElement { name = "reportWorkspace" };
-                reportOverlay.AddToClassList("report-workspace"); reportOverlay.AddToClassList("ui-blocker"); root.Add(reportOverlay);
-                reportOverlay.RegisterCallback<GeometryChangedEvent>(evt => reportOverlay?.EnableInClassList("report-narrow", evt.newRect.width < 950));
-                var header = SettingsGroup(reportOverlay, "report-topbar");
-                AddText(header, "穹图  /  QIONGTU", "report-brand");
-                AddButton(header, "历史档案", () => NavigateReport("history"), "report-nav").name = "reportHistoryTab";
-                AddButton(header, "结果报告", () => NavigateReport("results"), "report-nav").name = "reportResultsTab";
-                SettingsGroup(header, "report-spacer");
-                AddButton(header, "返回沙盘  ×", () => CloseReport(true), "report-button").name = "closeReportMap";
-                AddText(reportOverlay, "READ ONLY  /  " + RoleLabel(role) + "  ·  本机档案与规则预演，不推进对局", "report-context");
-                reportContent = new ScrollView(ScrollViewMode.Vertical) { name = "reportContent" };
-                reportContent.AddToClassList("report-content"); reportContent.contentContainer.AddToClassList("report-body");
-                // 历史档案和结果报告使用较小的滚轮步长，避免大界面一次跳过关键节点。
-                reportContent.mouseWheelScrollSize = ReportMouseWheelScrollSize;
-                reportContent.horizontalScrollerVisibility = ScrollerVisibility.Hidden; reportOverlay.Add(reportContent);
-                var footer = SettingsGroup(reportOverlay, "report-footer");
-                AddText(footer, "只读观察 · 非录像回放  /  War Goals 1 · 2 · 3", "report-muted");
-                AddButton(footer, "返回设置", () => CloseReport(), "report-button").name = "returnReportSettings";
-            }
-            NavigateReport(section);
+            if (settingsOverlay == null) OpenSettings();
+            settingsSection = section == "history" ? "history" : "results";
+            settingsContent.scrollOffset = Vector2.zero;
+            RenderSettingsSection();
+            root.Q<Button>("settingsNav-" + settingsSection)?.Focus();
         }
 
-        private void NavigateReport(string section)
-        {
-            if (reportOverlay == null) { OpenReport(section); return; }
-            reportSection = section; reportContent.scrollOffset = Vector2.zero;
-            RenderReport();
-        }
-
-        private void CloseReport(bool toMap = false)
-        {
-            reportOverlay?.RemoveFromHierarchy(); reportOverlay = null; reportContent = null;
-            if (settingsOverlay != null) settingsOverlay.style.display = DisplayStyle.Flex;
-            if (toMap) { if (settingsOverlay != null) RequestCloseSettings(); }
-            else if (settingsOverlay == null) OpenSettings();
-            else root.Q<Button>("settingsNav-" + settingsSection)?.Focus();
-        }
-
-        private void RenderReport()
-        {
-            var previous = settingsContent;
-            settingsContent = reportContent;
-            reportContent.Clear();
-            reportOverlay.Q<Button>("reportHistoryTab").EnableInClassList("report-nav-active", reportSection == "history");
-            reportOverlay.Q<Button>("reportResultsTab").EnableInClassList("report-nav-active", reportSection == "results");
-            try { if (reportSection == "history") BuildHistoryReport(); else BuildResultReport(); }
-            finally { settingsContent = previous; }
-        }
+        private void NavigateReport(string section) => OpenReport(section);
 
         private VisualElement ReportCard(VisualElement parent, string title = null, string hint = null)
         {
@@ -94,36 +68,28 @@ namespace Qiongtu.Sandbox
             if (serverMode)
             {
                 var switcher = SettingsGroup(settingsContent, "report-toolbar");
-                AddButton(switcher, "服务端历史", () => { showLocalReportHistory = false; RenderSettingsSection(); }, "report-button");
-                AddButton(switcher, "本机 / 规则预演档案", () => { showLocalReportHistory = true; RenderSettingsSection(); }, "report-button");
+                ReportSelect(switcher, "档案来源", "historySource", new[] { "服务端历史", "本机 / 规则预演档案" },
+                    showLocalReportHistory ? "本机 / 规则预演档案" : "服务端历史", value => {
+                        showLocalReportHistory = value != "服务端历史"; historyPage = 0;
+                        selectedHistory = null; serverHistoryDetail = null;
+                        if (!showLocalReportHistory) serverHistoryOwner = null;
+                        RenderSettingsSection();
+                    });
                 if (!showLocalReportHistory) { BuildServerHistoryReport(); return; }
             }
-            ReportHeading("MISSION ARCHIVE / P-08", "每一次推演，都有迹可循。", "历史记录 · 查阅席位档案与关键节点，保留每一次观察。历史不是录像或可恢复的仿真快照。");
+            ReportHeading("穹图 / 席位档案", "历史记录", "历史记录 · 查阅席位档案与关键节点，保留每一次观察。历史不是录像或可恢复的仿真快照。");
             var all = History.ReadAll(out string warning);
             var visible = all.Where(entry => entry.source == "preview" || entry.role == role).ToArray();
             var overview = SettingsGroup(settingsContent, "report-overview");
             SummaryCard(overview, "档案总数", visible.Length + " 份", "本机保存 · 最新记录在前");
             SummaryCard(overview, "已结束 / 进行中", visible.Count(ArchiveEnded) + " / " + visible.Count(entry => !ArchiveEnded(entry)), "规则预演单独标记 · 不冒充真实战果");
-            SummaryCard(overview, "按席位查看", RoleLabel(role), "只归档可见内容；本地存储不是认证边界");
-            var controls = ReportCard(settingsContent, "归档当前对局", "保存当前可见单位与事件，不保存令牌或双方私有建议。清理站点数据会移除浏览器档案。");
-            var actions = SettingsGroup(controls, "report-toolbar");
-            var name = new TextField { value = historyName, maxLength = 80, name = "historyName", label = "档案名称" };
-            name.AddToClassList("settings-field"); name.AddToClassList("report-name"); name.RegisterValueChangedCallback(evt => historyName = evt.newValue); actions.Add(name);
-            AddButton(actions, "归档当前对局", () => { SaveCurrentHistory(false, out historyMessage); RenderSettingsSection(); }, "report-primary").name = "archiveCurrentMatch";
-            actions.Q<Button>("archiveCurrentMatch").SetEnabled(!serverMode);
-            if (serverMode) AddText(controls, "当前为本机/规则预演档案。真实对局请切回服务端历史归档。", "report-notice");
-            AddButton(actions, "刷新记录", () => RenderSettingsSection(), "report-button").name = "refreshHistory";
-            AddButton(actions, "可恢复存档…", () => { if (reportOverlay != null) CloseReport(); if (settingsOverlay != null) RequestCloseSettings(() => ShowPanel("saves")); else ShowPanel("saves"); }, "report-button");
-            if (historyMessage.Length > 0) AddText(controls, historyMessage, "report-notice");
-            if (warning.Length > 0) AddText(controls, warning, "report-notice");
+            if (historyMessage.Length > 0) AddText(settingsContent, historyMessage, "report-notice");
+            if (warning.Length > 0) AddText(settingsContent, warning, "report-notice");
             var table = ReportCard(settingsContent);
             var toolbar = SettingsGroup(table, "report-toolbar");
             VisualElement rows = null;
-            foreach (string filter in new[] { "全部记录", "进行中", "已结束" })
-            {
-                var button = AddButton(toolbar, filter, () => { historyFilter = filter; historyPage = 0; RenderSettingsSection(); }, "report-button");
-                button.EnableInClassList("report-selected", historyFilter == filter); button.name = "historyFilter-" + filter;
-            }
+            ReportSelect(toolbar, "记录状态", "historyStatus", new[] { "全部记录", "进行中", "已结束" }, historyFilter,
+                value => { historyFilter = value; historyPage = 0; selectedHistory = null; RenderSettingsSection(); });
             var search = new TextField { value = historySearch, label = "搜索对局名称", name = "historySearch" };
             search.AddToClassList("settings-field"); search.AddToClassList("report-search"); toolbar.Add(search);
             var horizontal = new ScrollView(ScrollViewMode.Horizontal); horizontal.AddToClassList("archive-horizontal"); table.Add(horizontal);
@@ -158,13 +124,13 @@ namespace Qiongtu.Sandbox
                 var captured = entry; var row = SettingsGroup(rows, "archive-row");
                 var title = SettingsGroup(row, "archive-title-cell");
                 AddText(title, entry.title, "archive-name"); AddText(title, entry.id.Substring(0, 8) + " · " + ArchiveSource(entry), "report-muted");
-                ArchiveCell(row, entry.source == "preview" ? "战争目标预演" : entry.observation?.taskType ?? "观察档案", classes[1]);
+                ArchiveCell(row, entry.source == "preview" ? (SandboxBattleRules.IsProject(entry.victory) ? "青岚驻守预演" : "战争目标预演") : entry.observation?.taskType ?? "观察档案", classes[1]);
                 ArchiveCell(row, DateTimeOffset.Parse(entry.savedAt).ToLocalTime().ToString("yyyy-MM-dd\nHH:mm:ss"), classes[2]);
                 ArchiveCell(row, entry.source == "preview" ? "—" : entry.observation?.step + " / 60", classes[3]);
                 ArchiveCell(row, entry.phase, classes[4]);
                 var action = SettingsGroup(row, classes[5]);
-                AddButton(action, "查看档案  →", () => { selectedHistory = captured; RenderSettingsSection();
-                    var content = reportContent ?? settingsContent; content.schedule.Execute(() => { var detail = content.Q("archiveDetail"); if (detail != null) content.ScrollTo(detail); });
+                AddButton(action, selectedHistory?.id == entry.id ? "收起档案" : "查看档案 →", () => { selectedHistory = selectedHistory?.id == captured.id ? null : captured; RenderSettingsSection();
+                    var content = settingsContent; content.schedule.Execute(() => { var detail = content.Q("archiveDetail"); if (detail != null) content.ScrollTo(detail); });
                 }, "report-link").name = "history-" + entry.id;
             }
             if (filtered.Length == 0) AddText(rows, visible.Length == 0 ? "还没有历史记录。归档当前对局，或前往演示结果保存一次规则预演。" : "没有匹配记录，请调整名称或筛选条件。", "archive-empty");
@@ -172,8 +138,10 @@ namespace Qiongtu.Sandbox
             AddText(foot, "共 " + filtered.Length + " 条记录 · 第 " + (historyPage + 1) + " 页 · 本机只读档案", "report-muted");
             if (filtered.Length > 20)
             {
-                AddButton(foot, "上一页", () => { historyPage--; PopulateArchives(rows, visible); }, "report-button").SetEnabled(historyPage > 0);
-                AddButton(foot, "下一页", () => { historyPage++; PopulateArchives(rows, visible); }, "report-button").SetEnabled((historyPage + 1) * 20 < filtered.Length);
+                var previous = AddButton(foot, "上一页", () => { historyPage--; PopulateArchives(rows, visible); }, "report-button");
+                previous.name = "historyPrevious"; previous.SetEnabled(historyPage > 0);
+                var next = AddButton(foot, "下一页", () => { historyPage++; PopulateArchives(rows, visible); }, "report-button");
+                next.name = "historyNext"; next.SetEnabled((historyPage + 1) * 20 < filtered.Length);
             }
         }
 
@@ -195,22 +163,30 @@ namespace Qiongtu.Sandbox
                 showingPreview = entry.source == "preview"; resultEvidence = entry.victory; resultArchiveTitle = entry.title;
                 NavigateReport("results");
             }, "report-primary").name = "viewArchivedResult";
-            AddButton(actions, "收起详情", () => { selectedHistory = null; serverHistoryDetail = null; RenderSettingsSection(); }, "report-button");
         }
 
         private void BuildResultReport()
         {
-            ReportHeading("AFTER ACTION REPORT / P-09", "行动落幕，决策留痕。", "演示结果 · 青岚三点驻守加权计分。原始文档与项目适配规则分别标注。");
+            ReportHeading("穹图 / 结果审计", "演示结果", "演示结果 · 青岚三点驻守加权计分。原始文档与项目适配规则分别标注。");
             var sources = SettingsGroup(settingsContent, "report-toolbar");
-            AddButton(sources, "规则算例预演", () => { showingPreview = true; resultArchiveTitle = null; resultEvidence = SandboxBattleRules.ProjectPreview(); RenderSettingsSection(); }, "report-button").name = "previewRuleResult";
-            AddButton(sources, "当前对局", () => { showingPreview = false; resultArchiveTitle = null; resultEvidence = serverMode ? serverClient.View?.victory : null; RenderSettingsSection(); }, "report-button").name = "currentMatchResult";
-            AddButton(sources, "历史档案  →", () => NavigateReport("history"), "report-button");
+            var choices = ResultChoices.ToList();
+            if (!string.IsNullOrEmpty(resultArchiveTitle)) choices.Add("历史档案（只读）");
+            ReportSelect(sources, "查看内容", "resultSource", choices.ToArray(),
+                !string.IsNullOrEmpty(resultArchiveTitle) ? "历史档案（只读）" : showingPreview ? ResultChoices[resultScenario + 1] : ResultChoices[0], value => {
+                    int index = Array.IndexOf(ResultChoices, value);
+                    if (index < 0) return;
+                    resultMessage = "";
+                    if (index > 0) SelectResultScenario(index - 1);
+                    else { showingPreview = false; resultArchiveTitle = null; resultEvidence = serverMode ? serverClient?.View?.victory : null; RenderSettingsSection(); }
+                });
             if (showingPreview && resultEvidence == null) resultEvidence = SandboxBattleRules.ProjectPreview();
-            if (showingPreview)
-            {
-                string[] names = { "项目预演 · 7:9", "平局 · 9:9", "40 分钟 · 未结束" };
-                for (int i = 0; i < 3; i++) { int scenario = i; AddButton(sources, names[i], () => SelectResultScenario(scenario), "report-button").name = "resultScenario" + i; }
-            }
+            if (showingPreview && string.IsNullOrEmpty(resultArchiveTitle))
+                AddButton(sources, "保存预演到历史", () => {
+                    var entry = NewArchive(); entry.title = "规则预演 / " + SandboxBattleRules.Evaluate(resultEvidence).verdict; entry.source = "preview";
+                    entry.phase = SandboxBattleRules.Evaluate(resultEvidence).final ? "预演已结算" : "预演未结束"; entry.victory = resultEvidence;
+                    History.TrySave(entry, out resultMessage); Notify(resultMessage); RenderSettingsSection();
+                }, "report-primary").name = "archiveResultPreview";
+            if (resultMessage.Length > 0) AddText(settingsContent, resultMessage, "report-notice");
             if (!string.IsNullOrEmpty(resultArchiveTitle)) AddText(settingsContent, "正在查看档案：" + resultArchiveTitle, "report-notice");
             if (!showingPreview && string.IsNullOrEmpty(resultArchiveTitle)) resultEvidence = serverMode ? serverClient.View?.victory : null;
             bool project = SandboxBattleRules.IsProject(resultEvidence);
@@ -264,13 +240,6 @@ namespace Qiongtu.Sandbox
                 + "\n保留两位小数；未结束时只是当前得分。投降胜负沿用原规则，不改写积分。", "report-calculation").name = "score100Calculation";
             foreach (string line in result.calculations) AddText(calc, line, "report-calculation");
             if (result.calculations.Length == 0) AddText(calc, "暂无可核验的目标结算，不能生成比分。", "report-muted");
-            if (showingPreview)
-                AddButton(calc, "保存这次预演到历史", () => {
-                    var entry = NewArchive(); entry.title = (project ? "青岚驻守预演 / " : "战争目标预演 / ") + result.verdict; entry.source = "preview";
-                    entry.phase = result.final ? "预演已结算" : result.verdict; entry.victory = resultEvidence;
-                    History.TrySave(entry, out historyMessage); Notify(historyMessage); RenderSettingsSection();
-                }, "report-primary").name = "archiveResultPreview";
-            if (historyMessage.Length > 0) AddText(calc, historyMessage, "report-notice");
             var reference = ReportCard(settingsContent, "规则依据与适配边界", project ? SandboxBattleRules.ProjectReference : SandboxBattleRules.Reference);
             if (project) AddText(reference, "规则版本：" + SandboxBattleRules.ProjectVersion + "\n继承三阶段与1/2/3权重；改为60分钟、三个地图点位、半径400米。仅ground/support且测试耐久>0计入，侦察无人机不计入；两方同时驻守不得分。各阶段独立取样，不继承无人驻守点的归属。理论满分18；同分记平局；不启用骤死、征服持续产分、任务分或击毁分。这些是项目演示参数，不是断箭官方数值。", "report-muted");
             else AddText(reference, "规则版本：" + SandboxBattleRules.Version + "\n36 分是理论满分，不是提前获胜线；摧毁目标不等于击杀任意单位。平局、征服阈值、骤死时长不擅自补全；本项目单席位队伍须开始至少 5 分钟后由本方确认投降；不支持多人投票。", "report-muted");

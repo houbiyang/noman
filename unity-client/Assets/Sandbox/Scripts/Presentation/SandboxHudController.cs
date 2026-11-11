@@ -68,7 +68,7 @@ namespace Qiongtu.Sandbox
             root.style.unityFontDefinition = FontDefinition.FromFont(runtimeFont);
             root.RegisterCallback<GeometryChangedEvent>(_ => root.EnableInClassList("compact", root.resolvedStyle.width < 1450));
             cameraRig.IsPointerOverUi = IsPointerOverUi;
-            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null || reportOverlay != null;
+            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null;
             cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null;
             cameraRig.IsBarracksPlacement = () => pendingArmyType.HasValue;
             cameraRig.MapClicked += HandleArmyMapClick;
@@ -106,6 +106,7 @@ namespace Qiongtu.Sandbox
             InitializeSettings();
             InitializeServerSync();
             RefreshProjection();
+            OpenSettingsFromPageLink();
         }
 
         private int MatchDeadline => serverMode && serverClient?.View?.clock?.deadline_step > 0
@@ -152,7 +153,6 @@ namespace Qiongtu.Sandbox
         private void ChangeRole(SandboxRole next)
         {
             if (next == role) return;
-            if (reportOverlay != null) CloseReport();
             if (settingsOverlay != null) { RequestCloseSettings(() => ChangeRole(next)); return; }
             if (serverMode) { BeginServerConnection(next); return; }
             CloseArmy(); CancelArmyCommand();
@@ -539,7 +539,8 @@ namespace Qiongtu.Sandbox
         /// <summary>将屏幕指针转换到面板坐标，仅拦截实际交互区域。</summary>
         private bool IsPointerOverUi(Vector2 screenPosition)
         {
-            if (root.panel == null) return true;
+            // 设置遮罩包括挂在 Panel 根节点的下拉菜单，不能让选项点击穿透到沙盘。
+            if (settingsOverlay != null || root.panel == null) return true;
             Vector2 point = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(screenPosition.x, Screen.height - screenPosition.y));
             VisualElement target = root.panel.Pick(point);
             while (target != null)
@@ -576,14 +577,13 @@ namespace Qiongtu.Sandbox
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 if (modalAction != null) CloseModal();
-                else if (reportOverlay != null) CloseReport();
                 else if (settingsOverlay != null) RequestCloseSettings();
                 else if (armyOverlay != null) { CloseArmy(); CancelArmyCommand(); }
                 else if (pendingArmyType.HasValue || pendingMoveId != null) CancelArmyCommand();
                 else if (activePanel != null) ClosePanel();
                 else cameraRig.ReturnToOverview();
             }
-            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null && settingsOverlay == null && reportOverlay == null) ToggleFollow();
+            if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null && settingsOverlay == null) ToggleFollow();
         }
 
         /// <summary>失焦后停止播放，避免后台继续推进演示。</summary>
