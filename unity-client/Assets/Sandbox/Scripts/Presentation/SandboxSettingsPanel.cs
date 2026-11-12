@@ -18,6 +18,10 @@ namespace Qiongtu.Sandbox
         private string settingsLogFilter = "all";
         private VisualElement settingsOverlay;
         private ScrollView settingsContent;
+        private Label settingsContext;
+        private Label settingsConnectionState;
+        private Label settingsConnectionNote;
+        private Label settingsConnectionPhase;
         private Label settingsFeedback;
         private Label settingsSaveState;
         private Button settingsSaveButton;
@@ -40,12 +44,19 @@ namespace Qiongtu.Sandbox
             root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxReports"));
             BindButton("settingsAction", OpenSettings);
         }
+        /// <summary>从协同工作台返回时，在沙盘初始化完成后直接打开服务连接设置。</summary>
+        private void OpenSettingsFromPageLink()
+        {
+            if (Uri.TryCreate(Application.absoluteURL, UriKind.Absolute, out Uri page)
+                && string.Equals(page.Fragment, "#settings", StringComparison.OrdinalIgnoreCase))
+                OpenSettings();
+        }
+
         private static SandboxClientSettings CopySettings(SandboxClientSettings value) => JsonUtility.FromJson<SandboxClientSettings>(JsonUtility.ToJson(value));
         private bool SettingsDirty => settingsDraft != null && JsonUtility.ToJson(settingsDraft) != JsonUtility.ToJson(savedSettings);
 
         private void OpenSettings()
         {
-            if (reportOverlay != null) { CloseReport(); return; }
             if (settingsOverlay != null) { RequestCloseSettings(); return; }
             ClosePanel(); CloseArmy(); CancelArmyCommand(); PausePlayback();
             settingsDraft = CopySettings(savedSettings);
@@ -62,7 +73,7 @@ namespace Qiongtu.Sandbox
             AddText(heading, "连接服务、配置智能体与调整观察界面", "settings-header-description");
             AddText(header, "本机配置", "settings-badge");
             var close = AddButton(header, "×", () => RequestCloseSettings(), "settings-close"); close.name = "closeSettings"; close.tooltip = "关闭设置，Esc";
-            AddText(panel, RoleLabel(role) + "  ·  第 " + projection.step + "／" + MatchDeadline + " 分钟  ·  "
+            settingsContext = AddText(panel, RoleLabel(role) + "  ·  第 " + projection.step + "／" + MatchDeadline + " 分钟  ·  "
                 + (serverMode ? ServerPhaseLabel() : "演示已暂停"), "settings-context");
             var body = SettingsGroup(panel, "settings-body");
             var nav = SettingsGroup(body, "settings-nav"); settingsNav.Clear();
@@ -105,15 +116,18 @@ namespace Qiongtu.Sandbox
         }
         private void SettingsNav(VisualElement parent, string key, string title)
         {
-            var button = AddButton(parent, title, () => { if (key == "history" || key == "results") OpenReport(key); else { settingsSection = key; RenderSettingsSection(); } }, "settings-nav-item");
+            var button = AddButton(parent, title, () => { settingsSection = key; RenderSettingsSection(); }, "settings-nav-item");
             button.name = "settingsNav-" + key;
             if (key == "red" || key == "blue") button.AddToClassList("settings-side-" + key);
             settingsNav[key] = button;
         }
         private void RenderSettingsSection()
         {
-            if (reportOverlay != null) { RenderReport(); return; }
             settingsContent.Clear(); settingsFields.Clear(); settingsErrors.Clear();
+            bool report = settingsSection == "history" || settingsSection == "results";
+            settingsContent.EnableInClassList("settings-report-content", report);
+            settingsContent.mouseWheelScrollSize = report ? ReportMouseWheelScrollSize : 18f;
+            settingsContent.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             settingsContent.scrollOffset = Vector2.zero;
             settingsOverlay.EnableInClassList("settings-red-section", settingsSection == "red");
             settingsOverlay.EnableInClassList("settings-blue-section", settingsSection == "blue");
@@ -142,16 +156,28 @@ namespace Qiongtu.Sandbox
             if (!string.IsNullOrEmpty(hint)) AddText(card, hint, "settings-note");
             return card;
         }
+        /// <summary>只更新连接摘要，避免自动接入完成时重绘表单、丢失焦点或输入。</summary>
+        private void RefreshSettingsConnection()
+        {
+            if (settingsOverlay == null) return;
+            settingsContext.text = RoleLabel(role) + "  ·  第 " + projection.step + "／" + MatchDeadline + " 分钟  ·  "
+                + (serverMode ? ServerPhaseLabel() : "演示已暂停");
+            if (settingsSection != "service" || settingsConnectionState == null) return;
+            settingsConnectionState.text = serverMode && serverClient.Healthy ? "连接正常" : serverMode ? "等待连接" : "本机演示";
+            settingsConnectionNote.text = serverMode ? serverClient.Status : source.SourceLabel;
+            settingsConnectionPhase.text = serverMode ? ServerPhaseLabel() : "演示已暂停";
+        }
+
         private void BuildServiceSettings()
         {
             SettingsSectionTitle("服务连接", "查看当前对局连接，或检查指定服务地址的可达性。");
             var session = SettingsCard("当前对局连接");
             var connection = SettingsGroup(session, "settings-connection");
-            AddText(connection, serverMode && serverClient.Healthy ? "连接正常" : serverMode ? "等待连接" : "本机演示", "settings-connection-state");
-            AddText(connection, serverMode ? serverClient.Status : source.SourceLabel, "settings-note");
+            settingsConnectionState = AddText(connection, serverMode && serverClient.Healthy ? "连接正常" : serverMode ? "等待连接" : "本机演示", "settings-connection-state");
+            settingsConnectionNote = AddText(connection, serverMode ? serverClient.Status : source.SourceLabel, "settings-note");
             var facts = SettingsGroup(session, "settings-session-facts");
             SettingsFact(facts, "当前席位", RoleLabel(role));
-            SettingsFact(facts, "对局阶段", serverMode ? ServerPhaseLabel() : "演示已暂停");
+            settingsConnectionPhase = SettingsFact(facts, "对局阶段", serverMode ? ServerPhaseLabel() : "演示已暂停");
             AddText(session, "会话由本机启动入口自动接入。", "settings-note");
             AddButton(session, "多智能体协同工作台", OpenAgentWorkbench, "settings-secondary").name = "openAgentWorkbench";
             var technical = new Foldout { text = "查看接口信息", value = false }; technical.AddToClassList("settings-details"); session.Add(technical);
@@ -266,9 +292,9 @@ namespace Qiongtu.Sandbox
         {
             if (settingsOverlay != null && settingsSection == "logs") RenderSettingsSection();
         }
-        private static void SettingsFact(VisualElement parent, string title, string value)
+        private static Label SettingsFact(VisualElement parent, string title, string value)
         {
-            var row = SettingsGroup(parent, "settings-fact"); AddText(row, title, "settings-fact-key"); AddText(row, value, "settings-fact-value");
+            var row = SettingsGroup(parent, "settings-fact"); AddText(row, title, "settings-fact-key"); return AddText(row, value, "settings-fact-value");
         }
         private void RegisterSettingsField(VisualElement parent, VisualElement field, string key)
         {

@@ -15,6 +15,16 @@ namespace Qiongtu.Sandbox.Editor
         { if (!value) throw new InvalidOperationException("History check failed: " + message); count++; }
         private static SandboxVictoryEvidence Copy(SandboxVictoryEvidence input) => JsonUtility.FromJson<SandboxVictoryEvidence>(JsonUtility.ToJson(input));
 
+        // Invoke the real registered Button callback without manufacturing a server command.
+        private static void Click(VisualElement scope, string name)
+        {
+            var button = scope.Q<Button>(name);
+            Check(button != null && button.enabledInHierarchy, "button is available: " + name);
+            var callback = typeof(Clickable).GetField("clicked", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(button.clickable) as Action;
+            Check(callback != null, "button has a real callback: " + name);
+            callback();
+        }
+
         [MenuItem("穹图/设置/验证历史与结果")]
         public static void Run()
         {
@@ -95,13 +105,13 @@ namespace Qiongtu.Sandbox.Editor
                 Check(content.Q<Label>("redScore100").text == "38.89分" && content.Q<Label>("blueScore100").text == "50.00分", "hero uses points not percentage suffix");
                 Check(content.Q<Label>("score100Calculation").text.Contains("× 100 = 38.89分") && !content.Q<Label>("score100Calculation").text.Contains("%"), "100-point formula uses score units");
                 Check(content.Query<Label>().ToList().Any(label => label.text.Contains("满分100分")), "100-point scale is explicit");
-                Check(content.Q<Button>("resultScenario1") != null, "scenario button available");
+                Check(content.Q<DropdownField>("resultSource").choices.Count == 4, "four result choices replace six navigation buttons");
                 invoke("SelectResultScenario", new object[] { 1 });
                 Check(content.Q<Label>("resultScore").text == "50.00分 : 50.00分" && content.Q<Label>("resultVerdict").text == "平局", "UI scenario updates to project draw");
                 set("showingPreview", false); set("resultEvidence", null); invoke("RenderSettingsSection", new object[0]);
                 Check(content.Q<Label>("resultScore").text == "— : —" && content.Q<Label>("resultVerdict").text == "待裁定", "live page never reuses preview");
                 set("settingsSection", "history"); invoke("RenderSettingsSection", new object[0]);
-                Check(content.Q<Button>("archiveCurrentMatch") != null && content.Query<Button>().ToList().Count(button => button.name.StartsWith("history-")) == 2, "settings history renders archives and manual action");
+                Check(content.Q<Button>("archiveCurrentMatch") == null && content.Query<Button>().ToList().Count(button => button.name.StartsWith("history-")) == 2, "settings history renders archives without removed manual action");
                 set("role", SandboxRole.Blue); invoke("RenderSettingsSection", new object[0]);
                 Check(content.Query<Button>().ToList().Count(button => button.name.StartsWith("history-")) == 1, "different seat sees preview but not red observation");
                 set("role", SandboxRole.Red);
@@ -126,35 +136,104 @@ namespace Qiongtu.Sandbox.Editor
                 Check((bool)typeof(SandboxHudController).GetField("pendingEndResult", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(hud)
                     && draft.red.profileVersion == "unsaved-draft", "end result defers without replacing settings draft");
                 set("showLocalReportHistory", true);
-                // Real report entry, independent root and reversible Settings draft suspension.
-                var settings = new VisualElement { name = "settingsFixture" }; root.Add(settings); set("settingsOverlay", settings);
-                root.Add(new VisualElement { name = "drawer" }); set("drawerContent", new ScrollView());
-                var world = host.AddComponent<SandboxWorld>();
-                typeof(SandboxWorld).GetField("barracksSelectionRing", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(world, host.AddComponent<LineRenderer>());
-                set("world", world);
+                // The real entry stays inside Settings, with the exact same draft and scroll view.
+                var settings = new VisualElement { name = "settingsFixture" };
+                settings.AddToClassList("settings-backdrop"); settings.AddToClassList("ui-blocker"); root.Add(settings);
+                settings.Add(content); set("settingsOverlay", settings);
                 invoke("OpenReport", new object[] { "history" });
-                var report = root.Q("reportWorkspace");
-                Check(report != null && report.parent == root && report.ClassListContains("ui-blocker"), "history opens an independent blocking workspace");
-                Check(settings.parent == root && settings.style.display.value == DisplayStyle.None && draft.red.profileVersion == "unsaved-draft", "settings draft suspended not discarded");
-                Check(report.Q<Button>("reportHistoryTab").ClassListContains("report-nav-active"), "history top tab active");
-                var reportScroll = report.Q<ScrollView>("reportContent");
-                Check(reportScroll.contentContainer.ClassListContains("report-body") && reportScroll.horizontalScrollerVisibility == ScrollerVisibility.Hidden, "report body has explicit padding hook without workspace horizontal scrollbar");
-                Check(Mathf.Approximately(reportScroll.mouseWheelScrollSize, 10f) && reportScroll.mouseWheelScrollSize < new ScrollView().mouseWheelScrollSize, "history wheel step is slower than UI Toolkit default");
-                int beforeSearch = reportScroll.Query<Button>().ToList().Count(button => button.name.StartsWith("history-"));
-                Check(report.Q<TextField>("historySearch") != null, "search field available in independent workspace");
-                // Batch-mode UIDocument has no live panel event loop; browser check covers typing.
+                Check(root.Q("reportWorkspace") == null && content.parent == settings, "history stays inside Settings without independent full-screen workspace");
+                Check(settings.style.display.value != DisplayStyle.None && draft.red.profileVersion == "unsaved-draft", "settings remains visible and keeps unsaved draft");
+                Check(content.ClassListContains("settings-report-content") && content.horizontalScrollerVisibility == ScrollerVisibility.Hidden, "report uses settings scrolling and styling");
+                Check(Mathf.Approximately(content.mouseWheelScrollSize, 10f), "history keeps slow report wheel step");
+                int beforeSearch = content.Query<Button>().ToList().Count(button => button.name.StartsWith("history-"));
+                Check(content.Q<TextField>("historySearch") != null, "search available inside settings");
                 set("historySearch", "no-such-archive-987"); invoke("RenderSettingsSection", new object[0]);
-                Check(reportScroll.Query<Button>().ToList().All(button => !button.name.StartsWith("history-")) && beforeSearch > 0, "history search filters actual archives");
+                Check(content.Query<Button>().ToList().All(button => !button.name.StartsWith("history-")) && beforeSearch > 0, "search filters actual archives");
                 set("historySearch", ""); invoke("RenderSettingsSection", new object[0]);
-                Check(reportScroll.Query<Button>().ToList().Count(button => button.name.StartsWith("history-")) == beforeSearch, "clearing search restores same seat archives");
+                Check(content.Query<Button>().ToList().Count(button => button.name.StartsWith("history-")) == beforeSearch, "clearing search restores same seat archives");
                 invoke("NavigateReport", new object[] { "results" }); invoke("SelectResultScenario", new object[] { 0 });
-                Check(ReferenceEquals(reportScroll, report.Q<ScrollView>("reportContent")) && Mathf.Approximately(reportScroll.mouseWheelScrollSize, 10f), "results retain same slower report wheel step");
-                Check(report.Q<Label>("resultScore").text == "38.89分 : 50.00分" && report.Query<Label>(className: "report-timeline").ToList().Count == 3, "independent result renders evidence and key nodes");
-                Check(report.Query<VisualElement>(className: "report-red-bar").ToList().Count == 3, "three weighted stages not legacy prototype categories");
+                Check(content.parent == settings && Mathf.Approximately(content.mouseWheelScrollSize, 10f), "results reuse settings content and slow wheel");
+                Check(content.Q<Label>("resultScore").text == "38.89分 : 50.00分" && content.Query<Label>(className: "report-timeline").ToList().Count == 3, "embedded result renders evidence and key nodes");
+                Check(content.Query<VisualElement>(className: "report-red-bar").ToList().Count == 3, "three weighted stages displayed");
                 var malformedEvidence = SandboxBattleRules.Preview(); malformedEvidence.stages = null; set("resultEvidence", malformedEvidence); invoke("RenderSettingsSection", new object[0]);
-                Check(report.Q<Label>("resultScore").text == "— : —" && report.Query<VisualElement>(className: "report-red-bar").ToList().Count == 0, "malformed archived evidence renders safely without scores");
-                invoke("CloseReport", new object[] { false });
-                Check(root.Q("reportWorkspace") == null && settings.style.display.value == DisplayStyle.Flex && draft.red.profileVersion == "unsaved-draft", "return restores same settings and unsaved draft");
+                Check(content.Q<Label>("resultScore").text == "— : —" && content.Query<VisualElement>(className: "report-red-bar").ToList().Count == 0, "malformed evidence fails safely");
+                invoke("NavigateReport", new object[] { "history" });
+                Check(root.Q("reportWorkspace") == null && draft.red.profileVersion == "unsaved-draft", "cross-page navigation never hides settings or replaces draft");
+                Check((bool)invoke("IsPointerOverUi", new object[] { Vector2.zero }), "settings and popup menu prevent scene click-through");
+                // Exercise the real controls with temporary storage, never the active match database.
+                set("serverMode", false); invoke("RenderSettingsSection", new object[0]);
+                Check(content.Q<Button>("refreshHistory") == null && content.Q<Button>("openRecoverableSaves") == null
+                    && content.Q<Button>("historyFilter-全部记录") == null, "redundant history buttons removed");
+                Check(content.Q<Foldout>("archiveNameOptions") == null && content.Q<TextField>("historyName") == null, "removed archive management leaves no name controls");
+                Check(content.Query<Label>().ToList().All(label => label.text != "按席位查看" && label.text != "档案管理"), "seat summary and archive management cards removed");
+                set("serverMode", false);
+                content.Q<DropdownField>("historyStatus").value = "进行中";
+                Check(content.Query<Button>().ToList().Count(b => b.name.StartsWith("history-")) == 1, "active filter returns only active observation");
+                content.Q<DropdownField>("historyStatus").value = "已结束";
+                Check(content.Query<Button>().ToList().Count(b => b.name.StartsWith("history-")) == 2, "finished filter returns preview and automatic observation");
+                content.Q<DropdownField>("historyStatus").value = "全部记录";
+                content.Q<TextField>("historySearch").value = "seat observation";
+                Check(content.Query<Button>().ToList().Count(b => b.name.StartsWith("history-")) == 1, "search field callback filters immediately");
+                content.Q<TextField>("historySearch").value = "";
+                invoke("NavigateReport", new object[] { "history" });
+                Check(content.Query<Button>().ToList().Count(b => b.name.StartsWith("history-")) == 3, "returning to history re-reads isolated store without refresh button");
+                var previewEntry = store.ReadAll(out _).First(e => e.source == "preview");
+                Click(content, "history-" + previewEntry.id);
+                Check(content.Q("archiveDetail") != null, "view archive opens embedded detail");
+                Click(content, "history-" + previewEntry.id);
+                Check(content.Q("archiveDetail") == null, "collapse removes detail");
+                Click(content, "history-" + previewEntry.id);
+                Click(content, "viewArchivedResult");
+                Check(content.Q<DropdownField>("resultSource").value == "历史档案（只读）" && content.Q<Button>("archiveResultPreview") == null, "archived evidence stays read-only without duplicate save action");
+                Check(content.Q<Label>("resultScore").text == "55.56分 : 44.44分", "archive result uses persisted legacy evidence, not project preview");
+                content.Q<DropdownField>("resultSource").value = "规则预演 · 7:9";
+                Check(content.Q<Label>("resultScore").text == "38.89分 : 50.00分", "preview action restores project evidence");
+                content.Q<DropdownField>("resultSource").value = "规则预演 · 平局 9:9";
+                Check(content.Q<Label>("resultVerdict").text == "平局", "draw button works");
+                content.Q<DropdownField>("resultSource").value = "规则预演 · 40分钟未结束";
+                Check(content.Q<Label>("resultScore").text == "22.22分 : 16.67分" && !content.Q<Label>("resultVerdict").text.Contains("获胜"), "unfinished scenario does not fabricate a winner");
+                content.Q<DropdownField>("resultSource").value = "规则预演 · 7:9";
+                Check(content.Query<Button>().ToList().Count == 1 && content.Q<Button>("resultHistoryLink") == null, "preview has only one action button");
+                int savedCount = store.ReadAll(out _).Length;
+                Click(content, "archiveResultPreview");
+                Check(store.ReadAll(out _).Length == savedCount + 1, "save preview writes only isolated local archive");
+                content.Q<DropdownField>("resultSource").value = "当前对局";
+                Check(content.Q<Label>("resultScore").text == "— : —" && content.Q<Button>("archiveResultPreview") == null, "current match action clears preview and disables preview-save");
+                invoke("NavigateReport", new object[] { "history" });
+                Check(content.Q<Button>("archiveCurrentMatch") == null && store.ReadAll(out _).Length == savedCount + 1,
+                    "reopening history has no manual archive action and preserves saved archives");
+                set("historyMessage", "history-notice-without-management"); invoke("RenderSettingsSection", new object[0]);
+                Check(content.Query<Label>().ToList().Any(label => label.text == "history-notice-without-management"),
+                    "history notices remain visible without management card");
+                set("historyMessage", "");
+                for (int i = 0; i < 22; i++)
+                    store.TrySave(new SandboxMatchArchive { id = Guid.NewGuid().ToString("N"), savedAt = DateTimeOffset.Now.ToString("O"), title = "pagination " + i,
+                        source = "preview", phase = "预演已结算", victory = SandboxBattleRules.ProjectPreview(), role = SandboxRole.Red }, out _);
+                invoke("NavigateReport", new object[] { "history" });
+                Check(!content.Q<Button>("historyPrevious").enabledSelf && content.Q<Button>("historyNext").enabledSelf, "first page boundary");
+                Click(content, "historyNext");
+                Check(content.Q<Button>("historyPrevious").enabledSelf && !content.Q<Button>("historyNext").enabledSelf, "last page boundary");
+                Click(content, "historyPrevious");
+                Check(!content.Q<Button>("historyPrevious").enabledSelf, "previous returns to first page");
+                set("serverMode", true); invoke("RenderSettingsSection", new object[0]);
+                Check(content.Q<Button>("archiveCurrentMatch") == null, "server local history omits invalid live archive action");
+                typeof(SandboxServerClient).GetProperty("Busy").GetSetMethod(true).Invoke(client, new object[] { true });
+                content.Q<DropdownField>("historySource").value = "服务端历史";
+                Check(content.Q<Button>("queryServerHistory") == null && !content.Q<Button>("archiveServerMatch").enabledSelf, "server auto-query replaces button and busy archive remains guarded");
+                Check(content.Q<Button>("serverHistoryPrevious") == null && content.Q<Button>("serverHistoryNext") == null, "pagination omitted for a single empty page");
+                Click(content, "refreshServerHistory");
+                Check(content.Query<Label>().ToList().Any(l => l.text.Contains("等待同步")), "busy query is queued instead of silently dropped");
+                content.Q<TextField>("serverHistorySearch").value = "server-search";
+                Check((string)typeof(SandboxHudController).GetField("historySearch", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(hud) == "server-search", "server search commits without query button");
+                foreach (var filter in new[] { "全部记录", "进行中", "已结束" }) content.Q<DropdownField>("serverHistoryStatus").value = filter;
+                Check(content.Q<DropdownField>("serverHistoryStatus").value == "已结束", "server phase selection uses single dropdown");
+                Check((bool)typeof(SandboxHudController).GetField("serverHistoryRefreshPending", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(hud), "latest search and filter remain queued while busy");
+                content.Q<DropdownField>("historySource").value = "本机 / 规则预演档案";
+                Check(content.Q<DropdownField>("historyStatus") != null && draft.red.profileVersion == "unsaved-draft", "source switching keeps the same settings draft");
+                typeof(SandboxServerClient).GetProperty("Busy").GetSetMethod(true).Invoke(client, new object[] { false });
+                set("historyMessage", "history-only-query-error");
+                invoke("NavigateReport", new object[] { "results" });
+                Check(content.Query<Label>().ToList().All(l => !l.text.Contains("history-only-query-error")), "history query notice does not leak into result page");
                 var uxml = File.ReadAllText(Path.Combine(Application.dataPath, "Sandbox/Resources/Sandbox/SandboxHud.uxml"));
                 var gear = System.Text.RegularExpressions.Regex.Match(uxml, "<ui:Button name=\"settingsAction\"[\\s\\S]*?</ui:Button>").Value;
                 Check(gear.Contains("settings-icon") && !gear.Contains("ui:Label") && !gear.Contains("action-tile"), "settings action is gear only without caption or tile");
