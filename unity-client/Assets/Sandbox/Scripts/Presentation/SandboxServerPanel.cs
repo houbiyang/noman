@@ -50,7 +50,7 @@ namespace Qiongtu.Sandbox
         private void OnServerCommandFinished(string commandType, bool succeeded)
         {
             if (!succeeded && (commandType == "movement_order" || commandType == "advance_deployment_movement")) deploymentMovingUnit = null;
-            if (succeeded && commandType == "archive_match") { serverHistoryOwner = null; if (reportSection == "history" && reportOverlay != null) RenderSettingsSection(); }
+            if (succeeded && commandType == "archive_match") { serverHistoryOwner = null; if (settingsSection == "history" && settingsOverlay != null) RenderSettingsSection(); }
             if (succeeded && (commandType == "create_save" || commandType == "complete_exit")) serverSavesLoaded = false;
             if (commandType != "complete_exit" || !succeeded) return;
 #if UNITY_EDITOR
@@ -77,6 +77,19 @@ namespace Qiongtu.Sandbox
             serverHead = head;
             if (changed) serverSavesLoaded = false;
             RefreshProjection();
+            RefreshSettingsConnection();
+            if (settingsOverlay != null)
+            {
+                if (settingsSection == "history" && !showLocalReportHistory)
+                {
+                    if (!serverClient.Busy && serverHistoryOwner != ServerHistoryOwner) RenderSettingsSection();
+                    if (!serverClient.Busy && !serverClient.HasPending && serverHistoryRefreshPending) RefreshServerHistory();
+                    var archive = settingsContent.Q<Button>("archiveServerMatch");
+                    archive?.SetEnabled(serverClient.Healthy && !serverClient.Busy && !serverClient.HasPending);
+                }
+                else if (changed && !serverClient.Busy && settingsSection == "results" && !showingPreview && string.IsNullOrEmpty(resultArchiveTitle))
+                    RenderSettingsSection();
+            }
             if (changed && !serverClient.Busy && armyOverlay != null)
             {
                 if (managedArmyType.HasValue) refreshArmyManagement?.Invoke();

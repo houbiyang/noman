@@ -75,14 +75,14 @@ namespace Qiongtu.Sandbox
 
         private void ShowPendingEndResult()
         {
-            if (!pendingEndResult || settingsOverlay != null || reportOverlay != null || modalAction != null || connectionOverlay != null) return;
+            if (!pendingEndResult || settingsOverlay != null || modalAction != null || connectionOverlay != null) return;
             pendingEndResult = false;
             OpenReport("results");
         }
 
         private void SelectResultScenario(int scenario)
         {
-            showingPreview = true; resultArchiveTitle = null;
+            showingPreview = true; resultArchiveTitle = null; resultScenario = scenario; resultMessage = "";
             resultEvidence = SandboxBattleRules.ProjectPreview(scenario); RenderSettingsSection();
         }
 

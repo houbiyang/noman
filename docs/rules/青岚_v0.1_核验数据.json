@@ -1,0 +1,339 @@
+{
+  "analysis_date": "2026-11-11",
+  "rule_version": "qinglan-rules-v0.1",
+  "map_relative_path": "unity-client/Assets/Sandbox/Resources/Maps/QinglanValley/map-definition.json",
+  "map_file_sha256": "0877653cbc3f6a4db86c28e28251f8cd731b0e67003780af21594b606ce057d2",
+  "source_content_hash": "9413e292d2510395757861dd9bb6d4f444031bc0cc98929bb66ddb3f2d12e79b",
+  "limits": [
+    "平面无向道路图；未校验道路合法性、坡度、建筑、树林、水域、桥头连接或单位占地。",
+    "假定可从部署区与道路相交处任意合法预部署；区外经批准接入段尚未加入。",
+    "只计算圆盘与非桥道路交集，未使用最终地表掩码或森林禁停规则。",
+    "因此这些是当前道路子模型的乐观到达估计，不是完整新导航模型的严格下界。",
+    "同圆内不同入口独立取最早到达；未证明两个入口之间可通达。",
+    "探针未通过几何审核，不是正式据点，不代表已穷举地图可行性。",
+    "诊断过线不是公平通过，诊断不过线也不是整张地图无解证明。",
+    "单探针双方时间差只对中央点公平筛查有意义；近点必须看paired_near_point_diagnostics。",
+    "时间未量化到5秒，正式验收须使用实际单位占地、完整导航和离散步结算。"
+  ],
+  "inventory": {
+    "width_m": 12000,
+    "length_m": 12000,
+    "nodes": 144,
+    "roads": 243,
+    "bridges": 3,
+    "buildings": 1769,
+    "height_shape": [
+      241,
+      241
+    ],
+    "graph_component_sizes": [
+      144
+    ],
+    "legacy_task_count": 3,
+    "zero_length_roads": [],
+    "building_collision_extents_explicit": false
+  },
+  "deployment": {
+    "zones": {
+      "red": {
+        "id": "RED_DEPLOY",
+        "side": "red",
+        "minX": 1000,
+        "maxX": 1900,
+        "minZ": 3200,
+        "maxZ": 10400
+      },
+      "blue": {
+        "id": "BLUE_DEPLOY",
+        "side": "blue",
+        "minX": 10000,
+        "maxX": 11200,
+        "minZ": 1600,
+        "maxZ": 8800
+      }
+    },
+    "areas_m2": {
+      "red": 6480000,
+      "blue": 8640000
+    },
+    "blue_to_red_area_ratio": 1.3333333333333333
+  },
+  "point_probe_diagnostics": [
+    {
+      "id": "TASK_A",
+      "status": "legacy_not_approved",
+      "center_xz": [
+        3400,
+        5800
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 187.5,
+        "blue": 952.5
+      },
+      "absolute_gap_seconds": 765.0,
+      "permitted_gap_seconds": 9.375,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "TASK_B",
+      "status": "legacy_not_approved",
+      "center_xz": [
+        6162.963,
+        5800
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": null,
+        "blue": null
+      },
+      "absolute_gap_seconds": null,
+      "permitted_gap_seconds": null,
+      "diagnostic_within_threshold": null
+    },
+    {
+      "id": "TASK_C",
+      "status": "legacy_not_approved",
+      "center_xz": [
+        8200,
+        5800
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 907.5,
+        "blue": 232.5
+      },
+      "absolute_gap_seconds": 675.0,
+      "permitted_gap_seconds": 11.625,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "ROAD_004_west_land_probe",
+      "status": "unapproved_probe",
+      "center_xz": [
+        6225.525,
+        3000.0
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 656.32875,
+        "blue": 540.6712500000001
+      },
+      "absolute_gap_seconds": 115.65749999999991,
+      "permitted_gap_seconds": 27.033562500000006,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "ROAD_004_east_land_probe",
+      "status": "unapproved_probe",
+      "center_xz": [
+        7265.525,
+        3000.0
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 824.32875,
+        "blue": 372.6712500000001
+      },
+      "absolute_gap_seconds": 451.6574999999999,
+      "permitted_gap_seconds": 18.633562500000007,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "ROAD_010_west_land_probe",
+      "status": "unapproved_probe",
+      "center_xz": [
+        5642.963,
+        5800.0
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 523.94445,
+        "blue": 628.05555
+      },
+      "absolute_gap_seconds": 104.11110000000008,
+      "permitted_gap_seconds": 26.1972225,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "ROAD_010_east_land_probe",
+      "status": "unapproved_probe",
+      "center_xz": [
+        6682.963,
+        5800.0
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 691.94445,
+        "blue": 460.0555500000001
+      },
+      "absolute_gap_seconds": 231.88889999999986,
+      "permitted_gap_seconds": 23.002777500000008,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "ROAD_016_west_land_probe",
+      "status": "unapproved_probe",
+      "center_xz": [
+        5818.065,
+        8500.0
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 550.2097499999999,
+        "blue": 601.7902500000001
+      },
+      "absolute_gap_seconds": 51.58050000000026,
+      "permitted_gap_seconds": 27.510487499999996,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "ROAD_016_east_land_probe",
+      "status": "unapproved_probe",
+      "center_xz": [
+        6858.065,
+        8500.0
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 718.2097499999999,
+        "blue": 433.79025000000007
+      },
+      "absolute_gap_seconds": 284.4194999999998,
+      "permitted_gap_seconds": 21.689512500000006,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "DRAFT_W_LOWER",
+      "status": "unapproved_probe",
+      "center_xz": [
+        2900,
+        4400
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 112.5,
+        "blue": 1225.6306822878312
+      },
+      "absolute_gap_seconds": 1113.1306822878312,
+      "permitted_gap_seconds": 5.625,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "DRAFT_E_LOWER",
+      "status": "unapproved_probe",
+      "center_xz": [
+        9000,
+        4400
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 1169.7529486282517,
+        "blue": 112.5
+      },
+      "absolute_gap_seconds": 1057.2529486282517,
+      "permitted_gap_seconds": 5.625,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "DRAFT_W_UPPER",
+      "status": "unapproved_probe",
+      "center_xz": [
+        2900,
+        8500
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 112.5,
+        "blue": 1027.4999999999998
+      },
+      "absolute_gap_seconds": 914.9999999999998,
+      "permitted_gap_seconds": 5.625,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "id": "DRAFT_E_UPPER",
+      "status": "unapproved_probe",
+      "center_xz": [
+        9000,
+        8500
+      ],
+      "capture_radius_m": 250,
+      "ground_optimistic_arrival_seconds": {
+        "red": 1027.5,
+        "blue": 112.5
+      },
+      "absolute_gap_seconds": 915.0,
+      "permitted_gap_seconds": 5.625,
+      "diagnostic_within_threshold": false
+    }
+  ],
+  "paired_near_point_diagnostics": [
+    {
+      "west_id": "TASK_A",
+      "east_id": "TASK_C",
+      "red_to_own_seconds": 187.5,
+      "blue_to_own_seconds": 232.5,
+      "absolute_gap_seconds": 45.0,
+      "permitted_gap_seconds": 9.375,
+      "diagnostic_within_threshold": false
+    },
+    {
+      "west_id": "DRAFT_W_LOWER",
+      "east_id": "DRAFT_E_LOWER",
+      "red_to_own_seconds": 112.5,
+      "blue_to_own_seconds": 112.5,
+      "absolute_gap_seconds": 0.0,
+      "permitted_gap_seconds": 5.625,
+      "diagnostic_within_threshold": true
+    },
+    {
+      "west_id": "DRAFT_W_UPPER",
+      "east_id": "DRAFT_E_UPPER",
+      "red_to_own_seconds": 112.5,
+      "blue_to_own_seconds": 112.5,
+      "absolute_gap_seconds": 0.0,
+      "permitted_gap_seconds": 5.625,
+      "diagnostic_within_threshold": true
+    }
+  ],
+  "arithmetic": {
+    "step_seconds": 5,
+    "match_seconds": 3600,
+    "max_steps": 720,
+    "points_per_owned_point_per_minute": 12,
+    "uncontested_income_per_minute": {
+      "1": 12,
+      "2": 24,
+      "3": 36,
+      "4": 48,
+      "5": 60
+    },
+    "score_only_minutes_after_income_begins": {
+      "1": 125.0,
+      "2": 62.5,
+      "3": 41.666666666666664,
+      "4": 31.25,
+      "5": 25.0
+    },
+    "full_enemy_roster_kill_points": 172,
+    "core_ground_hits_required": 150,
+    "one_ground_full_magazine_core_damage": 600,
+    "minimum_full_magazines_total": 3,
+    "ground_one_ammo_refill_from_empty_seconds": 150,
+    "recon_continuous_flight_no_movement_energy_minutes": 50.0,
+    "moving_ground_5s_distance_m": 33.333333333333336,
+    "moving_ground_hit_damage": 9.6,
+    "moving_ground_core_damage": 6.0,
+    "base_hp_rate_per_unit_per_second": 10.0,
+    "field_hp_rate_per_truck_per_second": 0.4
+  },
+  "release_gates": {
+    "five_point_geometry_approved": false,
+    "fixed_core_geometry_approved": false,
+    "collision_and_occlusion_geometry_verified": false,
+    "new_rules_engine_verified": false,
+    "single_match_geographic_fairness_verified": false
+  },
+  "overall": "规则草案可定稿；地图与运行实现不具备新模式公平验收结论。"
+}
