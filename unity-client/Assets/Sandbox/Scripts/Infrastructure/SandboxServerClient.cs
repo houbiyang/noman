@@ -60,6 +60,9 @@ namespace Qiongtu.Sandbox
         public event Action LogChanged;
         public IReadOnlyList<SandboxClientLogEntry> RecentLogs => recentLogs;
         public SandboxServerView View { get; private set; }
+        public SandboxServerView AuthorityView { get; private set; }
+        private readonly SandboxFivepointPlayback fivepointPlayback = new SandboxFivepointPlayback();
+        public bool FivepointAutomatic { get; private set; }
         public bool Busy { get; private set; }
         public bool Healthy { get; private set; }
         public bool HasPending => pendingBody != null || queuedMovementKind != null;
@@ -143,7 +146,7 @@ namespace Qiongtu.Sandbox
                 Feedback?.Invoke("已接收移动目标，当前状态读取完成后立即提交"); return;
             }
             if (Busy || HasPending || !Healthy || View == null) { Feedback?.Invoke("同步尚未就绪或原命令待核对，请稍后重试"); return; }
-            SandboxServerContext context = basis ?? View.context;
+            SandboxServerContext context = basis ?? (AuthorityView?.fivepoint != null ? AuthorityView.context : View.context);
             string head = JsonUtility.ToJson(new SandboxServerCommandHead { context = context, command_type = kind });
             pendingBody = head.Substring(0, head.Length - 1) + ",\"payload\":" + (payload == null ? "{}" : JsonUtility.ToJson(payload)) + "}";
             pendingKey = Guid.NewGuid().ToString();
@@ -226,6 +229,7 @@ namespace Qiongtu.Sandbox
             Busy = true;
             yield return Fetch("GET", "/view", null, null);
             PublishResponse();
+            if (Healthy && AuthorityView?.fivepoint != null) yield return RefreshFivepointFrame();
             Busy = false; nextPoll = Time.realtimeSinceStartup + 1;
             Changed?.Invoke();
             if (queuedMovementKind != null)
@@ -234,6 +238,16 @@ namespace Qiongtu.Sandbox
                 queuedMovementKind = null; queuedMovementPayload = null;
                 if (Healthy) Command(kind, payload);
                 else Feedback?.Invoke("连接未恢复，移动目标未提交，请重试");
+            }
+            if (FivepointAutomatic && Healthy && !Busy && !HasPending && AuthorityView?.role == "host")
+            {
+                SandboxFivepointView current = AuthorityView.fivepoint;
+                if (current?.phase == "technical_pause" || current?.phase == "finished") FivepointAutomatic = false;
+                else if (current != null && (current.step % 12 != 0 || current.second - fivepointPlayback.PlayedStep * 5 <= 120))
+                {
+                    if (current.phase == "planning" && !current.planning_active && !current.planning_completed) PlanFivepoint();
+                    else if (current.phase == "paused" || current.phase == "running") StartCoroutine(AdvanceFivepointRound());
+                }
             }
         }
 
@@ -259,6 +273,7 @@ namespace Qiongtu.Sandbox
                 pendingBody = null; pendingKey = null; pendingBranchId = null;
                 yield return Fetch("GET", "/view", null, null);
                 PublishResponse();
+                if (Healthy && AuthorityView?.fivepoint != null) yield return RefreshFivepointFrame();
                 Feedback?.Invoke(message);
                 CommandFinished?.Invoke(commandType, succeeded);
                 pendingCommandType = null;
@@ -284,6 +299,7 @@ namespace Qiongtu.Sandbox
                 pendingBody = null; pendingKey = null; pendingBranchId = null;
                 yield return Fetch("GET", "/view", null, null);
                 PublishResponse();
+                if (Healthy && AuthorityView?.fivepoint != null) yield return RefreshFivepointFrame();
                 Feedback?.Invoke(message);
                 CommandFinished?.Invoke(commandType, succeeded);
                 pendingCommandType = null;
@@ -395,10 +411,76 @@ namespace Qiongtu.Sandbox
                 if (lastConnectionIssue != Status) { lastConnectionIssue = Status; AddLog("状态校验失败 · " + Status, SandboxClientLogCategory.Connection, true); }
                 return;
             }
-            View = candidate;
+            AuthorityView = candidate;
+            if (candidate.fivepoint == null) View = candidate;
+            else if (View?.context?.branch_id != candidate.context.branch_id || View.fivepoint == null) View = null;
             Status = HasPending ? "后端已同步；原命令结果仍待核对" : "已连接后端 · PostgreSQL 已持久化";
             lastConnectionIssue = null;
             if (!wasHealthy) AddLog("后端连接正常 · 状态已同步", SandboxClientLogCategory.Connection);
+        }
+
+        /// <summary>读取统一播放帧，所有单位、任务、比分和终局同时切换。</summary>
+        /// <returns>等待只读历史投影完成的协程。</returns>
+        private IEnumerator RefreshFivepointFrame()
+        {
+            int target = fivepointPlayback.TargetStep(AuthorityView, Time.realtimeSinceStartupAsDouble);
+            yield return Fetch("GET", "/fivepoint/frame?simulation_step=" + target, null, null);
+            SandboxServerView frame = responseCode == 200 ? ReadJson<SandboxServerView>() : null;
+            if (frame != null && frame.fivepoint != null && frame.fivepoint.step == target
+                && frame.context.branch_id == AuthorityView.context.branch_id
+                && SandboxServerProjection.Validate(frame, gameId, mapId, mapHash).Length == 0)
+            {
+                View = frame;
+                fivepointPlayback.ConfirmFrame(frame.context.branch_id, target, AuthorityView.fivepoint.step, Time.realtimeSinceStartupAsDouble);
+            }
+            else { Healthy = false; Status = "播放帧读取失败，保留最后确认画面"; }
+        }
+
+        /// <summary>主持人发起共同计算，观看位置只控制缓存，不提供私有计划。</summary>
+        public void PlanFivepoint()
+        {
+            if (Busy || HasPending || !Healthy || AuthorityView?.fivepoint == null || AuthorityView.role != "host") return;
+            StartCoroutine(RequestFivepointPlan());
+        }
+
+        /// <summary>切换主持人的连续计算；停止后不再发起新轮，已提交事实保留。</summary>
+        public void ToggleFivepointAutomatic()
+        {
+            FivepointAutomatic = !FivepointAutomatic;
+            nextPoll = 0;
+            Changed?.Invoke();
+        }
+
+        /// <summary>主持人按观看缓存生产当前轮剩余完整步，沿用服务端背压门槛。</summary>
+        public void ProduceFivepointRound()
+        {
+            if (Busy || HasPending || !Healthy || AuthorityView?.fivepoint == null || AuthorityView.role != "host") return;
+            StartCoroutine(AdvanceFivepointRound());
+        }
+
+        /// <summary>按当前播放位置请求生产一轮，服务器逐步保存且不越过共同边界。</summary>
+        /// <returns>等待该轮原子步骤完成的协程。</returns>
+        private IEnumerator AdvanceFivepointRound()
+        {
+            Busy = true;
+            string body = "{\"context\":" + JsonUtility.ToJson(AuthorityView.context)
+                + ",\"played_second\":" + fivepointPlayback.PlayedStep * 5 + "}";
+            yield return Fetch("POST", "/fivepoint/advance-round", body, null);
+            SandboxFivepointProductionResult result = responseCode == 200 ? ReadJson<SandboxFivepointProductionResult>() : null;
+            if (result?.status != "committed") { FivepointAutomatic = false; Feedback?.Invoke(result?.error?.message ?? PublicError()); }
+            Busy = false; nextPoll = 0;
+        }
+
+        /// <summary>提交共同轮启动请求，再读取服务器确认状态。</summary>
+        /// <returns>等待共同轮登记完成的协程。</returns>
+        private IEnumerator RequestFivepointPlan()
+        {
+            Busy = true;
+            string body = "{\"context\":" + JsonUtility.ToJson(AuthorityView.context)
+                + ",\"played_second\":" + fivepointPlayback.PlayedStep * 5 + "}";
+            yield return Fetch("POST", "/fivepoint/planning", body, null);
+            if (responseCode != 202) Feedback?.Invoke(PublicError());
+            Busy = false; nextPoll = 0;
         }
 
         private string PublicError()

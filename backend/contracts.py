@@ -241,7 +241,83 @@ class SettleGoalStage(StrictModel):
     evidence: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 
 
+class FivepointPosition(StrictModel):
+    """五点规则米制坐标，明确绑定支撑层，不复用显示偏移。"""
+
+    xy: tuple[Annotated[float, Field(ge=0, le=12000, allow_inf_nan=False)],
+              Annotated[float, Field(ge=0, le=12000, allow_inf_nan=False)]]
+    layer: str = Field(min_length=1, max_length=80)
+
+
+class FivepointTargetArea(StrictModel):
+    """固定中心、支撑层和半径的选敌授权，不扩大射手自身射程。"""
+
+    center: FivepointPosition
+    radius: Annotated[float, Field(gt=0, le=12000, allow_inf_nan=False)]
+
+
+class FivepointOrder(StrictModel):
+    """仅允许已实现动作字段，具体兵种、服务互斥与时刻由执行器检查。"""
+
+    action: Literal["wait", "move", "attack", "move_attack", "takeoff", "land", "service", "camp", "observe", "capture", "hold", "patrol"]
+    destination: FivepointPosition | None = None
+    waypoints: list[FivepointPosition] | None = Field(default=None, min_length=2, max_length=100)
+    target_id: str | None = Field(default=None, min_length=1, max_length=40)
+    target_area: FivepointTargetArea | None = None
+    category: Literal["energy", "ammo", "hp"] | None = None
+    amount: Annotated[float, Field(gt=0, allow_inf_nan=False)] | None = None
+    balance: Annotated[float, Field(ge=0, allow_inf_nan=False)] | None = None
+    camp_id: str | None = Field(default=None, min_length=1, max_length=80)
+    balances: dict[str, Annotated[float, Field(ge=0, allow_inf_nan=False)]] | None = None
+
+
+class FivepointBranch(StrictModel):
+    """单位预授权补给序列；每步检查条件，禁止分支增加推理轮。"""
+
+    condition: Literal['low_energy', 'ammo_empty']
+    orders: list[FivepointOrder] = Field(min_length=1, max_length=20)
+
+
+class FivepointTask(StrictModel):
+    """单个有完成条件和前置依赖的五点任务，不接收完成状态或得分。"""
+
+    task_id: str = Field(min_length=1, max_length=80)
+    unit_id: str = Field(min_length=1, max_length=40)
+    order: FivepointOrder
+    depends_on: list[str] = Field(default_factory=list, max_length=1000)
+    duration_steps: StrictInt | None = Field(default=None, ge=1, le=720)
+    deadline_second: StrictInt | None = Field(default=None, ge=5, le=3600, multiple_of=5)
+    target_point_id: str | None = Field(default=None, min_length=1, max_length=80)
+    branches: list[FivepointBranch] = Field(default_factory=list, max_length=2)
+
+
+class SubmitFivepointPlan(StrictModel):
+    """同一共同规划边界的本方方案；空动作字典是显式待命方案。"""
+
+    expected_step: StrictInt = Field(ge=0, le=708, multiple_of=12)
+    decision: Literal["adopt", "reject"] = "adopt"
+    use_candidate: StrictBool = False
+    cancel_task_ids: list[str] = Field(default_factory=list, max_length=1000)
+    orders: dict[str, FivepointOrder] = Field(default_factory=dict, max_length=1000)
+    tasks: list[FivepointTask] | None = Field(default=None, max_length=1000)
+
+
+class EnableFivepoint(StrictModel):
+    """准备阶段冻结操作模式，默认保留本方人工确认。"""
+
+    control_mode: Literal['manual', 'auto'] = 'manual'
+
+
+class FivepointPlanningRequest(StrictModel):
+    """主持人启动共同计算；播放位置只用于背压，不能写入战斗时钟。"""
+
+    context: StateContext
+    played_second: StrictInt = Field(default=0, ge=0, le=3600, multiple_of=5)
+
+
 PAYLOAD_MODELS = {
+    "enable_fivepoint": EnableFivepoint, "submit_fivepoint_plan": SubmitFivepointPlan,
+    "retry_fivepoint_planning": EmptyPayload, "abort_fivepoint": EmptyPayload,
     "movement_order": MovementOrder, "advance_deployment_movement": DeploymentMovementStep,
     "place_barracks": PlaceBarracks, "spawn_from_barracks": SpawnFromBarracks, "delete_unit": DeleteUnit,
     "settle_goal_stage": SettleGoalStage, "surrender": EmptyPayload, "archive_match": ArchivePayload,

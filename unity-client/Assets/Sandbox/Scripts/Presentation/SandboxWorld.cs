@@ -24,6 +24,10 @@ namespace Qiongtu.Sandbox
         private GameObject grid;
         private GameObject facilities;
         private GameObject captureMarkers;
+        private GameObject fivepointMarkers;
+        private SandboxMapPoint[] legacyMapPoints;
+        private readonly Dictionary<string, LineRenderer> fivepointRings = new Dictionary<string, LineRenderer>();
+        private readonly Dictionary<string, LineRenderer> observedContactRings = new Dictionary<string, LineRenderer>();
         private GameObject deploymentMarkers;
         private SandboxMapPoint[] mapPoints;
         /// <summary>按两侧各两处近端目标及北、中、南三处争夺目标安排公开占点。</summary>
@@ -39,6 +43,13 @@ namespace Qiongtu.Sandbox
         };
         private LineRenderer selectionRing;
         private LineRenderer selectionProjection;
+        private LineRenderer visionRange;
+        private LineRenderer attackRange;
+        private LineRenderer serviceRange;
+        private Vector3 rangeRadii;
+        private Vector3 lastRangeCenter;
+        private bool rangesVisible;
+        private bool rangesDirty;
         private Material redMaterial;
         private Material blueMaterial;
         private Material darkMaterial;
@@ -94,6 +105,10 @@ namespace Qiongtu.Sandbox
             selectionProjection.gameObject.SetActive(false);
             barracksSelectionRing = CreateLine("BarracksSelectionRing", unitRoot, Circle(Vector3.zero, 15), .35f, new Color(.89f, .88f, .56f));
             barracksSelectionRing.gameObject.SetActive(false);
+            visionRange = CreateLine("VisionRange", unitRoot, new Vector3[0], 3, new Color(.35f, .8f, .9f));
+            attackRange = CreateLine("AttackRange", unitRoot, new Vector3[0], 3, new Color(.95f, .65f, .3f));
+            serviceRange = CreateLine("ServiceRange", unitRoot, new Vector3[0], 3, new Color(.45f, .9f, .5f));
+            SetUnitRanges(false, 0, 0, 0);
         }
 
         /// <summary>按新的角色投影更新场景，移除不再允许显示的对象。</summary>
@@ -118,6 +133,10 @@ namespace Qiongtu.Sandbox
                     }
                 }
                 Vector3 position = ArmyPosition(unit.x, unit.z, unit.type);
+                SandboxServerUnit authoritativeUnit = serverUnits?.FirstOrDefault(item => item.unit_id == unit.id);
+                view.SetFlightState(authoritative ? authoritativeUnit?.flight_state : null);
+                if (authoritative && unit.type == SandboxUnitType.Recon && !view.IsAirborne)
+                    position.y = Surface(position.x, position.z).y + SandboxUnitView.GroundClearance;
                 SandboxServerMovementPath movement = movementPaths == null ? null : System.Array.Find(movementPaths, item => item.unit_id == unit.id);
                 if (authoritative)
                 {
@@ -229,6 +248,7 @@ namespace Qiongtu.Sandbox
             selectionProjection.gameObject.SetActive(false);
             SelectBarracks(null);
             selectedUnit = null; relocated.Clear();
+            SetUnitRanges(false, 0, 0, 0);
         }
 
         private static void ReleaseUnitObject(GameObject unit)
@@ -248,6 +268,7 @@ namespace Qiongtu.Sandbox
         /// <param name="unitId">当前选中单位。</param>
         public void Select(string unitId)
         {
+            if (selectedUnit != unitId) rangesDirty = true;
             selectedUnit = unitId;
             foreach (var entry in unitViews) entry.Value.ShowRoute(entry.Key == unitId);
             Transform target = FindUnit(unitId);
@@ -304,6 +325,54 @@ namespace Qiongtu.Sandbox
                 ring.sharedMaterial.EnableKeyword("_EMISSION");
                 ring.sharedMaterial.SetColor("_EmissionColor", new Color(0.45f, 0.36f, 0.12f));
                 ring.sortingOrder = 1;
+            }
+        }
+
+        /// <summary>仅更新规则叠加标记，不改动地图资产、道路、桥梁或地表。</summary>
+        /// <param name="frame">当前完整播放帧的公开点位和本方合法观察。</param>
+        public void ApplyFivepoint(SandboxFivepointView frame)
+        {
+            if (frame == null)
+            {
+                if (fivepointMarkers != null) fivepointMarkers.SetActive(false);
+                if (legacyMapPoints != null) { mapPoints = legacyMapPoints; legacyMapPoints = null; }
+                if (captureMarkers != null) captureMarkers.SetActive(true);
+                return;
+            }
+            if (legacyMapPoints == null) legacyMapPoints = mapPoints;
+            if (fivepointMarkers == null) fivepointMarkers = NewGroup("FivepointRuleMarkers");
+            fivepointMarkers.SetActive(true);
+            if (captureMarkers != null) captureMarkers.SetActive(false);
+            var points = (frame.points ?? Array.Empty<SandboxFivepointPoint>()).Where(point => point.xy != null && point.xy.Length == 2).ToArray();
+            mapPoints = (legacyMapPoints ?? Array.Empty<SandboxMapPoint>()).Where(point => point.kind != "capture")
+                .Concat(points.Select(point => new SandboxMapPoint { id = point.point_id, name = point.point_id,
+                    kind = "capture", x = point.xy[0], z = point.xy[1] })).ToArray();
+            foreach (LineRenderer ring in fivepointRings.Values) ring.gameObject.SetActive(false);
+            foreach (SandboxFivepointPoint point in points)
+            {
+                Color color = point.contested ? new Color(1, 0.85f, 0.2f) : point.owner == "red" ? new Color(0.95f, 0.3f, 0.25f)
+                    : point.owner == "blue" ? new Color(0.25f, 0.6f, 1) : new Color(0.8f, 0.8f, 0.8f);
+                var marker = new SandboxMapPoint { x = point.xy[0], z = point.xy[1] };
+                if (!fivepointRings.TryGetValue(point.point_id, out LineRenderer ring))
+                {
+                    ring = CreateLine(point.point_id, fivepointMarkers.transform, CaptureBoundary(marker, 250), 6, color);
+                    fivepointRings.Add(point.point_id, ring);
+                }
+                ring.gameObject.SetActive(true); ring.SetPositions(CaptureBoundary(marker, 250));
+                ring.startColor = color; ring.endColor = color; ring.sharedMaterial.color = color;
+            }
+            foreach (LineRenderer ring in observedContactRings.Values) ring.gameObject.SetActive(false);
+            foreach (SandboxFivepointContact contact in frame.display_contacts ?? Array.Empty<SandboxFivepointContact>())
+            {
+                Color color = contact.current ? new Color(1, 0.45f, 0.2f) : new Color(0.55f, 0.55f, 0.55f);
+                Vector3[] boundary = CaptureBoundary(new SandboxMapPoint { x = contact.x, z = contact.z }, 35);
+                if (!observedContactRings.TryGetValue(contact.unit_id, out LineRenderer ring))
+                {
+                    ring = CreateLine("Observed_" + contact.unit_id, fivepointMarkers.transform, boundary, 5, color);
+                    observedContactRings.Add(contact.unit_id, ring);
+                }
+                ring.gameObject.SetActive(true); ring.SetPositions(boundary);
+                ring.startColor = color; ring.endColor = color; ring.sharedMaterial.color = color;
             }
         }
 
@@ -538,6 +607,49 @@ namespace Qiongtu.Sandbox
             selectionRing.gameObject.SetActive(target != null);
             UpdateSelectionProjection(target);
             if (target != null) selectionRing.SetPositions(Circle(Surface(target.position.x, target.position.z) + Vector3.up * 0.3f, 2.5f * SandboxUnitView.ModelScale));
+            UpdateUnitRanges(target);
+        }
+
+        /// <summary>配置选中单位的视野、射程和服务范围显示。</summary>
+        /// <param name="visible">是否展示范围。</param>
+        /// <param name="visionMeters">视野半径，单位为地图米。</param>
+        /// <param name="attackMeters">射程半径，单位为地图米。</param>
+        /// <param name="serviceMeters">服务半径，单位为地图米。</param>
+        public void SetUnitRanges(bool visible, float visionMeters, float attackMeters, float serviceMeters)
+        {
+            var radii = new Vector3(visionMeters, attackMeters, serviceMeters);
+            rangesDirty |= rangesVisible != visible || rangeRadii != radii;
+            rangesVisible = visible;
+            rangeRadii = radii;
+            UpdateUnitRanges(FindUnit(selectedUnit));
+        }
+
+        /// <summary>沿当前地形绘制选中单位范围，仅在位置或属性变化时更新采样。</summary>
+        /// <param name="target">当前选中单位变换。</param>
+        private void UpdateUnitRanges(Transform target)
+        {
+            bool visible = rangesVisible && target != null;
+            visionRange.gameObject.SetActive(visible && rangeRadii.x > 0);
+            attackRange.gameObject.SetActive(visible && rangeRadii.y > 0);
+            serviceRange.gameObject.SetActive(visible && rangeRadii.z > 0);
+            if (!visible || !rangesDirty && (target.position - lastRangeCenter).sqrMagnitude < 1) return;
+            var center = new SandboxMapPoint { x = target.position.x, z = target.position.z };
+            if (rangeRadii.x > 0) SetRangeBoundary(visionRange, center, rangeRadii.x);
+            if (rangeRadii.y > 0) SetRangeBoundary(attackRange, center, rangeRadii.y);
+            if (rangeRadii.z > 0) SetRangeBoundary(serviceRange, center, rangeRadii.z);
+            lastRangeCenter = target.position;
+            rangesDirty = false;
+        }
+
+        /// <summary>同步范围线的顶点数量与地形采样位置。</summary>
+        /// <param name="line">范围线渲染对象。</param>
+        /// <param name="center">地图米制中心。</param>
+        /// <param name="radius">地图米制半径。</param>
+        private static void SetRangeBoundary(LineRenderer line, SandboxMapPoint center, float radius)
+        {
+            Vector3[] boundary = CaptureBoundary(center, radius);
+            line.positionCount = boundary.Length;
+            line.SetPositions(boundary);
         }
 
         private void UpdateSelectionProjection(Transform target)

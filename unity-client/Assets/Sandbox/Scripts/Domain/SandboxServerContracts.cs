@@ -41,6 +41,7 @@ namespace Qiongtu.Sandbox
         public SandboxServerMovementPath[] movement_paths;
         public SandboxVictoryEvidence victory;
         public SandboxServerBattleResult battle_result;
+        public SandboxFivepointView fivepoint;
     }
 
     [Serializable] public sealed class SandboxServerBattleResult { public bool final; public string verdict, reason; public int redPoints, bluePoints, scoreMaximum; public double redScore100, blueScore100, redPercent, bluePercent; public string[] calculations, milestones; public SandboxStageScore[] stageScores; }
@@ -61,7 +62,15 @@ namespace Qiongtu.Sandbox
     /// <summary>以十进制字符串传输的业务坐标。</summary>
     [Serializable] public sealed class SandboxServerPosition { public string x, y, coordinate_system_id = "unity-demo-120x80-v1"; }
     /// <summary>经过服务端角色过滤的单位。</summary>
-    [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public bool in_barracks; public SandboxServerPosition position; }
+    [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id, flight_state, low_energy_reason; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public bool in_barracks; public SandboxServerPosition position; public SandboxServerUnitAttributes attributes; public SandboxFivepointResources resource_cargo; }
+    /// <summary>当前快照的资源上限和标记来源的新版参考属性。</summary>
+    [Serializable] public sealed class SandboxServerUnitAttributes
+    {
+        public bool durability_known, energy_known, supply_known, reference_only;
+        public double max_health, max_energy, max_supply, speed_m_per_step, energy_per_km;
+        public double vision_m, damage, defense_percent, attack_range_m, attack_interval_steps, attack_supply_cost;
+        public double service_range_m, service_amount;
+    }
     /// <summary>以世界米制表达的后端已确认路径点。</summary>
     [Serializable] public sealed class SandboxServerMovementPoint { public float x, z; }
     /// <summary>角色过滤后的移动路线、单次试走轨迹和预计成本。</summary>
@@ -196,6 +205,8 @@ namespace Qiongtu.Sandbox
         /// <param name="json">同一次请求的原始 JSON，仅用于判断可选字段是否出现。</param>
         public static void NormalizeMissingPlan(SandboxServerView view, string json)
         {
+            if (view != null && json != null && !json.Contains("\"fivepoint\"")) view.fivepoint = null;
+            if (view?.fivepoint != null && view.decisions != null && json != null && !json.Contains("\"own_plan\"")) view.decisions.own_plan = null;
             SandboxServerPlan plan = view?.decisions?.own_plan;
             if (view?.role != "host" || plan == null || json == null || json.Contains("\"own_plan\"")) return;
             if (plan.version == 0 && plan.resource_limit == 0 && string.IsNullOrEmpty(plan.proposal_id)
@@ -216,7 +227,7 @@ namespace Qiongtu.Sandbox
                 || view.decisions == null || view.capabilities == null || view.tasks == null || view.conditions == null || view.timeline == null)
                 return "后端视图缺少必要字段，请检查接口版本";
             if (view.role != "red" && view.role != "blue" && view.role != "host") return "后端席位角色无效";
-            if (view.clock.ready == null || view.clock.simulation_step < 0 || view.clock.simulation_step > 60
+            if (view.clock.ready == null || view.clock.simulation_step < 0 || view.clock.simulation_step > (view.fivepoint != null ? 720 : 60)
                 || !new[] { "preparing", "awaiting_confirmation", "paused", "running", "finished" }.Contains(view.clock.phase)) return "后端生命周期无效";
             if (view.game.game_id != gameId || view.context.game_id != gameId || !Guid.TryParse(view.context.branch_id, out _)
                 || !Guid.TryParse(view.context.snapshot_id, out _) || string.IsNullOrEmpty(view.context.context_token)) return "后端对局上下文不一致";
@@ -243,7 +254,7 @@ namespace Qiongtu.Sandbox
                 if (!string.IsNullOrEmpty(camp.unit_type) && camp.position == null) return "后端兵种兵营缺少位置";
             }
             if (view.role == "host" && view.decisions.own_plan != null) return "主持人视图包含未授权的私有建议";
-            if (view.role != "host" && (view.decisions.own_plan == null || view.decisions.own_plan.side != view.role)) return "本方建议归属无效";
+            if (view.fivepoint == null && view.role != "host" && (view.decisions.own_plan == null || view.decisions.own_plan.side != view.role)) return "本方建议归属无效";
             if (view.tasks.Any(task => task == null || task.nodes == null || (view.role != "host" && task.side != view.role))) return "任务对象或归属无效";
             if (view.tasks.Any(task => task.nodes.Any(node => node == null || string.IsNullOrEmpty(node.node_id)))
                 || view.timeline.Any(record => record == null || string.IsNullOrEmpty(record.event_id))
@@ -272,7 +283,9 @@ namespace Qiongtu.Sandbox
                     id = unit.unit_id, name = unit.name, side = Role(unit.side), status = unit.status,
                     type = unit.unit_type == "recon" ? SandboxUnitType.Recon : unit.unit_type == "ground" ? SandboxUnitType.Ground : SandboxUnitType.Support,
                     x = float.Parse(unit.position.x, CultureInfo.InvariantCulture), z = float.Parse(unit.position.y, CultureInfo.InvariantCulture),
-                    barracksId = unit.camp_id
+                    barracksId = unit.camp_id, attributes = unit.attributes,
+                    health = unit.attributes?.durability_known == true ? (float)unit.durability : 0,
+                    maxHealth = unit.attributes?.durability_known == true ? (float)unit.attributes.max_health : 0
                 }).ToArray(),
                 barracks = (view.camps ?? Array.Empty<SandboxServerCamp>()).Where(camp => camp.position != null)
                     .OrderBy(camp => string.IsNullOrEmpty(camp.unit_type)).Select(camp => new SandboxBarracksData {

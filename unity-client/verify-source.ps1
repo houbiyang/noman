@@ -28,8 +28,9 @@ foreach ($binding in [regex]::Matches($controllerContent, $bindingPattern)) {
     if ($elementName -notin $namedElements) { throw "界面绑定没有对应元素：$elementName" }
 }
 Write-Output "UXML 结构与静态控件名称检查通过：$($namedElements.Count) 个具名元素；这不替代 Unity 资源导入。"
+$contractSources = @('SandboxServerContracts.cs', 'SandboxBattleResult.cs', 'SandboxFivepointView.cs', 'SandboxFivepointPlayback.cs' | ForEach-Object { Join-Path $clientRoot "Assets\Sandbox\Scripts\Domain\$_" })
 if ($DomainOnly) {
-    $domainSources = @((Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxSession.cs'), (Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxArmy.cs'), (Join-Path $clientRoot 'Verification\DomainChecks.cs'))
+    $domainSources = @((Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxSession.cs'), (Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxArmy.cs'), (Join-Path $clientRoot 'Verification\DomainChecks.cs')) + $contractSources
     $compiledTypes = @(Add-Type -Path $domainSources -PassThru -ErrorAction Stop)
     $checkType = $compiledTypes | Where-Object { $_.Name -eq 'DomainChecks' }
     $entryPoint = $checkType.GetMethod('Main', [Reflection.BindingFlags]'NonPublic,Static')
@@ -101,7 +102,7 @@ $armySource = Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxArmy.c
 $domainCheckSource = Join-Path $clientRoot 'Verification\DomainChecks.cs'
 $domainAssembly = Join-Path $outputDirectory 'Qiongtu.Sandbox.DomainChecks.dll'
 $domainReferences = @(Get-ChildItem -LiteralPath $netRuntimeDirectory -Filter '*.dll' | ForEach-Object { '-reference:' + $_.FullName })
-Invoke-SourceCompiler -CompilerArguments (@('-nologo', '-noconfig', '-nostdlib+', '-langversion:9.0', '-warnaserror+', '-target:exe') + @($domainReferences) + @("-out:$domainAssembly", $domainSource, $armySource, $domainCheckSource)) -ResponseName 'domain.rsp'
+Invoke-SourceCompiler -CompilerArguments (@('-nologo', '-noconfig', '-nostdlib+', '-langversion:9.0', '-warnaserror+', '-target:exe') + @($domainReferences) + @("-out:$domainAssembly", $domainSource, $armySource, $domainCheckSource) + $contractSources) -ResponseName 'domain.rsp'
 if ($LASTEXITCODE -ne 0) { throw '前端状态验证程序编译失败' }
 $runtimeConfiguration = '{"runtimeOptions":{"tfm":"net8.0","framework":{"name":"Microsoft.NETCore.App","version":"8.0.0"},"rollForward":"LatestMinor"}}'
 Set-Content -LiteralPath (Join-Path $outputDirectory 'Qiongtu.Sandbox.DomainChecks.runtimeconfig.json') -Value $runtimeConfiguration -Encoding utf8
@@ -111,7 +112,7 @@ $serverContracts = Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxS
 $battleResultSource = Join-Path $clientRoot 'Assets\Sandbox\Scripts\Domain\SandboxBattleResult.cs'
 $serverChecks = Join-Path $clientRoot 'Verification\ServerProjectionChecks.cs'
 $serverAssembly = Join-Path $outputDirectory 'Qiongtu.Sandbox.ServerChecks.dll'
-Invoke-SourceCompiler -CompilerArguments (@('-nologo', '-noconfig', '-nostdlib+', '-langversion:9.0', '-warnaserror+', '-target:exe') + @($domainReferences) + @("-out:$serverAssembly", $domainSource, $armySource, $serverContracts, $battleResultSource, $serverChecks)) -ResponseName 'server-contracts.rsp'
+Invoke-SourceCompiler -CompilerArguments (@('-nologo', '-noconfig', '-nostdlib+', '-langversion:9.0', '-warnaserror+', '-target:exe') + @($domainReferences) + @("-out:$serverAssembly", $domainSource, $armySource, $serverChecks) + $contractSources) -ResponseName 'server-contracts.rsp'
 if ($LASTEXITCODE -ne 0) { throw '后端地图投影检查编译失败' }
 Set-Content -LiteralPath (Join-Path $outputDirectory 'Qiongtu.Sandbox.ServerChecks.runtimeconfig.json') -Value $runtimeConfiguration -Encoding utf8
 & $dotnetPath $serverAssembly

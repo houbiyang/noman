@@ -168,7 +168,7 @@ namespace Qiongtu.Sandbox
                 AddText(summary, "兵种数量  " + units.Length + " 个", "army-summary-count");
                 var known = units.Where(unit => unit.maxHealth > 0).ToArray();
                 AddText(summary, known.Length == 0 ? "血量  待接入仿真数据" :
-                    "已知血量  " + known.Sum(unit => (long)unit.health) + " / " + known.Sum(unit => (long)unit.maxHealth) + " · " + known.Length + "/" + units.Length + " 单位已上报", "army-current");
+                    "已知血量  " + known.Sum(unit => (double)unit.health).ToString("0.##") + " / " + known.Sum(unit => (double)unit.maxHealth).ToString("0.##") + " · " + known.Length + "/" + units.Length + " 单位已上报", "army-current");
                 AddText(summary, "当前任务 · " + projection.taskType, "army-current");
                 foreach (var state in units.GroupBy(unit => unit.status))
                     AddText(summary, state.Key + "  × " + state.Count(), "army-status-line");
@@ -184,8 +184,8 @@ namespace Qiongtu.Sandbox
                     var card = new VisualElement { name = "barracks-unit-" + unit.id }; card.AddToClassList("army-unit-card");
                     card.EnableInClassList("army-card-selected", selectedId == unit.id); list.Add(card);
                     AddText(card, unit.id + " · " + unit.name, "army-unit-title");
-                    AddText(card, "任务状态 · " + unit.status, "army-current");
-                    AddText(card, unit.maxHealth > 0 ? "血量 " + unit.health + " / " + unit.maxHealth : "血量 · 未提供", "army-current");
+                    AddText(card, "当前动作 · " + unit.status, "army-current");
+                    AddText(card, unit.maxHealth > 0 ? "血量 " + unit.health.ToString("0.##") + " / " + unit.maxHealth.ToString("0.##") : "血量 · 未配置", "army-current");
                     if (unit.maxHealth > 0)
                     {
                         var health = new ProgressBar { lowValue = 0, highValue = unit.maxHealth, value = unit.health, title = "" };
@@ -195,23 +195,28 @@ namespace Qiongtu.Sandbox
                     if (serverMode && serverClient.View.spatial_test)
                     {
                         var fact = serverClient.View.units.First(item => item.unit_id == unit.id);
-                        AddText(card, string.IsNullOrEmpty(fact.camp_id) ? "等待配置兵营与测试资源" : "测试能源 " + fact.energy.ToString("0.###")
-                            + " · 补给 " + fact.supply + " · 耐久 " + fact.durability, "army-current");
+                        AddText(card, ResourceText("能源", fact.energy, fact.attributes?.max_energy ?? 0, fact.attributes?.energy_known == true), "army-current");
+                        if (unit.type != SandboxUnitType.Recon)
+                            AddText(card, ResourceText(unit.type == SandboxUnitType.Support ? "服务库存" : "自身补给", fact.supply,
+                                fact.attributes?.max_supply ?? 0, fact.attributes?.supply_known == true), "army-current");
                         if (serverClient.View.clock.phase == "preparing") AddText(card, "试走步 " + fact.movement_test_steps + " · 试走能源 "
                             + (fact.movement_test_steps > 0 ? fact.movement_test_energy : fact.energy).ToString("0.###"), "army-current");
                         var route = serverClient.View.movement_paths?.FirstOrDefault(item => item.unit_id == unit.id);
                         if (route != null) AddText(card, "路线 " + route.status + " · 预计 " + route.estimated_steps.ToString("0.##") + " 步 / "
                             + route.estimated_energy.ToString("0.##") + " 能源", "army-footnote");
                     }
+                    BuildUnitAttributes(card, unit);
                     var actions = new VisualElement(); actions.AddToClassList("army-unit-actions"); card.Add(actions);
-                    AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id, UnitLocateViewport()); RefreshProjection(); }, "army-unit-action");
+                    AddButton(actions, "选择定位", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Locate(unit.id, UnitLocateViewport()); RefreshProjection();
+                        if (serverMode) refreshArmyManagement?.Invoke(); }, "army-unit-action");
                     bool formationMovement = serverMode && serverClient.View?.clock.phase == "preparing" && units.Length > 1
                         && movementMode != "reverse_move";
                     var move = AddButton(actions, formationMovement ? "集群部署试走" : serverMode && serverClient.View?.clock.phase == "preparing" ? "部署试走" : "地图移动",
                         () => BeginMove(unit.id, formationMovement), "army-unit-action");
                     move.SetEnabled(moveRestriction.Length == 0);
                     move.tooltip = moveRestriction;
-                    AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection(); }, "army-unit-action");
+                    AddButton(actions, "跟随观察", () => { selectedId = unit.id; world.Select(unit.id); cameraRig.Follow(unit.id); RefreshProjection();
+                        if (serverMode) refreshArmyManagement?.Invoke(); }, "army-unit-action");
                     if (serverMode && serverClient.View?.spatial_test == true)
                     {
                         AddButton(actions, "停止移动", () => SubmitMovement(unit.id, "stop_move", formation: formationMovement), "army-unit-action").SetEnabled(moveRestriction.Length == 0);

@@ -23,12 +23,15 @@ from backend.service import SandboxService
 from backend.agent_contracts import AgentConfiguration, AgentRunRequest
 from backend.agent_service import AgentCoordinator
 from backend.agent_graph import AGENT_RUNTIME_REVISION
+from backend.contracts import FivepointPlanningRequest
+from backend.fivepoint_coordinator import FivepointCoordinator
 
 
 def create_app(settings: Settings) -> FastAPI:
     """以显式配置构造应用，导入不会建库、创建对局或启动线程。"""
     service = SandboxService(settings)
     agents = AgentCoordinator(service)
+    fivepoint_planner = FivepointCoordinator(service)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -39,6 +42,7 @@ def create_app(settings: Settings) -> FastAPI:
             """每个节奏重新读取数据库，不缓存可写状态或旧控制依据。"""
             while not stopped.wait(settings.demo_tick_seconds):
                 try:
+                    fivepoint_planner.recover_expired()
                     service.tick()
                 except (psycopg.Error, ServiceError) as error:
                     logging.getLogger(__name__).error("后台播放暂未提交：%s", type(error).__name__)
@@ -55,6 +59,7 @@ def create_app(settings: Settings) -> FastAPI:
                   description="演示与协同测试、持久化及角色隔离；模型按红蓝配置调用，正式交战尚未实现。")
     app.state.service = service
     app.state.agents = agents
+    app.state.fivepoint_planner = fivepoint_planner
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
     app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:18766", "http://localhost:18766"],
                        allow_methods=["GET", "POST", "DELETE"],
@@ -159,6 +164,23 @@ def create_app(settings: Settings) -> FastAPI:
         result, status = service.command(str(game_id), access_token, idempotency_key, body)
         return JSONResponse(status_code=status, content=jsonable_encoder(result))
 
+    @app.post('/api/v1/games/{game_id}/fivepoint/planning', status_code=202)
+    def plan_fivepoint(game_id: UUID, body: FivepointPlanningRequest, access_token: token, background_tasks: BackgroundTasks):
+        """启动冻结的双方共同规划；主持人不提交或读取私有任务正文。"""
+        result = fivepoint_planner.request(str(game_id), access_token, body)
+        background_tasks.add_task(fivepoint_planner.execute, str(game_id), result['run_id'])
+        return result
+
+    @app.get('/api/v1/games/{game_id}/fivepoint/frame')
+    def fivepoint_frame(game_id: UUID, access_token: token, simulation_step: int = Query(ge=0, le=720)):
+        """所有面板共用一个完整步的本方投影，不重新执行历史规则。"""
+        return service.replay(str(game_id), access_token, simulation_step=simulation_step, playback=True)
+
+    @app.post('/api/v1/games/{game_id}/fivepoint/advance-round')
+    def advance_fivepoint_round(game_id: UUID, body: FivepointPlanningRequest, access_token: token):
+        """按缓存背压推进已共同采用的一轮，所有完整步均沿用原事务和归档链路。"""
+        return fivepoint_planner.advance_round(str(game_id), access_token, body)
+
     @app.get("/api/v1/games/{game_id}/commands/by-request")
     def receipt_by_request(game_id: UUID, origin_branch_id: UUID, request_key: UUID, access_token: token):
         return service.receipt(str(game_id), access_token, origin_branch_id=origin_branch_id, request_key=request_key)
@@ -177,7 +199,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/api/v1/games/{game_id}/replay")
     def replay(game_id: UUID, access_token: token, snapshot_id: UUID | None = None, branch_id: UUID | None = None,
-               simulation_step: int | None = Query(None, ge=0, le=60)):
+               simulation_step: int | None = Query(None, ge=0, le=720)):
         return service.replay(str(game_id), access_token, snapshot_id=snapshot_id, branch_id=branch_id, simulation_step=simulation_step)
 
     @app.get("/api/v1/games/{game_id}/archives")

@@ -23,8 +23,9 @@ from backend.demo_domain import (
     new_plan, require, validate_state, waiting_sides,
 )
 from backend.runtime import Settings, ServiceError, canonical, sha256, token_digest, utcnow
-from backend import database, spatial, movement, coordination, battle_rules, qinglan_rules
+from backend import database, spatial, movement, coordination, battle_rules, qinglan_rules, fivepoint_service
 from backend.map_catalog import current_map, asset_manifest, validate as validate_map
+from backend.unit_display import enrich_units
 
 
 HASH_VERSION = "qiongtu-json-v1"
@@ -196,6 +197,8 @@ class SandboxService:
 
     def _new_proposals(self, connection, game_id, branch_id, snapshot_id, epoch, state, previous=None, world_revision=0, restored=False) -> None:
         """为固定演示建议建立真实持久化记录，来源明确而非冒充模型调用。"""
+        if fivepoint_service.enabled(state):
+            return
         for side, plan in state["decisions"]["plans"].items():
             if restored and plan["status"] in ("adopted", "rejected"):
                 continue
@@ -282,6 +285,34 @@ class SandboxService:
         """单位、建议、任务和观察按同一角色过滤，永不返回原始整局快照。"""
         role = principal["role"]
         own = lambda values: deepcopy([value for value in values if role == "host" or value["side"] == role])
+        if fivepoint_service.enabled(state):
+            view = fivepoint_service.projection(state, role)
+            core = state['fivepoint']
+            phase = state['lifecycle']['phase']
+            return dict(schema_version='game-view-v1', context=self._context(game, principal), role=role,
+                game=dict(game_id=str(game['id']), game_no=game['game_no'], title=game['title'], is_demo=game['is_demo'],
+                          scenario_version_id=str(game['scenario_version_id']), rule_version_id=str(game['rule_version_id'])),
+                clock={key: value for key, value in state['lifecycle'].items() if key != 'controller_session_id'},
+                units=fivepoint_service.enrich(own(state['units'])), camps=own(state['camps']), tasks=[], conditions=[],
+                timeline=[dict(event_id='fivepoint-' + str(event['event_index']), simulation_step=event['second'] // 5,
+                    title={'shot': '实际开火', 'destroyed': '单位被击毁', 'power_failure': '空中断电退场',
+                           'planning_failed': '共同规划失败'}.get(event['kind'], '规则事件'),
+                    detail=event.get('unit_id', '') + (' → ' + event['target_id'] if event.get('target_id') else ''),
+                    side=event.get('side', role)) for event in view.get('events', [])[-100:]],
+                contacts=view.get('contacts', []), last_seen_records=list(view.get('history', {}).values()),
+                decisions=dict(source='fivepoint', real_ai=core.get('planning_source') == 'model', waiting_sides=view['waiting_sides']),
+                capabilities=dict(can_control_time=role == 'host' and core['result'] is None,
+                    can_advance=role == 'host' and core['phase'] in ('paused', 'running'), can_save=role == 'host',
+                    can_start_game=False, can_manage_units=False, can_move_unit=False, can_place_barracks=False,
+                    can_delete_unit=False, can_test_movement=False, can_review_proposal=False, can_set_ready=False,
+                    can_surrender=role in ('red', 'blue') and core['result'] is None,
+                    can_submit_fivepoint_plan=role in view['waiting_sides'] and view['control_mode'] == 'manual' and not view['planning_active'], authoritative_combat=True,
+                    authoritative_navigation=True),
+                resources=view.get('own_resources', {}), fivepoint=view, victory=None,
+                battle_result=core['result'], map=dict(map_id=map_manifest()['map_id'],
+                    content_hash=map_manifest()['content_hash'], coordinate_system_id='unity-demo-120x80-v1', resource_url='/api/v1/maps/current'),
+                save_status=dict(status='persisted', snapshot_id=str(game['head_snapshot_id'])),
+                service_status=dict(mode='fivepoint', real_ai=core.get('planning_source') == 'model', scoring=True), observed_at=utcnow())
         wait = waiting_sides(state)
         clock = {key: value for key, value in state["lifecycle"].items() if key != "controller_session_id"}
         source = state['decisions']['plans'][role].get('source', 'fixed_demo') if role != 'host' else 'role_filtered'
@@ -293,7 +324,7 @@ class SandboxService:
         return dict(schema_version="game-view-v1", context=self._context(game, principal), role=role,
                     game=dict(game_id=str(game["id"]), game_no=game["game_no"], title=game["title"], is_demo=game["is_demo"],
                               scenario_version_id=str(game["scenario_version_id"]), rule_version_id=str(game["rule_version_id"])),
-                    clock=clock, units=own(state["units"]), camps=own(state["camps"]), tasks=own(state["tasks"]),
+                    clock=clock, units=enrich_units(own(state["units"]), state["manifest"]), camps=own(state["camps"]), tasks=own(state["tasks"]),
                     contacts=deepcopy(state["observations"].get(role, {}).get("contacts", [])),
                     last_seen_records=deepcopy(state["observations"].get(role, {}).get("last_seen_records", [])), decisions=decisions,
                     capabilities=dict(can_control_time=role == "host" and phase not in ("preparing", "finished"),
@@ -323,6 +354,9 @@ class SandboxService:
             game = self._game(connection, game_id)
             result = self._project(game, principal, game["state_payload"])
             state = game["state_payload"]
+            if fivepoint_service.enabled(state):
+                result['timeline'] = self._visible_events(connection, game_id, game['active_branch_id'], game['snapshot_revision'], principal['role'])[-100:]
+                return result
             if 'coordination' in state:
                 result['coordination'] = {key: deepcopy(value) for key, value in state['coordination'].items() if key != 'plans'}
                 result['coordination']['plans'] = ({principal['role']: deepcopy(state['coordination']['plans'][principal['role']])}
@@ -529,7 +563,19 @@ class SandboxService:
             archive_id = self._archive(connection, game, principal, payload.get("display_name"), False)
             return dict(branch_id=str(branch_id), snapshot_id=str(game["head_snapshot_id"]), simulation_step=state["lifecycle"]["simulation_step"], archive_id=str(archive_id))
         audit = dict(command_id=str(command_id), member_id=str(principal["member_id"]), branch_id=str(branch_id), base_snapshot_id=str(game["head_snapshot_id"]))
-        if kind == "settle_goal_stage":
+        if fivepoint_service.enabled(state) and kind not in ('create_save', 'restore_save', 'complete_exit'):
+            event = fivepoint_service.apply(state, actor, kind, payload, str(command_id))
+            if kind == 'continue':
+                state['lifecycle']['controller_session_id'] = str(principal['session_id'])
+            world_revision += 1
+        elif kind == 'enable_fivepoint':
+            from backend.agent_service import AgentCoordinator
+            configuration_reader = AgentCoordinator(self)
+            configurations = {side: configuration_reader.load_configuration(side).model_dump(mode='json') for side in ('red', 'blue')}
+            fivepoint_service.enable(state, actor, payload['control_mode'], configurations)
+            world_revision += 1
+            event.update(title='五点规则已冻结', detail='初始编制、资源基准、五点和规则版本已锁定')
+        elif kind == "settle_goal_stage":
             state, event = battle_rules.adjudicate(state, actor, payload, audit)
             world_revision += 1
         elif kind == "surrender":
@@ -607,6 +653,15 @@ class SandboxService:
             require(saved["state_payload"]["lifecycle"]["phase"] != "finished", "SAVE_READ_ONLY", "结束快照不能继续游戏")
             state = deepcopy(saved["state_payload"])
             state["lifecycle"].update(phase="paused", controller_session_id=None)
+            if fivepoint_service.enabled(state):
+                state['fivepoint']['playback_origin_step'] = state['fivepoint']['step']
+                if state['fivepoint'].get('planning_run', {}).get('active'):
+                    from backend.fivepoint_engine import fail_planning
+                    state['fivepoint'] = fail_planning(state['fivepoint'], 'red', 'PLANNING_RESTORED')
+                    state['fivepoint']['planning_run']['active'] = False
+                if state['fivepoint']['phase'] == 'running':
+                    state['fivepoint']['phase'] = 'paused'
+                fivepoint_service.synchronize(state)
             branch_id, epoch, revision = uuid4(), uuid4(), 0
             world_revision = 0
             insert(connection, "game_branches", dict(id=branch_id, game_id=game["id"], parent_branch_id=saved["branch_id"],
@@ -805,24 +860,32 @@ class SandboxService:
             return dict(items=items, next_cursor=next_cursor)
 
     def replay(self, game_id: str, bearer: str, *, snapshot_id: UUID | None = None, simulation_step: int | None = None,
-               branch_id: UUID | None = None) -> dict:
+               branch_id: UUID | None = None, playback: bool = False) -> dict:
         """冻结快照只读投影，进行中只允许主持人审阅本机演示恢复帧。"""
         with self.settings.connect() as connection:
             principal = self._principal(connection, bearer, game_id)
             game = self._game(connection, game_id)
-            require(principal["role"] == "host" or game["state_payload"]["lifecycle"]["phase"] == "finished",
+            require(principal["role"] == "host" or game["state_payload"]["lifecycle"]["phase"] == "finished"
+                    or playback and fivepoint_service.enabled(game['state_payload']),
                     "REPLAY_FORBIDDEN", "进行中复盘仅允许主持人审阅演示帧", 403)
             selected_branch = branch_id or game["active_branch_id"]
+            if playback:
+                require(fivepoint_service.enabled(game['state_payload']) and selected_branch == game['active_branch_id']
+                        and simulation_step is not None and 0 <= simulation_step <= game['state_payload']['fivepoint']['step'],
+                        'PLAYBACK_TIME_INVALID', '只能读取当前分支已提交的五点时刻')
             if snapshot_id:
                 row = connection.execute("SELECT * FROM game_snapshots WHERE game_id=%s AND branch_id=%s AND id=%s",
                     (game_id, selected_branch, snapshot_id)).fetchone()
             else:
                 row = connection.execute("""SELECT * FROM game_snapshots WHERE game_id=%s AND branch_id=%s AND simulation_step<=%s
-                    ORDER BY simulation_step DESC,revision DESC LIMIT 1""", (game_id, selected_branch, simulation_step if simulation_step is not None else 60)).fetchone()
+                    ORDER BY simulation_step DESC,revision DESC LIMIT 1""", (game_id, selected_branch, simulation_step if simulation_step is not None else game['state_payload']['lifecycle'].get('deadline_step', 60))).fetchone()
             require(row is not None, "FRAME_NOT_FOUND", "复盘帧不存在", 404)
             require(row["payload_sha256"] == snapshot_hash(row["state_payload"]), "SNAPSHOT_INTEGRITY_FAILED", "复盘内容校验失败", 500)
             frame = self._project(game, principal, row["state_payload"])
             frame.update(read_only=True, frame_snapshot_id=str(row["id"]), frame_branch_id=str(row["branch_id"]))
+            if playback:
+                # 上下文用于核验身份；观看投影不能带出未来比分、日志或终局。
+                return frame
             frame["context"] = None
             frame["capabilities"] = dict(read_only=True, can_control_time=False, can_review_proposal=False, can_save=False, can_manage_units=False)
             frame["save_status"] = dict(status="historical", snapshot_id=str(row["id"]))
@@ -834,6 +897,10 @@ class SandboxService:
             self._principal(connection, bearer, game_id)
             game = self._game(connection, game_id)
             state = game["state_payload"]
+            if fivepoint_service.enabled(state):
+                require(state['fivepoint']['result'] is not None, 'RESULT_NOT_READY', '五点对局尚未结束')
+                return dict(game_id=game_id, result_status='settled', simulation_step=state['fivepoint']['step'],
+                            result=deepcopy(state['fivepoint']['result']))
             value = battle_rules.evidence(state)
             if value is None:
                 require(state["lifecycle"]["phase"] == "finished", "RESULT_NOT_READY", "当前演示尚未结束")
@@ -859,6 +926,9 @@ class SandboxService:
         projection = dict(role=role, clock=clock, units=own("units"), camps=own("camps"), tasks=own("tasks"),
             timeline=self._visible_events(connection, game["id"], game["active_branch_id"], game["snapshot_revision"], role, exclude_private_plans=True),
             victory=value, battle_result=battle_rules.evaluate(value), read_only=True)
+        if fivepoint_service.enabled(state):
+            projection['fivepoint'] = fivepoint_service.projection(state, role)
+            projection['battle_result'] = deepcopy(state['fivepoint']['result'])
         insert(connection, "match_archives", dict(id=identity, game_id=game["id"], member_id=principal["member_id"],
             branch_id=game["active_branch_id"], snapshot_id=game["head_snapshot_id"], title=title or (("对局结束 / " if automatic else "对局记录 / ") + game["title"])[:80],
             automatic=automatic, role=role, phase=clock["phase"], simulation_step=clock["simulation_step"], projection=projection))

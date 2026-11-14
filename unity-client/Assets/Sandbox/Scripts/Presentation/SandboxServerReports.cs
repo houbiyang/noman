@@ -88,7 +88,7 @@ namespace Qiongtu.Sandbox
                 serverHistoryDetail = new SandboxMatchArchive { id = archive.id, title = archive.title, savedAt = archive.created_at,
                     source = "server", matchId = serverClient.View.game.game_id, branchId = archive.branch_id, snapshotId = archive.snapshot_id,
                     role = SandboxServerProjection.Role(archive.role), phase = archive.phase == "finished" ? "已结束" : "进行中",
-                    victory = view.victory, observation = SandboxHistoryObservation.FromProjection(SandboxServerProjection.Convert(view)) };
+                    victory = view.victory, fivepoint = view.fivepoint, observation = SandboxHistoryObservation.FromProjection(SandboxServerProjection.Convert(view)) };
                 selectedHistory = serverHistoryDetail;
                 if (reportSection == "history" && reportOverlay != null) RenderSettingsSection();
             });

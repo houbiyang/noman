@@ -118,12 +118,13 @@ namespace Qiongtu.Sandbox
         {
             bool writable = serverClient.Healthy && !serverClient.Busy && !serverClient.HasPending && serverClient.View != null;
             SandboxServerCapabilities permission = serverClient.View?.capabilities;
+            bool fivepoint = serverClient.AuthorityView?.fivepoint != null;
             foreach (string name in new[] { "redRole", "blueRole", "hostRole" }) root.Q<Button>(name).SetEnabled(!serverClient.Busy && !serverClient.HasPending);
-            root.Q<Button>("stepButton").SetEnabled(writable && permission != null && permission.can_advance && serverClient.View.clock.phase != "running");
-            root.Q<Button>("playButton").SetEnabled(writable && permission != null && (serverClient.View.clock.phase == "running" || permission.can_advance));
+            root.Q<Button>("stepButton").SetEnabled(!fivepoint && writable && permission != null && permission.can_advance && serverClient.View.clock.phase != "running");
+            root.Q<Button>("playButton").SetEnabled(!fivepoint && writable && permission != null && (serverClient.View.clock.phase == "running" || permission.can_advance));
             SetText("playButton", serverClient.View?.clock.phase == "running" ? "暂停" : "继续播放");
             root.Q<Button>("armyAction").SetEnabled(serverClient.View != null);
-            root.Q<Button>("eventsButton").SetEnabled(writable && role == SandboxRole.Host && serverClient.View.clock.phase != "finished");
+            root.Q<Button>("eventsButton").SetEnabled(!fivepoint && writable && role == SandboxRole.Host && serverClient.View.clock.phase != "finished");
             SetText("connectionAction", serverClient.HasPending ? "核对提交结果" : serverClient.Healthy ? "后端已连接" : "接入状态");
             SetText("taskProgress", serverClient.View == null ? "等待后端任务状态" : "任务节点状态来自后端 · 规则未裁决时明确标记");
             if (!serverClient.Healthy || serverClient.View == null) { CancelArmyCommand(); CloseArmy(); }
@@ -159,6 +160,7 @@ namespace Qiongtu.Sandbox
         /// <summary>显示当前权威任务、节点及准备流程。</summary>
         private void BuildServerTasks()
         {
+            if (serverClient.View?.fivepoint != null) { BuildFivepointTasks(); return; }
             SetText("drawerTitle", "后端任务与协作");
             if (serverClient.View == null) { AddText(drawerContent, serverClient.Status, "body-text"); return; }
             SandboxServerView view = serverClient.View;
@@ -182,6 +184,7 @@ namespace Qiongtu.Sandbox
         /// <summary>冻结编辑时依据，期间状态变化会由后端拒绝旧提交。</summary>
         private void BuildServerPlan()
         {
+            if (serverClient.AuthorityView?.fivepoint != null) { BuildFivepointPlan(); return; }
             SetText("drawerTitle", "后端建议与人工确认");
             if (serverClient.View == null || role == SandboxRole.Host) { AddText(drawerContent, "主持人仅查看等待摘要：" + projection.waitingSummary, "body-text"); return; }
             SandboxPlanData draft = projection.ownPlan.Copy();

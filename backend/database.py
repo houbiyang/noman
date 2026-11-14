@@ -177,6 +177,13 @@ def configure_extension_directory(database: str) -> None:
             + sql_literal(share_directory + ";$system") + ";")
 
 
+def migration_checksums(payload: bytes) -> set[str]:
+    """兼容 Git 的 LF/CRLF 转换；SQL 内容、编码和其他空白变化仍须拒绝。"""
+    unix_lines = payload.replace(b"\r\n", b"\n")
+    return {hashlib.sha256(value).hexdigest() for value in
+            (payload, unix_lines, unix_lines.replace(b"\n", b"\r\n"))}
+
+
 def migration_sql(database: str, enable_vectors: bool = True) -> str:
     """生成带事务锁与文件摘要核对的迁移，不修改已应用版本。"""
     files = [BACKEND_ROOT / "migrations" / "001_application.sql"]
@@ -193,6 +200,8 @@ def migration_sql(database: str, enable_vectors: bool = True) -> str:
     files.append(BACKEND_ROOT / "migrations" / "009_agent_coordination.sql")
     files.append(BACKEND_ROOT / "migrations" / "007_battle_reports.sql")
     files.append(BACKEND_ROOT / "migrations" / "010_history_agent_commands.sql")
+    files.append(BACKEND_ROOT / "migrations" / "011_fivepoint_commands.sql")
+    files.append(BACKEND_ROOT / "migrations" / "012_fivepoint_planning.sql")
     # 两条分支的旧命令约束互不包含；统一使用最终完整约束校验，防止升级时拒绝已有合法历史。
     constraint_pattern = r"ALTER TABLE sandbox\.game_commands ADD CONSTRAINT game_commands_command_type_check CHECK \([\s\S]*?\n\);"
     final_constraint = re.search(constraint_pattern, files[-1].read_text(encoding="utf-8-sig"))
@@ -206,11 +215,12 @@ def migration_sql(database: str, enable_vectors: bool = True) -> str:
     for migration_file in files:
         payload = migration_file.read_bytes()
         digest = hashlib.sha256(payload).hexdigest()
+        compatible_digests = ", ".join(sql_literal(value) for value in sorted(migration_checksums(payload)))
         version = migration_file.stem
         pieces.append(f"SELECT EXISTS (SELECT 1 FROM infrastructure.schema_migrations WHERE version = {sql_literal(version)}) AS already_applied \\gset\n")
         pieces.append("\\if :already_applied\n")
         pieces.append("DO $check$ BEGIN IF NOT EXISTS (SELECT 1 FROM infrastructure.schema_migrations WHERE "
-                      f"version = {sql_literal(version)} AND sha256 = {sql_literal(digest)}) THEN "
+                      f"version = {sql_literal(version)} AND sha256 IN ({compatible_digests})) THEN "
                       "RAISE EXCEPTION '已应用迁移文件发生变化，请新增迁移而不是修改旧文件'; END IF; END; $check$;\n")
         statement = payload.decode("utf-8-sig")
         if migration_file != files[-1]:

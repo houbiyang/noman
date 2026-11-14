@@ -16,6 +16,10 @@
 .barracks-map-label { padding: 4px 9px; font-size: 13px; -unity-font-style: bold; white-space: nowrap; background-color: rgba(13, 24, 29, 0.96); }
 .map-label.red-text { border-color: #c87f6b; color: #f0b49e; }
 .map-label.blue-text { border-color: #70a1c2; color: #add7ec; }
+.map-label.selected-map-unit { border-width: 2px; border-color: #e8d178; }
+.map-unit-health { height: 15px; margin-top: 3px; min-width: 110px; }
+.map-unit-health .unity-progress-bar__progress { background-color: #83b18a; }
+.map-unit-health .unity-progress-bar__title { font-size: 10px; color: #f2f4df; }
 .role-float {
     position: absolute;
     right: 24px;

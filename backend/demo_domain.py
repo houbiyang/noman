@@ -105,6 +105,19 @@ def initial_state(scenario_id: str, rule_id: str, task_type: str) -> dict:
 def validate_state(state: dict) -> None:
     """检查当前演示结构、稳定身份与坐标，不接受任意客户端整局快照。"""
     require(state["manifest"].get("schema_version") == "unity-demo-world-v1", "SNAPSHOT_INCOMPATIBLE", "存档格式不受当前服务支持")
+    if "fivepoint" in state:
+        from backend import fivepoint_engine
+        from backend.fivepoint_parameters import VERSION, RuleViolation
+        require(state["manifest"].get("fivepoint_version") == VERSION, "SNAPSHOT_INCOMPATIBLE", "五点规则身份不匹配")
+        try:
+            fivepoint_engine.validate(state["fivepoint"])
+        except RuleViolation as error:
+            raise ServiceError(409, error.code, str(error)) from error
+        core = state["fivepoint"]
+        phase = {"planning": "awaiting_confirmation", "technical_pause": "paused"}.get(core["phase"], core["phase"])
+        require(state["lifecycle"]["simulation_step"] == core["step"] and state["lifecycle"]["phase"] == phase,
+                "SNAPSHOT_INVALID", "五点执行器与快照时间不一致")
+        return
     lifecycle = state["lifecycle"]
     require(type(lifecycle["simulation_step"]) is int and 0 <= lifecycle["simulation_step"] <= 60,
             "SNAPSHOT_INVALID", "存档仿真步无效")

@@ -117,9 +117,11 @@ namespace Qiongtu.Sandbox
             projection = serverMode ? ServerProjection() : source.GetProjection(role);
             if (serverMode) role = projection.role;
             world.ApplyProjection(projection, serverMode, serverMode ? serverClient.View?.movement_paths : null, serverMode ? serverClient.View?.units : null);
-            RebuildMapLabels();
+            world.ApplyFivepoint(serverMode ? serverClient.View?.fivepoint : null);
             if (!projection.units.Any(unit => unit.id == selectedId)) selectedId = projection.units.FirstOrDefault()?.id;
+            RebuildMapLabels();
             world.Select(selectedId);
+            RefreshUnitRanges();
             SetText("sessionTitle", projection.title);
             SetText("sourceLabel", serverMode ? serverClient.Status : source.SourceLabel);
             SetText("roleCaption", RoleLabel(role));
@@ -144,6 +146,7 @@ namespace Qiongtu.Sandbox
                 root.Q<Button>(candidate == SandboxRole.Red ? "redRole" : candidate == SandboxRole.Blue ? "blueRole" : "hostRole").EnableInClassList("selected-role", role == candidate);
             UpdateCameraButton();
             if (serverMode) RefreshServerControls();
+            RefreshFivepointPanel();
             if (!serverMode && armyOverlay != null && managedArmyType.HasValue) RenderArmy();
             ObserveMatchEnd();
         }
@@ -174,8 +177,10 @@ namespace Qiongtu.Sandbox
             if (settingsOverlay != null) { RequestCloseSettings(() => SelectUnit(unitId)); return; }
             if (unitId == null || !projection.units.Any(unit => unit.id == unitId)) return;
             selectedId = unitId;
+            RebuildMapLabels();
             if (cameraRig.IsFollowing) cameraRig.Follow(selectedId);
             world.Select(selectedId);
+            RefreshUnitRanges();
             SandboxUnitData selected = projection.units.FirstOrDefault(unit => unit.id == selectedId);
             SetText("selectedSummary", selected == null ? "尚未选择单位" : selected.id + "  ·  " + selected.name);
             UpdateCameraButton();
@@ -604,9 +609,18 @@ namespace Qiongtu.Sandbox
             annotations.Add(groundProjectionLabel);
             foreach (SandboxUnitData unit in projection.units)
             {
-                var label = new Label(serverMode ? ServerUnitLabel(unit.id) : unit.id) { pickingMode = PickingMode.Ignore };
+                var label = new Label(UnitMapCaption(unit)) { pickingMode = PickingMode.Ignore };
                 label.AddToClassList("map-label");
                 label.AddToClassList(unit.side == SandboxRole.Red ? "red-text" : "blue-text");
+                label.EnableInClassList("selected-map-unit", unit.id == selectedId);
+                if (unit.maxHealth > 0)
+                {
+                    var health = new ProgressBar { lowValue = 0, highValue = unit.maxHealth, value = unit.health,
+                        title = unit.id == selectedId ? unit.health.ToString("0.##") + " / " + unit.maxHealth.ToString("0.##") : "" };
+                    health.AddToClassList("map-unit-health");
+                    health.pickingMode = PickingMode.Ignore;
+                    label.Add(health);
+                }
                 annotations.Add(label);
                 mapLabels.Add(unit.id, label);
             }

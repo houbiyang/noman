@@ -188,7 +188,25 @@ class DatabaseChecks(unittest.TestCase):
         """相同摘要的迁移重复执行不重复建表。"""
         database.apply_migrations(self.test_database)
         self.assertEqual(database.execute(self.test_database, "SELECT version FROM infrastructure.schema_migrations ORDER BY version;").splitlines(),
-            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_battle_reports", "007_movement_commands", "008_barracks_spawning", "009_agent_coordination", "010_history_agent_commands"])
+            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_battle_reports", "007_movement_commands", "008_barracks_spawning", "009_agent_coordination", "010_history_agent_commands", "011_fivepoint_commands", "012_fivepoint_planning"])
+
+    def test_02_line_endings_compatible_but_sql_changes_rejected(self):
+        """历史 LF 摘要可读取 CRLF 检出文件，未知内容摘要仍阻断迁移。"""
+        migration_file = database.BACKEND_ROOT / 'migrations/010_history_agent_commands.sql'
+        payload = migration_file.read_bytes()
+        raw_digest = hashlib.sha256(payload).hexdigest()
+        lf_digest = hashlib.sha256(payload.replace(b'\r\n', b'\n')).hexdigest()
+        self.assertIn(lf_digest, database.migration_checksums(payload))
+        self.assertNotIn(hashlib.sha256(payload + b' SELECT 1;').hexdigest(), database.migration_checksums(payload))
+        try:
+            database.execute(self.test_database, "UPDATE infrastructure.schema_migrations SET sha256=" + database.sql_literal(lf_digest) + " WHERE version='010_history_agent_commands';")
+            database.apply_migrations(self.test_database)
+            self.assertEqual(database.execute(self.test_database, "SELECT sha256 FROM infrastructure.schema_migrations WHERE version='010_history_agent_commands';"), lf_digest)
+            database.execute(self.test_database, "UPDATE infrastructure.schema_migrations SET sha256=" + database.sql_literal('0' * 64) + " WHERE version='010_history_agent_commands';")
+            with self.assertRaisesRegex(database.DatabaseError, '已应用迁移文件发生变化'):
+                database.apply_migrations(self.test_database)
+        finally:
+            database.execute(self.test_database, "UPDATE infrastructure.schema_migrations SET sha256=" + database.sql_literal(raw_digest) + " WHERE version='010_history_agent_commands';")
 
     def test_02_branch_upgrade_preserves_existing_command_history(self):
         """分别从历史报告和智能体分支升级，已有合法命令不能被另一分支的旧约束拒绝。"""

@@ -143,6 +143,15 @@ pre { max-height: 360px; overflow: auto; padding: 16px; border-radius: 4px; back
 .danger { color: #efb48e; }
 .page-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line-soft); color: #7f9579; font-size: .72rem; }
 [hidden] { display: none !important; }
+.cooperation-units { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
+.cooperation-unit { border: 1px solid var(--line-soft); border-radius: 5px; padding: 16px; }
+.cooperation-unit h3 { margin: 0 0 10px; font-size: .95rem; }
+.cooperation-unit p { margin: 6px 0; }
+.cooperation-task { scroll-margin-top: 20px; }
+.cooperation-task:target { outline: 2px solid var(--gold); outline-offset: 3px; }
+.cooperation-record { padding: 12px 0; border-bottom: 1px solid var(--line-soft); overflow-wrap: anywhere; }
+.cooperation-record p { margin: 4px 0; white-space: pre-wrap; }
+.cooperation-panel a { color: var(--gold-bright); overflow-wrap: anywhere; }
 @media (min-width: 1700px) { .planning-body .actions { min-width: 220px; } .panel { padding: 28px; } .execution-panel { padding: 0; } .agent-overview { padding: 4px 0 0; } .rules-panel { padding: 14px 0; } }
 @media (max-width: 1250px) { main { padding: 24px; } .layout { grid-template-columns: 320px minmax(0, 1fr); gap: 22px; } .execution-grid { grid-template-columns: minmax(0, 1fr); } .planning-body { grid-template-columns: minmax(0, 1fr); gap: 14px; } .planning-body .actions { display: flex; } .planning-body .actions button { width: auto; } .roles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 0; } .role:nth-child(2) { border: 0; padding-right: 0; } .role:nth-child(3) { padding-left: 0; } }
 @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .layout aside { position: static; } .toolbar label { margin-left: auto; } .connection-state { flex-basis: 100%; } .page-header { align-items: flex-start; } .page-subtitle { line-height: 1.8; } .flow-panel { align-items: flex-start; gap: 14px; } .flow { gap: 8px; line-height: 1.8; } .roles { grid-template-columns: repeat(4, minmax(0, 1fr)); } .role:nth-child(2) { padding-right: 20px; border-right: 1px solid var(--line-soft); } .role:nth-child(3) { padding-left: 20px; } }
@@ -222,6 +231,13 @@ pre { max-height: 360px; overflow: auto; padding: 16px; border-radius: 4px; back
             <p id="result" class="muted"></p>
         </section>
 
+        <section class="panel cooperation-panel" aria-labelledby="cooperationTitle">
+            <div class="card-heading"><h2 id="cooperationTitle">单位协作记录</h2><span class="section-note" id="cooperationIdentity">未连接席位</span></div>
+            <div id="cooperationUnits" class="cooperation-units"><p class="muted">连接席位后查看单位状态。</p></div>
+            <details open><summary>任务依赖与执行结果</summary><div id="cooperationTasks"></div></details>
+            <details><summary>当前观察与历史记录</summary><div id="observationRecords"></div></details>
+            <details><summary>已保存事件时间线</summary><p class="muted">显示当前分支已返回的最近事件。</p><div id="cooperationTimeline"></div></details>
+        </section>
         <div class="flow-panel"><span class="flow-caption">协同执行流程</span><div class="flow"><span>冻结本方局势</span>→<span>兵种并行分析</span>→<span>总指挥协调</span>→<span>规则校验</span>→<span>本方确认</span>→<span>按步执行</span></div></div>
         <details class="panel rules-panel"><summary>当前规则与限制</summary><pre id="limitations">尚未启用协同测试。</pre></details>
     </div>
@@ -234,26 +250,163 @@ const apiBase='__AGENT_API_BASE__', mapHash='__AGENT_MAP_HASH__';
 const roleNames={commander:'总指挥',recon:'侦察',ground:'陆兵',support:'保障'};
 const statusNames={queued:'排队',running:'执行中',waiting:'等待条件',waiting_human:'等待本方确认',succeeded:'完成',failed:'失败',stale:'依据失效',cancelled:'取消',preparing:'准备',paused:'暂停',awaiting_confirmation:'等待方案确认',finished:'结束',neutral:'中立',controlled:'已控制',capturing:'占领中',neutralizing:'中立化中',contested:'争夺中',test_surface_verified:'测试地表通过',needs_verification:'待核验'};
 const actionNames={move:'移动',observe:'观察',capture:'占领',hold:'守点',resupply:'补给',wait:'等待'};
-let session=null,view=null,configuration=null,pending=null,refreshing=false;
+let session=null,view=null,configuration=null,pending=null,refreshing=false,connectionSequence=0;
 const element=id=>document.getElementById(id);
 const text=value=>String(value??'—');
 const escaped=value=>text(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+/** 根据角色过滤视图展示单位、任务、观察和已保存事件。 */
+function renderCooperation(current) {
+    const containers = ['cooperationUnits', 'cooperationTasks', 'observationRecords', 'cooperationTimeline'];
+    if (!current) {
+        for (const id of containers) element(id).innerHTML = '<p class="muted">连接席位后查看记录。</p>';
+        element('cooperationIdentity').textContent = '未连接席位';
+        return;
+    }
+    const plan = current.coordination?.plans?.[current.role];
+    const tasks = plan?.tasks || [];
+    const contacts = current.contacts || [];
+    const history = current.last_seen_records || [];
+    const stateLabels = {...statusNames, adopted:'已采用', succeeded:'已完成', failed:'已失败', cancelled:'已取消'};
+    const label = status => stateLabels[status] || status || '待确认';
+    const taskAnchor = task => 'cooperation-task-' + encodeURIComponent(task.task_id);
+    const taskLink = task => `<a href="#${escaped(taskAnchor(task))}">${escaped(task.task_id)}</a>`;
+    const atStep = step => step == null ? '时间待核对' : `第${escaped(step)}步`;
+    const names = {recon:'无人机', ground:'履带单位', support:'保障车'};
+    element('cooperationIdentity').textContent = `第${current.clock?.simulation_step ?? '—'}步 · 分支 ${current.context?.branch_id ?? '待核对'}`;
+    element('cooperationUnits').innerHTML = (current.units || []).map(unit => {
+        const assigned = tasks.filter(task => task.unit_id === unit.unit_id);
+        const observationTasks = assigned.filter(task => task.action === 'observe' && task.result?.observed_step != null);
+        const observedSteps = [...contacts, ...history].filter(record => record.observer_unit_id === unit.unit_id)
+            .map(record => record.observed_step).concat(observationTasks.map(task => task.result.observed_step));
+        const latest = observedSteps.length ? Math.max(...observedSteps) : null;
+        const observations = unit.unit_type === 'recon'
+            ? `<p>最近观察 ${atStep(latest)} · 当前${contacts.filter(record => record.observer_unit_id === unit.unit_id).length}条 · 历史${history.filter(record => record.observer_unit_id === unit.unit_id).length}条</p>` : '';
+        const inventory = unit.unit_type === 'support' ? `<p>库存 ${escaped(unit.supply)}</p>` : '';
+        return `<article class="cooperation-unit"><h3>${escaped(unit.name || unit.unit_id)} · ${escaped(names[unit.unit_type] || unit.unit_type)}</h3>
+            <p class="muted">${escaped(unit.status)} · 能源 ${escaped(unit.energy)}</p>${observations}${inventory}
+            <p>${assigned.map(task => `${taskLink(task)} ${escaped(label(task.status))}`).join('<br>') || '当前无可见关联任务'}</p></article>`;
+    }).join('') || '<p class="muted">当前无可见单位。</p>';
+    const emptyTasks = current.role === 'host' ? '请在本方席位查看私有任务记录。' : '当前无已采用任务。';
+    element('cooperationTasks').innerHTML = tasks.length
+        ? `<p class="muted">方案状态 ${escaped(label(plan.status))}</p>` + tasks.map(task => {
+            const dependencies = (task.depends_on || []).map(identity => {
+                const previous = tasks.find(candidate => candidate.task_id === identity);
+                return previous ? `${taskLink(previous)} ${escaped(label(previous.status))}` : `${escaped(identity)} 记录待核对`;
+            }).join('、') || '无前置任务';
+            let result = '尚无已确认结果';
+            if (task.action === 'observe' && task.result?.contact_count != null)
+                result = `本次观察${escaped(task.result.contact_count)}条 · ${atStep(task.result.observed_step)}`;
+            else if (task.action === 'resupply' && task.result?.transferred != null)
+                result = `累计转移${escaped(task.result.transferred)}资源点 · 接收单位 ${escaped(task.target_unit_id)}`;
+            else if (task.completed_step != null) result = `${atStep(task.completed_step)}完成`;
+            return `<article id="${escaped(taskAnchor(task))}" class="cooperation-task cooperation-record" tabindex="-1">
+                <strong>${escaped(task.task_id)} · ${escaped(actionNames[task.action] || task.action)} · ${escaped(label(task.status))}</strong>
+                <p>单位 ${escaped(task.unit_id)}${task.target_unit_id ? ` · 服务对象 ${escaped(task.target_unit_id)}` : ''}</p>
+                <p>前置依赖 ${dependencies}</p><p>${result}</p>
+                <p class="muted">开始 ${atStep(task.started_step)} · 完成 ${atStep(task.completed_step)}</p>
+                ${task.blocked_reason ? `<p class="danger">${escaped(task.blocked_reason)}</p>` : ''}</article>`;
+        }).join('') : `<p class="muted">${emptyTasks}</p>`;
+    element('observationRecords').innerHTML = [
+        ...contacts.map(record => ({record, state:'当前记录'})),
+        ...history.map(record => ({record, state:'历史记录'}))
+    ].map(({record, state}) => `<article class="cooperation-record"><strong>${state} · ${escaped(record.unit_id)}</strong>
+        <p>${atStep(record.observed_step)} · 来源单位 ${escaped(record.observer_unit_id)}</p></article>`).join('')
+        || '<p class="muted">当前视图没有观察记录。已完成观察的结果请查看任务详情。</p>';
+    const events = [...new Map((current.timeline || []).map(event => [event.event_id, event])).values()];
+    element('cooperationTimeline').innerHTML = events.slice().reverse().map(event =>
+        `<article class="cooperation-record"><strong>${atStep(event.simulation_step)} · ${escaped(event.title)}</strong>
+        <p>${escaped(event.detail)}</p><p class="muted">记录 ${escaped(event.event_id)}</p></article>`).join('')
+        || '<p class="muted">当前分支暂无可见事件。</p>';
+}
 function feedback(message,error=false){element('feedback').textContent=message;element('feedback').classList.toggle('error',error);}
 async function request(path,options={}){if(!session)throw Error('请先连接席位');const response=await fetch(apiBase+'/games/'+session.game_id+path,{...options,headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...options.headers}});const body=await response.json();if(!response.ok){const error=Error(body.error?.message||'请求未完成');error.httpStatus=response.status;error.response=body;throw error;}return body;}
-async function connect(){session=null;view=null;pending=null;element('checkPending').hidden=true;const response=await fetch('/api/local-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:element('role').value,map_hash:mapHash})});const body=await response.json();if(!response.ok)throw Error(body.error?.message||'本机连接失败');session=body;const host=element('role').value==='host';element('hostPanel').hidden=!host;element('configPanel').hidden=host;element('planningPanel').hidden=host;element('connection').textContent=(host?'主持人':element('role').value==='red'?'红方':'蓝方')+'已连接当前对局';if(!host){const data=await request('/agents/configuration');configuration=data.configuration;renderConfiguration(data);}await refresh();feedback('席位已连接。红蓝模型独立配置，未配置时不会生成固定建议冒充模型。');}
+/** 连接选定席位，并丢弃中途切换席位产生的过期响应。 */
+async function connect() {
+    const selectedRole = element('role').value;
+    const connectionId = ++connectionSequence;
+    session = null; view = null; pending = null;
+    element('checkPending').hidden = true;
+    clearSeatDisplay();
+    const response = await fetch('/api/local-session', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({role:selectedRole, map_hash:mapHash})});
+    const body = await response.json();
+    if (connectionId !== connectionSequence || element('role').value !== selectedRole) return;
+    if (!response.ok) throw Error(body.error?.message || '本机连接失败');
+    session = body;
+    const activeSession = session;
+    const host = selectedRole === 'host';
+    element('hostPanel').hidden = !host;
+    element('configPanel').hidden = host;
+    element('planningPanel').hidden = host;
+    element('connection').textContent = (host ? '主持人' : selectedRole === 'red' ? '红方' : '蓝方') + '已连接当前对局';
+    if (!host) {
+        const data = await request('/agents/configuration');
+        if (session !== activeSession) return;
+        configuration = data.configuration;
+        renderConfiguration(data);
+    }
+    await refresh();
+    if (session === activeSession) feedback('席位已连接，记录随当前分支刷新。');
+}
+
 function renderConfiguration(data){element('configTitle').textContent=(data.side==='red'?'红方':'蓝方')+'模型配置';for(const name of ['base_url','model','credential_ref','temperature','max_output_tokens','timeout_seconds'])element(name).value=configuration.model[name];element('temperature').value=configuration.model.temperature??'';element('output_token_parameter').value=configuration.model.output_token_parameter||'max_tokens';element('reasoning_effort').value=configuration.model.reasoning_effort||'';element('providerPreset').value='';element('enabled').checked=configuration.model.enabled;element('max_total_tokens').value=configuration.max_total_tokens;element('modelStatus').textContent=data.configured?'模型配置及环境变量已就绪，远端可用性将在实际请求时验证':'模型未配置，或后端进程没有读取到对应密钥环境变量';element('policies').innerHTML=Object.entries(roleNames).map(([role,title])=>`<details><summary>${title}策略与预算</summary><div class="fields"><label>风险偏好<select data-role="${role}" data-policy="risk_preference"><option value="conservative">保守</option><option value="balanced">均衡</option><option value="active">积极</option></select></label>${[['reserve_energy','保留能源'],['information_max_age_steps','信息最大年龄 / 步'],['planning_horizon_steps','规划范围 / 步'],['max_tool_calls','工具调用上限'],['max_model_calls','模型调用上限']].map(([name,label])=>`<label>${label}<input type="number" data-role="${role}" data-policy="${name}"></label>`).join('')}</div></details>`).join('');document.querySelectorAll('[data-policy]').forEach(input=>input.value=configuration[input.dataset.role][input.dataset.policy]);}
 async function saveConfiguration(){const updated=structuredClone(configuration);for(const name of ['base_url','model','credential_ref'])updated.model[name]=element(name).value.trim();for(const name of ['max_output_tokens','timeout_seconds'])updated.model[name]=Number(element(name).value);updated.model.temperature=element('temperature').value.trim()===''?null:Number(element('temperature').value);updated.model.output_token_parameter=element('output_token_parameter').value;updated.model.reasoning_effort=element('reasoning_effort').value||null;updated.model.enabled=element('enabled').checked;updated.max_total_tokens=Number(element('max_total_tokens').value);document.querySelectorAll('[data-policy]').forEach(input=>updated[input.dataset.role][input.dataset.policy]=input.dataset.policy==='risk_preference'?input.value:Number(input.value));const data=await request('/agents/configuration',{method:'POST',body:JSON.stringify(updated)});configuration=data.configuration;renderConfiguration(data);feedback('已保存本方配置，另一方配置保持独立。');}
 async function command(kind,payload={}){if(pending)throw Error('原请求结果尚未核对，请先点击核对按钮');await refresh();pending={kind:'command',key:crypto.randomUUID(),body:{context:view.context,command_type:kind,payload}};element('checkPending').hidden=false;return sendPending();}
 async function sendPending(){const current=pending;if(!current)return;try{const path=current.kind==='run'?'/agents/runs':'/commands';const result=await request(path,{method:'POST',headers:{'Idempotency-Key':current.key},body:JSON.stringify(current.body)});pending=null;element('checkPending').hidden=true;if(result.status==='rejected')throw Error(result.error?.message||'规则拒绝操作');feedback(current.kind==='run'?'已登记四角色规划，请查看运行进度。':'操作已由后端确认。');await refresh();}catch(error){if(error.httpStatus>=400&&error.httpStatus<500){pending=null;element('checkPending').hidden=true;await refresh();}feedback(error.message+(pending?'；结果不确定，请核对原请求。':''),true);throw error;}}
 async function checkPending(){if(!pending)return;if(pending.kind==='run')return sendPending();try{const result=await request('/commands/by-request?origin_branch_id='+encodeURIComponent(pending.body.context.branch_id)+'&request_key='+encodeURIComponent(pending.key));pending=null;element('checkPending').hidden=true;feedback(result.status==='succeeded'?'原命令已成功。':result.error?.message||'原命令已拒绝。',result.status!=='succeeded');await refresh();}catch(error){if(error.httpStatus===404)return sendPending();feedback(error.message+'；保留原请求。再次点击可继续查询。',true);}}
 async function plan(){if(pending)throw Error('请先核对原请求');await refresh();pending={kind:'run',key:crypto.randomUUID(),body:{context:view.context,reason:element('reason').value.trim()}};element('checkPending').hidden=false;return sendPending();}
-async function refresh(){if(!session||refreshing)return;refreshing=true;try{view=await request('/view');element('phase').textContent=statusNames[view.clock.phase]||view.clock.phase;element('step').textContent=view.clock.simulation_step;element('redScore').textContent=text(view.scores?.red);element('blueScore').textContent=text(view.scores?.blue);element('ruleStatus').textContent=view.coordination?'协同测试 v1':'原有演示';element('points').innerHTML=(view.coordination?.points||[]).map(point=>`<tr><td>${escaped(point.name)}</td><td>${point.owner==='red'?'红方':point.owner==='blue'?'蓝方':'中立'}</td><td>${escaped(statusNames[point.status]||point.status)}</td><td>${point.progress_steps}</td><td>${escaped(statusNames[point.navigation_status]||point.navigation_status)}</td></tr>`).join('');const ownPlan=view.coordination?.plans?.[element('role').value];element('tasks').innerHTML=(ownPlan?.tasks||[]).map(task=>`<tr><td>${escaped(task.task_id)}<br>${escaped(task.unit_id)}</td><td>${escaped(actionNames[task.action])}</td><td>${escaped(task.depends_on.join('、')||'无')}</td><td>${escaped(statusNames[task.status]||task.status)}<br>${escaped(task.blocked_reason||'')}</td></tr>`).join('');element('limitations').textContent=JSON.stringify({rules:view.coordination?.rules,limitations:view.coordination?.limitations},null,2);element('result').textContent=view.clock.phase==='finished'?'对局结束：'+(view.scores?.winner==='red'?'红方获胜':view.scores?.winner==='blue'?'蓝方获胜':'平局')+'；原因 '+text(view.scores?.reason):'任务按仿真步执行，等待人工或暂停期间不计时、不计分。';if(element('role').value!=='host'){const runs=await request('/agents/runs');renderRuns(runs.items);}else{element('roles').innerHTML='';element('runs').textContent='主持人不读取红蓝私有建议，请在各自席位查看。';}}finally{refreshing=false;}}
+/** 刷新当前席位的只读记录，忽略席位切换前发出的响应。 */
+async function refresh() {
+    if (!session || refreshing) return;
+    const activeSession = session;
+    refreshing = true;
+    try {
+        const current = await request('/view');
+        if (session !== activeSession) return;
+        view = current;
+        element('phase').textContent = statusNames[view.clock.phase] || view.clock.phase;
+        element('step').textContent = view.clock.simulation_step;
+        element('redScore').textContent = text(view.scores?.red);
+        element('blueScore').textContent = text(view.scores?.blue);
+        element('ruleStatus').textContent = view.coordination ? '协同测试 v1' : '原有演示';
+        element('points').innerHTML = (view.coordination?.points || []).map(point => `<tr><td>${escaped(point.name)}</td><td>${point.owner === 'red' ? '红方' : point.owner === 'blue' ? '蓝方' : '中立'}</td><td>${escaped(statusNames[point.status] || point.status)}</td><td>${escaped(point.progress_steps)}</td><td>${escaped(statusNames[point.navigation_status] || point.navigation_status)}</td></tr>`).join('');
+        const ownPlan = view.coordination?.plans?.[view.role];
+        element('tasks').innerHTML = (ownPlan?.tasks || []).map(task => `<tr><td><a href="#cooperation-task-${escaped(encodeURIComponent(task.task_id))}">${escaped(task.task_id)}</a><br>${escaped(task.unit_id)}</td><td>${escaped(actionNames[task.action])}</td><td>${escaped((task.depends_on || []).join('、') || '无')}</td><td>${escaped(statusNames[task.status] || task.status)}<br>${escaped(task.blocked_reason || '')}</td></tr>`).join('');
+        element('limitations').textContent = JSON.stringify({rules:view.coordination?.rules, limitations:view.coordination?.limitations}, null, 2);
+        element('result').textContent = view.clock.phase === 'finished'
+            ? '对局结束 · ' + text(view.scores?.reason)
+            : '任务状态按仿真步更新。';
+        renderCooperation(view);
+        if (view.role !== 'host') {
+            const runs = await request('/agents/runs');
+            if (session === activeSession) renderRuns(runs.items);
+        } else {
+            element('roles').innerHTML = '';
+            element('runs').textContent = '请在本方席位查看私有建议。';
+        }
+    } finally {
+        refreshing = false;
+    }
+}
+/** 清除上一席位内容，等待新席位通过接口重新授权。 */
+function clearSeatDisplay() {
+    renderCooperation(null);
+    for (const id of ['tasks', 'points', 'roles', 'runs', 'limitations', 'policies']) element(id).innerHTML = '';
+    for (const id of ['redScore', 'blueScore', 'phase', 'step', 'ruleStatus']) element(id).textContent = '—';
+    element('result').textContent = '';
+    element('connection').textContent = '未连接席位';
+    element('modelStatus').textContent = '等待连接';
+    for (const id of ['base_url', 'model', 'credential_ref', 'temperature', 'max_output_tokens', 'timeout_seconds']) element(id).value = '';
+    element('configPanel').hidden = true;
+    element('planningPanel').hidden = true;
+    element('hostPanel').hidden = true;
+}
+
 function renderRuns(items){element('roles').innerHTML=Object.entries(roleNames).map(([role,title])=>{const latest=items.find(item=>item.role===role);return `<article class="role"><h3>${title}</h3><span class="badge">${escaped(statusNames[latest?.status]||'尚未运行')}</span><p class="muted">${escaped(latest?.error?.message||latest?.output?.output?.summary||'等待本方规划')}</p></article>`;}).join('');element('runs').innerHTML=items.filter(item=>item.role==='commander').slice(0,8).map(run=>`<details ${run.status==='waiting_human'?'open':''}><summary>${escaped(statusNames[run.status]||run.status)} · ${escaped(run.output?.output?.summary||'四角色协同分析')}</summary><p class="muted">${escaped(run.run_id)}</p>${run.error?`<p class="danger">${escaped(run.error.message)}</p>`:''}<div class="actions">${run.status==='waiting_human'?`<button data-review="approve" data-run="${run.run_id}" class="primary">批准采用</button><button data-review="reject" data-run="${run.run_id}">驳回</button>`:''}${['queued','running','waiting_human','failed'].includes(run.status)?`<button data-cancel="${run.run_id}">取消分析</button>`:''}${['failed','running','queued'].includes(run.status)?`<button data-resume="${run.run_id}">恢复检查点</button>`:''}</div><pre>${escaped(JSON.stringify(run.output||run.stages,null,2))}</pre></details>`).join('')||'尚无本方分析。';}
 async function safely(action){try{await action();}catch(error){feedback(error.message,true);}}
 element('providerPreset').onchange=()=>{const provider=element('providerPreset').value;if(!provider)return;const kimi=provider==='kimi';element('base_url').value=kimi?'https://api.moonshot.cn/v1':'https://api.deepseek.com';element('model').value=kimi?'kimi-k3.1-pro':'deepseek-flash';element('credential_ref').value=kimi?'MOONSHOT_API_KEY':'DEEPSEEK_API_KEY';element('temperature').value='';element('output_token_parameter').value=kimi?'max_completion_tokens':'max_tokens';element('reasoning_effort').value='low';feedback('已填写官方接口示例，请核对模型权限和预算，再启用并保存本方配置。');};
 element('connect').onclick=()=>safely(connect);element('refresh').onclick=()=>safely(refresh);element('saveConfig').onclick=()=>safely(saveConfiguration);element('plan').onclick=()=>safely(plan);element('checkPending').onclick=()=>safely(checkPending);element('ready').onclick=()=>safely(()=>command('set_ready',{ready:true}));element('enableRules').onclick=()=>safely(()=>command('enable_coordination',{}));document.querySelectorAll('[data-command]').forEach(button=>button.onclick=()=>safely(()=>command(button.dataset.command)));
 element('runs').onclick=event=>{const button=event.target.closest('button');if(!button)return;safely(async()=>{if(button.dataset.review)await command('review_agent_plan',{run_id:button.dataset.run,decision:button.dataset.review});else if(button.dataset.cancel)await request('/agents/runs/'+button.dataset.cancel+'/cancel',{method:'POST'});else if(button.dataset.resume)await request('/agents/runs/'+button.dataset.resume+'/resume',{method:'POST'});await refresh();});};
-element('role').onchange=()=>{session=null;view=null;feedback('席位已切换，请重新连接以取得本方权限。');};
+element('role').onchange=()=>{connectionSequence++;session=null;view=null;configuration=null;pending=null;element('checkPending').hidden=true;clearSeatDisplay();feedback('席位已切换，请重新连接以取得本方权限。');};
 setInterval(()=>{if(session)safely(refresh);},3000);
 </script>
 </html>

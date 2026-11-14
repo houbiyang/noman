@@ -26,6 +26,9 @@
 .army-command-detail { font-size:12px; color:rgb(168,188,204); margin-top:4px; white-space:normal; }
 .army-secondary { background-color:rgb(35,49,62); border-width:1px; border-color:rgb(79,104,124); color:rgb(226,238,246); min-height:44px; padding:8px 16px; border-radius:6px; margin-left:12px; }
 .army-card-selected { border-color:rgb(139,193,216); background-color:rgb(32,49,64); }
+.army-attribute-caption { color:rgb(218,205,156); font-size:12px; margin-top:8px; white-space:normal; }
+.army-attribute-details { margin-top:8px; color:rgb(197,216,228); }
+.army-range-toggle { margin-top:8px; color:rgb(197,216,228); white-space:normal; }
 
 /* Camp selection and unit management share the same compact right drawer. */
 .army-manage { min-height:36px; margin:6px 0 0; border-width:1px; border-color:rgb(85,110,103); border-radius:5px; background-color:rgb(30,49,47); color:rgb(220,230,220); font-size:12px; white-space:normal; }

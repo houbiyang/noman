@@ -200,6 +200,12 @@ namespace Qiongtu.Sandbox
 
         private void BuildResultReport()
         {
+            SandboxFivepointView fivepoint = !string.IsNullOrEmpty(resultArchiveTitle) ? selectedHistory?.fivepoint : serverClient?.View?.fivepoint;
+            if (fivepoint != null && !string.IsNullOrEmpty(fivepoint.rule_version))
+            {
+                BuildFivepointResultReport(fivepoint);
+                return;
+            }
             ReportHeading("AFTER ACTION REPORT / P-09", "行动落幕，决策留痕。", "演示结果 · 青岚三点驻守加权计分。原始文档与项目适配规则分别标注。");
             var sources = SettingsGroup(settingsContent, "report-toolbar");
             AddButton(sources, "规则算例预演", () => { showingPreview = true; resultArchiveTitle = null; resultEvidence = SandboxBattleRules.ProjectPreview(); RenderSettingsSection(); }, "report-button").name = "previewRuleResult";

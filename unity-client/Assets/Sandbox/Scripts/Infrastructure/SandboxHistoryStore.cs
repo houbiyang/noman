@@ -32,6 +32,7 @@ namespace Qiongtu.Sandbox
         public SandboxHistoryObservation observation;
         public bool hasVictory;
         public SandboxVictoryEvidence victory;
+        public SandboxFivepointView fivepoint;
     }
 
     public sealed class SandboxHistoryStore
