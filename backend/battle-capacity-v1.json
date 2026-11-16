@@ -1,0 +1,15 @@
+{
+  "schema_version": "qinglan-software-capacity-v1",
+  "release_id": "qinglan-local-test-capacity-2026-11-14-v1",
+  "scope": "local_battle_test_only",
+  "rulebook_anchor": "main-4-1",
+  "unit_types": ["recon", "ground", "support"],
+  "minimum_per_type": 0,
+  "maximum_per_type": 10,
+  "minimum_per_side": 1,
+  "maximum_per_side": 30,
+  "maximum_per_match": 60,
+  "asymmetric_allowed": true,
+  "overflow_policy": "reject_without_truncation",
+  "formal_release_certified": false
+}

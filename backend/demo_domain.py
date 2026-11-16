@@ -24,7 +24,9 @@ def map_manifest() -> dict:
     """读取当前公开地图身份及连接，省略显示高度数组和大型网格。"""
     raw = MAP_PATH.read_bytes()
     data = json.loads(raw)
-    return dict(map_id=data["mapId"], content_hash=data["contentHash"], source_file_sha256=hashlib.sha256(raw).hexdigest(),
+    from backend.capture_map import current_layout
+    layout, layout_hash = current_layout()
+    return dict(capture_layout=deepcopy(layout), capture_layout_sha256=layout_hash, map_id=data["mapId"], content_hash=data["contentHash"], source_file_sha256=hashlib.sha256(raw).hexdigest(),
                 display_coordinate_system=dict(unit="meter", width=data["width"], length=data["length"]),
                 business_coordinate_system=dict(id="unity-demo-120x80-v1", width="120", length="80"),
                 source_label="当前 Unity 固定虚构显示地图", navigation_status="not_authoritative",

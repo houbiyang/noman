@@ -1,0 +1,120 @@
+{
+  "version": "qinglan-unit-interactions-v1.1-test-1",
+  "source": "docs/rules/青岚_游戏规则_v1.1.md",
+  "step_seconds": 5,
+  "geometry_policy": "conservative_test_envelopes_not_formal_geometry",
+  "unit_profiles": {
+    "recon": {
+      "durability": 40,
+      "energy": 100,
+      "speed_m_per_minute": 800,
+      "energy_per_km": 5,
+      "observation_m": 1400,
+      "ammo": 0,
+      "hover_energy_per_minute": 2
+    },
+    "ground": {
+      "durability": 100,
+      "energy": 100,
+      "speed_m_per_minute": 400,
+      "energy_per_km": 8,
+      "observation_m": 900,
+      "ammo": 60
+    },
+    "support": {
+      "durability": 80,
+      "energy": 100,
+      "speed_m_per_minute": 300,
+      "energy_per_km": 10,
+      "observation_m": 700,
+      "ammo": 0,
+      "stocks": {
+        "energy": 200,
+        "ammo": 120,
+        "repair": 100
+      }
+    }
+  },
+  "attack": {
+    "cooldown_seconds": 10,
+    "ammo_per_shot": 1,
+    "damage": 16,
+    "range_ground_m": 600,
+    "range_air_m": 800,
+    "moving_damage_factor": 0.6,
+    "moving_energy_factor": 1.25
+  },
+  "service": {
+    "range_m": 100,
+    "amount_per_tick": 2
+  },
+  "barracks": {
+    "range_m": 100,
+    "quiet_seconds": 15,
+    "slots_per_tick": 4,
+    "energy": 50,
+    "ammo": 50,
+    "durability": 50,
+    "stocks": {
+      "energy": 50,
+      "ammo": 60,
+      "repair": 50
+    }
+  },
+  "movement_profile": {
+    "profile_id": "qinglan-movement-test-v1",
+    "test_only": true,
+    "map_id": "qinglan-strategic-v6",
+    "cell_m": 5,
+    "road_access_limit_m": 150,
+    "reverse_limit_m": 100,
+    "reverse_angle_degrees": 15,
+    "safety_margin_m": 1,
+    "terrain_factors": {
+      "ground": {
+        "open": 0.65,
+        "field": 0.5,
+        "sparse_forest": 0.4,
+        "road": 1,
+        "bridge": 1,
+        "gravel": 0.8
+      },
+      "support": {
+        "open": 0.45,
+        "field": 0.3,
+        "road": 1,
+        "bridge": 1,
+        "gravel": 0.7
+      }
+    },
+    "unit_profiles": {
+      "recon": {
+        "speed_m_per_step": 800,
+        "energy_per_km": 5,
+        "radius_m": 2
+      },
+      "ground": {
+        "speed_m_per_step": 400,
+        "energy_per_km": 8,
+        "radius_m": 2
+      },
+      "support": {
+        "speed_m_per_step": 300,
+        "energy_per_km": 10,
+        "radius_m": 3
+      }
+    },
+    "fast_speed_factor": 1.25,
+    "fast_energy_factors": {
+      "recon": 1.25,
+      "ground": 1.2,
+      "support": 1.2
+    },
+    "reverse_speed_factors": {
+      "ground": 0.4,
+      "support": 0.35
+    },
+    "reverse_energy_factor": 1.1,
+    "algorithm_version": "qinglan-grid-road-v1"
+  }
+}

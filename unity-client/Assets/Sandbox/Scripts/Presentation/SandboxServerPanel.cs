@@ -40,6 +40,8 @@ namespace Qiongtu.Sandbox
             deploymentMovingUnit = null;
             Application.runInBackground = true;
             serverSaves = Array.Empty<SandboxServerSave>(); serverSavesLoaded = false; serverSavesOffset = 0;
+            CloseRecordedReplay();
+            CloseSelectedUnitControls();
             ClosePanel(); CloseArmy(); CancelArmyCommand(); CloseModal();
             world.ClearProjection(); selectedId = null; cameraRig.ReturnToOverview();
             serverClient.ConnectAutomatically(next == SandboxRole.Red ? "red" : next == SandboxRole.Blue ? "blue" : "host");
@@ -70,6 +72,7 @@ namespace Qiongtu.Sandbox
             bool changed = head != serverHead;
             if (serverClient.View == null || (serverClient.View.context.branch_id != serverBranch && serverBranch != null))
             {
+                CloseSelectedUnitControls();
                 world.ClearProjection(); cameraRig.ReturnToOverview(); selectedId = null;
                 CloseArmy(); CancelArmyCommand(); CloseModal();
             }
@@ -314,8 +317,23 @@ namespace Qiongtu.Sandbox
         /// <summary>登记标识仅解释事件记录，不伪装单位已故障。</summary>
         private string ServerUnitLabel(string id)
         {
-            int count = serverClient.View?.conditions.Count(condition => condition.target_unit_id == id) ?? 0;
-            return id + (count == 0 ? string.Empty : " · 事件登记 " + count);
+            var view = serverClient.View;
+            int count = view?.conditions?.Count(condition => condition.target_unit_id == id) ?? 0;
+            var unit = (view?.units ?? Array.Empty<SandboxServerUnit>()).Concat(view?.contacts ?? Array.Empty<SandboxServerUnit>())
+                .FirstOrDefault(item => item.unit_id == id);
+            string label = id + (count == 0 ? string.Empty : " · 事件登记 " + count);
+            if (unit == null || (view?.unit_interactions?.enabled != true && view?.manual_battle == null)) return label;
+            label += "\n血量 " + unit.durability.ToString("0.#") + "/" + unit.max_durability.ToString("0.#")
+                + " · 能源 " + unit.energy.ToString("0.#");
+            if (unit.max_ammo > 0) label += " · 弹药 " + unit.ammo.ToString("0") + "/" + unit.max_ammo.ToString("0");
+            if (view.manual_battle != null) label += "\n移速 " + unit.current_speed_m_per_minute.ToString("0.#") + " 米/仿真分钟";
+            // 接口只给本方/主持人返回任务摘要；敌方contacts不携带任何私有任务字段。
+            if (unit.interaction_action == "attack") label += string.IsNullOrEmpty(unit.interaction_target_id)
+                ? "\n攻击任务 · 目标当前不可见" : "\n攻击 → " + unit.interaction_target_id;
+            else if (unit.interaction_action == "recon") label += "\n侦察" + (string.IsNullOrEmpty(unit.interaction_target_id) ? " · 指定位置或目标暂不可见" : " → " + unit.interaction_target_id);
+            else if (unit.interaction_action == "resupply" || unit.interaction_action == "repair")
+                label += "\n" + (unit.interaction_action == "repair" ? "维修" : "补给") + " → " + unit.interaction_target_id;
+            return label;
         }
 
         private static string ServerTaskStatus(string value) => value == "not_evaluated" ? "待规则裁决" : value == "completed" ? "已完成" : value;

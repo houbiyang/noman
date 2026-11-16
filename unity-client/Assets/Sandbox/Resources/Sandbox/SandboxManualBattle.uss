@@ -1,0 +1,17 @@
+.manual-battle-bar {
+    position: absolute;
+    left: 30%;
+    right: 30%;
+    top: 100px;
+    padding: 12px 18px;
+    background-color: rgba(7, 28, 22, 0.97);
+    border-width: 1px;
+    border-color: rgb(61, 119, 92);
+    border-top-width: 3px;
+    border-top-color: rgb(95, 195, 149);
+    border-radius: 6px;
+    color: rgb(226, 239, 229);
+}
+.manual-battle-bar .army-footnote { white-space: normal; font-size: 12px; }
+.manual-battle-card { width: 860px; max-width: 90%; max-height: 82%; padding: 28px; }
+.manual-battle-card .body-text { white-space: normal; margin-top: 12px; margin-bottom: 12px; }

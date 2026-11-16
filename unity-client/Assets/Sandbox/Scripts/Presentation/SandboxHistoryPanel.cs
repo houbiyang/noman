@@ -17,6 +17,8 @@ namespace Qiongtu.Sandbox
         private string historyName = "";
         private int historyPage;
         private string resultArchiveTitle;
+        private SandboxManualBattleView resultManualArchive;
+        private SandboxReplayPoint[] resultManualArchivePoints;
 
         private SandboxHistoryStore History => historyStore ?? (historyStore = new SandboxHistoryStore());
 
@@ -69,7 +71,7 @@ namespace Qiongtu.Sandbox
             if (noticedEndKey == key) return;
             noticedEndKey = key;
             SaveCurrentHistory(true, out historyMessage);
-            showingPreview = false; resultEvidence = serverMode ? serverClient.View?.victory : null; resultArchiveTitle = null; pendingEndResult = true;
+            showingPreview = false; resultEvidence = serverMode ? serverClient.View?.victory : null; resultArchiveTitle = null; resultManualArchive = null; resultManualArchivePoints = null; pendingEndResult = true;
             Notify(historyMessage + "；结束结果可在设置 → 演示结果查看");
         }
 
@@ -82,7 +84,7 @@ namespace Qiongtu.Sandbox
 
         private void SelectResultScenario(int scenario)
         {
-            showingPreview = true; resultArchiveTitle = null; resultScenario = scenario; resultMessage = "";
+            showingPreview = true; resultArchiveTitle = null; resultManualArchive = null; resultManualArchivePoints = null; resultScenario = scenario; resultMessage = "";
             resultEvidence = SandboxBattleRules.ProjectPreview(scenario); RenderSettingsSection();
         }
 

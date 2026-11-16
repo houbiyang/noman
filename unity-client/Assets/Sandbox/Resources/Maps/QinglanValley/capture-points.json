@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "layoutId": "qinglan-five-points-v1.1",
+  "version": "2026-11-13-v1",
+  "baseMapId": "qinglan-strategic-v6",
+  "baseMapContentHash": "9413e292d2510395757861dd9bb6d4f444031bc0cc98929bb66ddb3f2d12e79b",
+  "coordinateUnit": "meter",
+  "points": [
+    {
+      "id": "P-01",
+      "name": "西岸上点",
+      "kind": "capture",
+      "x": 4500,
+      "z": 8500,
+      "radius": 250,
+      "initialOwner": "neutral",
+      "support": "ground",
+      "bridgeRoadId": "",
+      "areaPolicy": "circle"
+    },
+    {
+      "id": "P-02",
+      "name": "西岸下点",
+      "kind": "capture",
+      "x": 4500,
+      "z": 4400,
+      "radius": 250,
+      "initialOwner": "neutral",
+      "support": "ground",
+      "bridgeRoadId": "",
+      "areaPolicy": "circle"
+    },
+    {
+      "id": "P-03",
+      "name": "东岸上点",
+      "kind": "capture",
+      "x": 7600,
+      "z": 8500,
+      "radius": 250,
+      "initialOwner": "neutral",
+      "support": "ground",
+      "bridgeRoadId": "",
+      "areaPolicy": "circle"
+    },
+    {
+      "id": "P-04",
+      "name": "东岸下点",
+      "kind": "capture",
+      "x": 7600,
+      "z": 4400,
+      "radius": 250,
+      "initialOwner": "neutral",
+      "support": "ground",
+      "bridgeRoadId": "",
+      "areaPolicy": "circle"
+    },
+    {
+      "id": "P-05",
+      "name": "中央桥面点",
+      "kind": "capture",
+      "x": 6162.963,
+      "z": 5800,
+      "radius": 250,
+      "initialOwner": "neutral",
+      "support": "bridge_deck",
+      "bridgeRoadId": "ROAD_010",
+      "areaPolicy": "circle_intersect_bridge_deck"
+    }
+  ]
+}

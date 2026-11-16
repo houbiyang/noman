@@ -70,7 +70,13 @@ def main():
         with patch.object(database,'apply_migrations',side_effect=lambda name,enable_vectors=True:original(name,False)):
             suite=unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromName(module) for module in (
                 'backend.tests.test_battle_rules','backend.tests.test_qinglan_rules','backend.tests.test_service','backend.tests.test_battle_reports',
-                'backend.tests.test_spatial','backend.tests.test_map_catalog','backend.tests.test_web_launch'))
+                'backend.tests.test_unit_interactions','backend.tests.test_unit_interactions_api',
+                'backend.tests.test_rulebook','backend.tests.test_rulebook_db',
+                'backend.tests.test_battle_capacity','backend.tests.test_battle_capacity_db',
+                'backend.tests.test_battle_preflight','backend.tests.test_battle_preflight_db',
+                'backend.tests.test_spatial','backend.tests.test_movement','backend.tests.test_map_catalog','backend.tests.test_capture_map','backend.tests.test_web_launch',
+                'backend.tests.test_knowledge','backend.tests.test_model_connections',
+                'backend.tests.test_agent_model','backend.tests.test_agent_rules','backend.tests.test_agent_service'))
             result=unittest.TextTestRunner(verbosity=2).run(suite)
         raise SystemExit(not result.wasSuccessful())
     if args.action=='serve':

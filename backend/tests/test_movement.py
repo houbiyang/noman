@@ -43,6 +43,90 @@ class MovementTests(TestCase):
         self.assertEqual(route['status'],'arrived')
         self.assertAlmostEqual(self.unit['energy'],92,5)
 
+    def blocker(self, point=(520,500), kind='ground', identity='B-G01'):
+        other=deepcopy(self.unit)
+        other.update(unit_id=identity,side='blue',unit_type=kind,position=spatial.business(point))
+        self.state['units'].append(other)
+        return other
+
+    def test_obstacle_ahead_allows_approach_to_safe_distance(self):
+        """A unit 320 m ahead must not cancel the entire 400 m step."""
+        other=self.blocker()
+        route=self.route(target=(592,500))
+        clock=deepcopy(self.state['lifecycle'])
+        movement.advance_unit(self.state,self.unit,route,deployment=True)
+        x=spatial.meters(self.unit['position'])[0]
+        self.assertAlmostEqual(x,514.9999,places=5)
+        self.assertEqual(route['status'],'waiting')
+        self.assertGreaterEqual(spatial.meters(other['position'])[0]-x,5)
+        self.assertAlmostEqual(route['traveled_m'],314.9999,places=5)
+        self.assertAlmostEqual(self.unit['movement_test_energy'],100-314.9999*.008,places=5)
+        self.assertEqual(self.unit['energy'],100)
+        self.assertEqual(self.state['lifecycle'],clock)
+        self.assertEqual(len(route['last_trace']),2)
+        before=deepcopy(self.unit['position'])
+        energy=self.unit['movement_test_energy']
+        movement.advance_unit(self.state,self.unit,route,deployment=True)
+        self.assertEqual(self.unit['position'],before)
+        self.assertEqual(self.unit['movement_test_energy'],energy)
+        other['position']=spatial.business((520,520))
+        movement.advance_unit(self.state,self.unit,route,deployment=True)
+        self.assertEqual(route['status'],'arrived')
+        self.assertAlmostEqual(spatial.meters(self.unit['position'])[0],592,5)
+
+    def test_nearest_obstacle_wins_independent_of_unit_order(self):
+        self.blocker((550,500),identity='B-G02')
+        self.blocker((400,500))
+        route=self.route(target=(592,500))
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertAlmostEqual(spatial.meters(self.unit['position'])[0],394.9999,5)
+        self.assertAlmostEqual(self.unit['energy'],100-194.9999*.008,5)
+
+    def test_off_axis_collision_uses_swept_circle_entry(self):
+        self.blocker((520,503))
+        route=self.route(target=(592,500))
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertAlmostEqual(spatial.meters(self.unit['position'])[0],515.9999,5)
+        self.assertEqual(route['status'],'waiting')
+
+    def test_support_radius_is_included(self):
+        self.blocker((520,500),kind='support')
+        route=self.route(target=(592,500))
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertAlmostEqual(spatial.meters(self.unit['position'])[0],513.9999,5)
+
+    def test_obstacle_beyond_step_does_not_stop_movement(self):
+        self.blocker((900,500))
+        route=self.route()
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertEqual(route['status'],'moving')
+        self.assertAlmostEqual(spatial.meters(self.unit['position'])[0],600,5)
+
+    def test_tangent_and_behind_units_do_not_block(self):
+        self.blocker((100,500),identity='B-G02')
+        self.blocker((520,505))
+        route=self.route(target=(592,500))
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertEqual(route['status'],'arrived')
+
+    def test_overlapping_units_can_separate_but_not_cross(self):
+        other=self.blocker((202,500))
+        route=self.route(target=(592,500))
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertEqual(route['status'],'waiting')
+        self.assertAlmostEqual(spatial.meters(self.unit['position'])[0],200,5)
+        other['position']=spatial.business((198,500))
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertEqual(route['status'],'arrived')
+
+    def test_air_and_same_formation_do_not_block(self):
+        self.blocker((400,500),kind='recon',identity='B-U01')
+        self.blocker((520,500))
+        route=self.route(target=(592,500))
+        route['formation_member_ids']=['B-G01']
+        movement.advance_unit(self.state,self.unit,route)
+        self.assertEqual(route['status'],'arrived')
+
     def test_fast_move_distance_and_energy(self):
         """快速移动不靠动画提速，两步一公里，消耗九点六能源。"""
         route=self.route('fast_move')

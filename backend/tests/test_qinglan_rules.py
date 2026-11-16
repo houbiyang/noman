@@ -12,7 +12,7 @@ from backend.tests import test_battle_reports as reports
 def fixture_state(*args):
     state = initial_state(*args)
     points = {p['point_id']: p for p in rules.DEFINITION['objectives']}
-    assignments = {('red','ground'):'TASK_A',('blue','ground'):'TASK_C',('blue','support'):'TASK_B'}
+    assignments = {('red','ground'):'P-01',('blue','ground'):'P-03',('blue','support'):'P-02'}
     for unit in state['units']:
         key = assignments.get((unit['side'],unit['unit_type']))
         if key:
@@ -49,9 +49,9 @@ class QinglanRuleTests(unittest.TestCase):
     def test_distance_inclusive_contested_air_dead_and_missing_durability(self):
         state=self.state(); point=rules.DEFINITION['objectives'][0]
         unit=state['units'][1]
-        unit['position']=spatial.business((float(point['x'])+400,float(point['z'])))
+        unit['position']=spatial.business((float(point['x'])+250,float(point['z'])))
         self.assertEqual(rules.observe(state)[0]['owner'],'red')
-        unit['position']=spatial.business((float(point['x'])+400.001,float(point['z'])))
+        unit['position']=spatial.business((float(point['x'])+250.001,float(point['z'])))
         self.assertEqual(rules.observe(state)[0]['owner'],'neutral')
         unit['position']=spatial.business((float(point['x']),float(point['z'])))
         blue=next(u for u in state['units'] if u['side']=='blue' and u['unit_type']=='ground')
@@ -87,17 +87,17 @@ class QinglanRuleTests(unittest.TestCase):
                     self.assertEqual((value['redPoints'],value['bluePoints']),(4,3))
             self.assertTrue(value['final'])
             self.assertEqual((value['redPoints'],value['bluePoints'],value['winner']),expected)
-            self.assertEqual((value['redScore100'], value['blueScore100']), (round(expected[0]*100/18,2), round(expected[1]*100/18,2)))
+            self.assertEqual((value['redScore100'], value['blueScore100']), (round(expected[0]*100/30,2), round(expected[1]*100/30,2)))
 
     def test_score100_uses_rule_maximum_and_preserves_verdict(self):
         state = self.state()
         pending = battle_rules.evaluate(battle_rules.evidence(state))
-        self.assertEqual((pending['scoreMaximum'], pending['redScore100'], pending['blueScore100']), (18, 0.0, 0.0))
+        self.assertEqual((pending['scoreMaximum'], pending['redScore100'], pending['blueScore100']), (30, 0.0, 0.0))
         for minute in (20, 40, 60):
             state['lifecycle']['simulation_step'] = minute
             battle_rules.after_advance(state)
         result = battle_rules.evaluate(battle_rules.evidence(state))
-        self.assertEqual((result['scoreMaximum'], result['redScore100'], result['blueScore100']), (18, 33.33, 66.67))
+        self.assertEqual((result['scoreMaximum'], result['redScore100'], result['blueScore100']), (30, 20.0, 40.0))
         self.assertEqual(result['winner'], 'blue')
         invalid = battle_rules.evaluate(None)
         self.assertEqual(invalid['scoreMaximum'], 0)
@@ -124,7 +124,7 @@ class QinglanRuleTests(unittest.TestCase):
     def test_freeze_manifest_and_no_manual_stage_overwrite(self):
         state=self.state()
         state['manifest']['victory_rules']['radius_m']=401
-        self.assertEqual(rules.DEFINITION['radius_m'],400)
+        self.assertEqual(rules.DEFINITION['radius_m'],250)
         self.assertFalse(rules.enabled(state))
         state=self.state(); state['lifecycle']['simulation_step']=20
         battle_rules.after_advance(state)
@@ -139,7 +139,7 @@ class QinglanRuleTests(unittest.TestCase):
         result = battle_rules.evaluate(battle_rules.evidence(state))
         self.assertEqual([(s['redPoints'],s['bluePoints'],s['redTotal'],s['blueTotal'],s['settled'])
                           for s in result['stageScores']], [(1,2,1,2,True),(2,4,3,6,True),(0,0,3,6,False)])
-        self.assertIn('西岸检查点 · 红1 / 蓝0',result['calculations'][0])
+        self.assertIn('西岸上点 · 红1 / 蓝0',result['calculations'][0])
         self.assertIn('红+1 / 蓝+0',result['calculations'][0])
 
     def test_malformed_timeline_fails_closed_without_partial_score(self):
@@ -212,20 +212,20 @@ class QinglanReportTests(unittest.TestCase):
         view=self.view()
         self.assertEqual(view['clock']['phase'],'paused')
         self.assertEqual(view['battle_result']['redPoints'],1)
-        self.assertEqual((view['battle_result']['scoreMaximum'], view['battle_result']['redScore100'], view['battle_result']['blueScore100']), (18, 5.56, 11.11))
+        self.assertEqual((view['battle_result']['scoreMaximum'], view['battle_result']['redScore100'], view['battle_result']['blueScore100']), (30, 3.33, 6.67))
         self.assertFalse(view['capabilities']['can_settle_goal_stage'])
         self.command('settle_goal_stage',dict(stage=1,evidence='不允许覆盖自动计分',goals=[dict(goal_id=k,red_completed=False,blue_completed=False,evidence='核对') for k in battle_rules.GOALS]),expected=409)
         self.advance_to(60)
         result=self.client.get(self.path+'/result',headers=self.headers['host']).json()
         self.assertEqual(result['result_status'],'settled')
         self.assertEqual((result['result']['redPoints'],result['result']['bluePoints']),(6,12))
-        self.assertEqual((result['result']['scoreMaximum'], result['result']['redScore100'], result['result']['blueScore100']), (18, 33.33, 66.67))
+        self.assertEqual((result['result']['scoreMaximum'], result['result']['redScore100'], result['result']['blueScore100']), (30, 20.0, 40.0))
         for role in self.headers:
             archive=self.archives(role)['items'][0]
             detail=self.archives(role,'/'+archive['id'])['item']['projection']
             self.assertEqual(detail['battle_result']['bluePoints'],12)
-            self.assertEqual((detail['battle_result']['scoreMaximum'], detail['battle_result']['redScore100'], detail['battle_result']['blueScore100']), (18, 33.33, 66.67))
-            self.assertEqual(len(detail['victory']['stages'][0]['objectives']),3)
+            self.assertEqual((detail['battle_result']['scoreMaximum'], detail['battle_result']['redScore100'], detail['battle_result']['blueScore100']), (30, 20.0, 40.0))
+            self.assertEqual(len(detail['victory']['stages'][0]['objectives']),5)
             self.assertNotIn('unit_id',str(detail['victory']))
             self.assertEqual(self.archives(role)['total'],1)
 

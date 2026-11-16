@@ -2,6 +2,10 @@
     <Style src="SandboxHud.uss" />
     <ui:VisualElement name="sandboxRoot" class="sandbox-root" picking-mode="Ignore">
         <ui:VisualElement name="mapAnnotations" class="map-annotations" picking-mode="Ignore" />
+        <ui:VisualElement name="deploymentStageBanner" class="deployment-stage-banner" picking-mode="Ignore">
+            <ui:Label name="deploymentStageTitle" text="部署阶段" class="deployment-stage-title" picking-mode="Ignore" />
+            <ui:Label name="deploymentStageDetail" text="请完成双方兵营与单位部署；开战前此提示会持续显示。" class="deployment-stage-detail" picking-mode="Ignore" />
+        </ui:VisualElement>
         <ui:VisualElement class="role-float ui-blocker">
             <ui:VisualElement class="role-switch">
                 <ui:Button name="redRole" text="红方" class="red-role" />
@@ -61,7 +65,7 @@
             <ui:Label text="● 蓝方" class="blue-text" />
             <ui:Label text="道路 / 任务点 / 公开地形" class="muted" />
         </ui:VisualElement>
-        <ui:Button name="battleAction" class="action-tile battle-action ui-blocker" tooltip="战斗功能后续接入">
+        <ui:Button name="battleAction" class="action-tile battle-action ui-blocker" tooltip="选择Agent对抗或本地手动测试，检查开战依赖">
             <ui:VisualElement class="action-icon battle-icon" picking-mode="Ignore" />
             <ui:Label text="战斗" class="action-caption" picking-mode="Ignore" />
         </ui:Button>

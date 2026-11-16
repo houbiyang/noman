@@ -1,0 +1,11 @@
+.battle-panel { width:1040px; max-width:94%; height:90%; max-height:900px; min-height:0; background-color:rgb(12,31,25); border-width:1px; border-color:rgb(100,119,85); border-radius:10px; overflow:hidden; color:rgb(227,233,215); }
+.battle-modes { flex-direction:row; margin:14px 28px; flex-shrink:0; }
+.battle-mode { width:48%; margin-right:2%; padding:18px; min-height:86px; border-width:1px; border-color:rgb(73,100,68); border-radius:6px; background-color:rgb(22,47,34); color:rgb(202,220,191); font-size:17px; white-space:normal; -unity-text-align:middle-left; }
+.battle-mode-selected { border-color:rgb(221,204,143); border-width:2px; background-color:rgb(40,64,41); color:rgb(241,231,188); }
+.battle-mode:hover { background-color:rgb(45,68,43); }
+.battle-mode:focus { border-color:rgb(244,226,157); }
+.battle-content { margin:0 28px 16px; flex-grow:1; flex-shrink:1; min-height:0; }
+.battle-checks { flex-grow:1; flex-shrink:1; min-height:0; margin-top:12px; }
+.battle-check { padding:12px 14px; margin:0 8px 8px 0; background-color:rgb(22,48,35); border-left-width:3px; border-left-color:rgb(131,172,113); }
+.battle-check-warning { border-left-color:rgb(213,176,105); background-color:rgb(43,49,30); }
+.battle-check-title { font-size:16px; -unity-font-style:bold; color:rgb(222,230,200); margin-bottom:5px; white-space:normal; }

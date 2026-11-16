@@ -14,16 +14,14 @@ sys.path.insert(0, str(ROOT))
 from backend.spatial import height
 
 
-def export() -> None:
-    """将明确的显示图层转换为本次测试发布的语义区域并记录转换政策。"""
-    folder = ROOT / 'unity-client/Assets/Sandbox/Resources/Maps/QinglanValley'
-    definition_raw = (folder / 'map-definition.json').read_bytes()
-    geometry_raw = (folder / 'map-geometry.json').read_bytes()
+def build_navigation(definition_raw: bytes, geometry_raw: bytes) -> dict:
+    """从发布数据构建语义网格；桥下结构与桥面通行层分开判定。"""
     definition = json.loads(definition_raw)
     geometry = json.loads(geometry_raw)
     cell = 5
     columns, rows = int(definition['width'] / cell), int(definition['length'] / cell)
     grid = bytearray([1]) * (columns * rows)
+    bridge_surfaces = {}
     # 编码为未知、坚实地、农田、疏林、密林、水域、建筑、泥地、道路、桥面、碎石路。
     names = ['unknown', 'open', 'field', 'sparse_forest', 'dense_forest', 'water', 'obstacle', 'mud', 'road', 'bridge', 'gravel']
 
@@ -49,7 +47,12 @@ def export() -> None:
                     point = ((column + .5) * cell, (row + .5) * cell)
                     signs = [cross(first, second, point), cross(second, third, point), cross(third, first, point)]
                     if elevated or not (min(signs) < -0.001 and max(signs) > 0.001):
-                        grid[row * columns + column] = value
+                        index = row * columns + column
+                        # 桥墩顶面与桥面齐平，不是桥面上的障碍；护栏和高于桥面的实体仍阻挡。
+                        deck = bridge_surfaces.get(index)
+                        if elevated and deck is not None and max(p[1] for p in corners) <= deck + .001:
+                            continue
+                        grid[index] = value
 
     parts = geometry['parts']
     for layer, materials, value in [('farmland', {'FieldGreen', 'FieldGold'}, 2), ('scrub', {'ForestFloor'}, 4),
@@ -80,7 +83,9 @@ def export() -> None:
             for column in range(max(0, int((min(start['x'], end['x'])-road['width'])/cell)), min(columns, int((max(start['x'], end['x'])+road['width'])/cell)+1)):
                 point = ((column+.5)*cell, (row+.5)*cell)
                 if segment_distance(point, (start['x'], start['z']), (end['x'], end['z'])) <= road['width']/2:
-                    grid[row*columns+column] = 9
+                    index = row*columns+column
+                    grid[index] = 9
+                    bridge_surfaces[index] = road['surfaceHeight']
     building_layers = {'settlement', 'logistics', 'facilities', 'central_village', 'village'}
     for part in parts:
         if part['layer'] in building_layers and part['material'] not in ('Asphalt', 'Gravel', 'Paving', 'Marking', 'Grass'):
@@ -88,15 +93,25 @@ def export() -> None:
     output = dict(schema_version='qinglan-movement-map-v1', map_id=definition['mapId'],
                   source_sha256=hashlib.sha256(definition_raw).hexdigest(), geometry_sha256=hashlib.sha256(geometry_raw).hexdigest(),
                   cell_m=cell, columns=columns, rows=rows, terrain_names=names,
-                  conversion_policy='published-geometry-conservative-v1',
+                  conversion_policy='published-geometry-layered-bridges-v2',
                   policies=dict(unclassified_ground='explicit_test_firm_ground', forest_edge_m=30,
-                                building_envelope='elevated_triangle_aabb_cells', air='playable_boundary_no_restricted_zones'),
+                                building_envelope='elevated_triangle_aabb_cells',
+                                bridge_obstacles='only_geometry_above_deck_0.001m',
+                                air='playable_boundary_no_restricted_zones'),
                   no_fly_polygons=[], grid_sha256=hashlib.sha256(grid).hexdigest(),
                   grid_zlib_base64=base64.b64encode(zlib.compress(grid, 9)).decode(),
                   counts={names[key]: value for key, value in sorted(Counter(grid).items())})
+    return output
+
+
+def export() -> None:
+    """发布网格及源文件摘要，不修改显示地图或正式移动参数。"""
+    folder = ROOT / 'unity-client/Assets/Sandbox/Resources/Maps/QinglanValley'
+    output = build_navigation((folder / 'map-definition.json').read_bytes(),
+                              (folder / 'map-geometry.json').read_bytes())
     target = ROOT / 'backend/movement-map.json'
     target.write_text(json.dumps(output, ensure_ascii=False, separators=(',', ':'))+'\n', encoding='utf-8')
-    print(json.dumps(dict(file=str(target), cells=len(grid), counts=output['counts']), ensure_ascii=False))
+    print(json.dumps(dict(file=str(target), cells=output['columns'] * output['rows'], counts=output['counts']), ensure_ascii=False))
 
 
 if __name__ == '__main__':

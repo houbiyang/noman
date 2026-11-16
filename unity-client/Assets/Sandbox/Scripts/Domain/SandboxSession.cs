@@ -25,8 +25,10 @@ namespace Qiongtu.Sandbox
         public float z;
         public string status;
         // maxHealth == 0 means unavailable, including old saves; never infer full health.
-        public int health;
-        public int maxHealth;
+        public float health;
+        public float maxHealth;
+        public float speedMPerMinute, currentSpeedMPerMinute, energy, ammo, maxAmmo;
+        public bool hasCombatResources, docked;
         public string barracksId; // Optional for pre-barracks saves and initial demo units.
 
         /// <summary>创建无共享引用的单位显示副本。</summary>

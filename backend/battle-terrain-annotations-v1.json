@@ -1,0 +1,4054 @@
+{
+  "schema_version": "qinglan-base-ground-annotations-v1",
+  "policy": {
+    "schema_version": "qinglan-base-ground-policy-v1",
+    "version": "qinglan-base-ground-open-2026-11-15-v1",
+    "approval": {
+      "date": "2026-11-15",
+      "scope": "用户确认将现有未分类GroundLow/GroundHigh地面标注为开阔地，保留其他已有地表分类"
+    },
+    "base_layers": [
+      "terrain",
+      "landscape"
+    ],
+    "base_materials": {
+      "GroundLow": "open",
+      "GroundHigh": "open"
+    },
+    "other_parts": "preserve_existing_no_reclassification",
+    "outside_playable_boundary": "forbidden",
+    "overlays_must_be_resolved_before_ground_use": true,
+    "grants_route_permission": false,
+    "bridge_grade_policy": "actual_support_triangles_not_surfaceHeight_or_riverbed",
+    "changes_existing_games": false,
+    "approved_map": {
+      "map_id": "qinglan-strategic-v6",
+      "definition_sha256": "0877653cbc3f6a4db86c28e28251f8cd731b0e67003780af21594b606ce057d2",
+      "geometry_sha256": "ffaa2deee0a40b1dedba83cd03091e2209ad7623245333f4bb5b5a2027f01194"
+    }
+  },
+  "policy_sha256": "391da0284258bf9ba9feca8d7c340f8d9d897ff7042d366565369102b9e872e0",
+  "map_id": "qinglan-strategic-v6",
+  "map_content_hash": "9413e292d2510395757861dd9bb6d4f444031bc0cc98929bb66ddb3f2d12e79b",
+  "definition_sha256": "0877653cbc3f6a4db86c28e28251f8cd731b0e67003780af21594b606ce057d2",
+  "geometry_sha256": "ffaa2deee0a40b1dedba83cd03091e2209ad7623245333f4bb5b5a2027f01194",
+  "playable_bounds_m": {
+    "min_x": 0,
+    "max_x": 12000,
+    "min_z": 0,
+    "max_z": 12000
+  },
+  "parts": [
+    {
+      "part_id": "central_village_Asphalt_03_02_0",
+      "source_layer": "central_village",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Asphalt_03_03_0",
+      "source_layer": "central_village",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Asphalt_04_03_0",
+      "source_layer": "central_village",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Asphalt_04_04_0",
+      "source_layer": "central_village",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Grass_01_02_0",
+      "source_layer": "central_village",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Grass_01_03_0",
+      "source_layer": "central_village",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Grass_02_02_0",
+      "source_layer": "central_village",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Grass_02_03_0",
+      "source_layer": "central_village",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Gravel_03_02_0",
+      "source_layer": "central_village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Gravel_03_03_0",
+      "source_layer": "central_village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Gravel_04_02_0",
+      "source_layer": "central_village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Gravel_04_03_0",
+      "source_layer": "central_village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "central_village_Gravel_04_04_0",
+      "source_layer": "central_village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_00_00_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_00_01_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_00_02_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_00_03_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_00_04_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_00_05_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_01_00_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_01_01_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_01_02_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_01_03_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_01_04_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_01_05_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_02_00_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_02_01_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_02_02_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_02_03_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_02_04_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_02_05_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_03_00_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_03_01_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_03_03_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_03_04_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_03_05_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_04_00_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_04_02_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_04_03_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_04_04_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_05_00_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_05_02_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_05_03_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_05_04_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Battle_Timber_05_05_0",
+      "source_layer": "environment",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_00_00_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_00_00_1",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_00_01_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_00_03_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_00_04_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_00_05_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_01_00_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_01_01_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_01_02_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_01_03_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_01_04_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_01_05_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_02_00_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_02_01_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_02_02_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_02_02_1",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_02_03_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_03_00_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_03_01_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_03_03_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_03_04_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_04_02_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_04_03_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_04_04_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_05_02_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_ForestLight_05_03_0",
+      "source_layer": "environment",
+      "source_material": "ForestLight",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_00_02_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_00_03_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_01_02_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_01_03_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_02_04_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_02_05_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_03_04_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_03_05_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_04_00_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_04_00_1",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_05_00_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_05_04_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "environment_Forest_05_05_0",
+      "source_layer": "environment",
+      "source_material": "Forest",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Asphalt_01_02_0",
+      "source_layer": "facilities",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Asphalt_01_03_0",
+      "source_layer": "facilities",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Asphalt_02_02_0",
+      "source_layer": "facilities",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Asphalt_02_03_0",
+      "source_layer": "facilities",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Asphalt_03_04_0",
+      "source_layer": "facilities",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Asphalt_04_04_0",
+      "source_layer": "facilities",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Battle_Concrete_02_02_0",
+      "source_layer": "facilities",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Battle_Concrete_02_04_0",
+      "source_layer": "facilities",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Battle_Concrete_03_01_0",
+      "source_layer": "facilities",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Battle_Concrete_03_02_0",
+      "source_layer": "facilities",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Battle_Concrete_03_04_0",
+      "source_layer": "facilities",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Gravel_00_02_0",
+      "source_layer": "facilities",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Gravel_05_03_0",
+      "source_layer": "facilities",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Gravel_05_04_0",
+      "source_layer": "facilities",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Marking_01_02_0",
+      "source_layer": "facilities",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Marking_01_03_0",
+      "source_layer": "facilities",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Marking_02_02_0",
+      "source_layer": "facilities",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Marking_02_03_0",
+      "source_layer": "facilities",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Marking_03_04_0",
+      "source_layer": "facilities",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Marking_04_04_0",
+      "source_layer": "facilities",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_00_02_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_01_02_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_01_03_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_02_02_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_02_03_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_03_04_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_04_04_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "facilities_Paving_05_04_0",
+      "source_layer": "facilities",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_01_00_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_01_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_01_05_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_02_00_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_02_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_04_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_04_02_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_04_05_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_05_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGold_05_05_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_01_00_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_01_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_01_05_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_02_00_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_02_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_04_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_04_02_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_04_05_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_05_01_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_05_02_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_FieldGreen_05_05_0",
+      "source_layer": "farmland",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_01_00_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_01_01_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_01_05_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_02_00_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_02_01_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_04_01_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_04_02_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_04_05_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_05_01_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_05_02_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "farmland_Mud_05_05_0",
+      "source_layer": "farmland",
+      "source_material": "Mud",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_00_00_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_00_01_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_00_02_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_00_03_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_00_04_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_00_05_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_01_00_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_01_01_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_01_02_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_01_03_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_01_04_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_01_05_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_02_00_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_02_01_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_02_02_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_02_03_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_02_04_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_02_05_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_03_00_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_03_01_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_03_02_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_03_03_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_03_04_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_03_05_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_04_00_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_04_01_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_04_02_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_04_03_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_04_04_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_04_05_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_05_00_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_05_01_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_05_02_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_05_03_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_05_04_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "grid_Marking_05_05_0",
+      "source_layer": "grid",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-1_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_-2_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_00_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_00_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_00_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_00_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_01_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_01_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_01_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_01_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_02_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_02_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_02_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_02_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_03_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_03_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_03_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_03_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_04_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_04_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_04_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_04_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_05_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_05_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_05_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_05_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_06_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundHigh_07_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-1_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_-2_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_00_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_00_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_00_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_00_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_01_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_01_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_01_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_01_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_02_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_02_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_02_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_02_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_03_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_03_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_03_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_03_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_04_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_04_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_04_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_04_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_05_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_05_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_05_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_05_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_06_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_-1_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_-2_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_00_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_01_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_02_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_03_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_04_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_05_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_06_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "landscape_GroundLow_07_07_0",
+      "source_layer": "landscape",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "logistics_Asphalt_01_02_0",
+      "source_layer": "logistics",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Asphalt_03_02_0",
+      "source_layer": "logistics",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Asphalt_04_02_0",
+      "source_layer": "logistics",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Asphalt_04_03_0",
+      "source_layer": "logistics",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Brick_03_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Concrete_01_02_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Concrete_04_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_01_00_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_01_01_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_01_02_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_02_00_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_02_04_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_03_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_04_00_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_04_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Metal_05_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Timber_01_01_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Timber_02_04_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Timber_03_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Timber_04_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Battle_Timber_05_03_0",
+      "source_layer": "logistics",
+      "source_material": "Battle_Timber",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_FieldGold_01_00_0",
+      "source_layer": "logistics",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_FieldGold_02_00_0",
+      "source_layer": "logistics",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_FieldGold_04_00_0",
+      "source_layer": "logistics",
+      "source_material": "FieldGold",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_FieldGreen_01_00_0",
+      "source_layer": "logistics",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_FieldGreen_02_00_0",
+      "source_layer": "logistics",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_FieldGreen_04_00_0",
+      "source_layer": "logistics",
+      "source_material": "FieldGreen",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Grass_01_01_0",
+      "source_layer": "logistics",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Grass_02_04_0",
+      "source_layer": "logistics",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Gravel_01_01_0",
+      "source_layer": "logistics",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Gravel_02_04_0",
+      "source_layer": "logistics",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Gravel_03_02_0",
+      "source_layer": "logistics",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Gravel_03_03_0",
+      "source_layer": "logistics",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Gravel_04_02_0",
+      "source_layer": "logistics",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Gravel_04_03_0",
+      "source_layer": "logistics",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Gravel_05_03_0",
+      "source_layer": "logistics",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Paving_01_01_0",
+      "source_layer": "logistics",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_Paving_02_04_0",
+      "source_layer": "logistics",
+      "source_material": "Paving",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_WallWarm_01_02_0",
+      "source_layer": "logistics",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "logistics_WallWarm_04_03_0",
+      "source_layer": "logistics",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_00_00_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_00_01_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_00_02_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_00_03_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_00_04_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_00_05_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_01_00_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_01_01_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_01_02_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_01_03_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_01_04_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_01_05_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_02_00_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_02_01_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_02_02_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_02_03_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_02_04_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_02_05_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_03_00_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_03_01_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_03_02_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_03_03_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_03_04_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_03_05_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_04_00_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_04_01_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_04_02_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_04_03_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_04_04_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_04_05_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_05_00_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_05_01_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_05_02_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_05_03_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_05_04_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Asphalt_05_05_0",
+      "source_layer": "routes",
+      "source_material": "Asphalt",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_00_00_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_00_01_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_00_02_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_00_03_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_00_04_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_00_05_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_01_00_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_01_01_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_01_02_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_01_03_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_01_04_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_01_05_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_02_00_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_02_01_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_02_02_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_02_03_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_02_04_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_02_05_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_03_00_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_03_01_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_03_02_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_03_03_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_03_04_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_03_05_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_04_00_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_04_01_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_04_02_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_04_03_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_04_04_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_04_05_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_05_00_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_05_01_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_05_02_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_05_03_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_05_04_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "routes_Marking_05_05_0",
+      "source_layer": "routes",
+      "source_material": "Marking",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_00_00_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_00_01_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_00_02_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_00_03_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_00_04_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_00_05_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_01_00_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_01_02_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_01_03_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_01_04_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_01_05_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_02_00_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_02_01_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_02_04_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_02_05_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_03_00_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_03_01_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_03_04_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_03_05_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_04_00_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_04_02_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_04_03_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_05_00_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_05_02_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_05_03_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_05_04_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "scrub_ForestFloor_05_05_0",
+      "source_layer": "scrub",
+      "source_material": "ForestFloor",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_00_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_01_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_01_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_01_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_01_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_01_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_02_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_03_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_04_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_04_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_05_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Ash_05_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Ash",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_01_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_01_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_01_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_01_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_01_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_02_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_04_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_04_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Brick_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Brick",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_00_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_01_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_01_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_01_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_01_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_02_02_1",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_02_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_02_03_1",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_02_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_03_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_04_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_04_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Concrete_05_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Concrete",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_00_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_01_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_01_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_01_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_01_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_02_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_02_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_03_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_04_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_04_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_05_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Metal_05_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Metal",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_00_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_01_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_01_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_01_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_01_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_01_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_02_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_02_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_04_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_04_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_05_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Plaster_05_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Plaster",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_01_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_01_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_01_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_01_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_01_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_02_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_04_00_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_04_01_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Battle_Tile_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Battle_Tile",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_01_02_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_01_03_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_02_02_1",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_02_03_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_02_03_1",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Glass_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Glass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Grass_03_04_0",
+      "source_layer": "settlement",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_Grass_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "Grass",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_WallWarm_02_02_0",
+      "source_layer": "settlement",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_WallWarm_03_02_0",
+      "source_layer": "settlement",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_WallWarm_03_03_0",
+      "source_layer": "settlement",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_WallWarm_04_02_0",
+      "source_layer": "settlement",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_WallWarm_04_03_0",
+      "source_layer": "settlement",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "settlement_WallWarm_04_04_0",
+      "source_layer": "settlement",
+      "source_material": "WallWarm",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "terrain_GroundHigh_00_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_00_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_01_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_01_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_01_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_01_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_03_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_03_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_04_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_04_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_04_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_04_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_05_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_05_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundHigh_05_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundHigh",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_00_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_00_01_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_00_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_00_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_00_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_00_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_01_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_01_01_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_01_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_01_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_01_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_01_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_02_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_02_01_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_02_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_02_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_02_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_02_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_03_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_03_01_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_03_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_03_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_03_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_03_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_04_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_04_01_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_04_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_04_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_04_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_04_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_05_00_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_05_01_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_05_02_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_05_03_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_05_04_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "terrain_GroundLow_05_05_0",
+      "source_layer": "terrain",
+      "source_material": "GroundLow",
+      "action": "classify_base_ground",
+      "base_surface": "open"
+    },
+    {
+      "part_id": "village_Gravel_01_01_0",
+      "source_layer": "village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "village_Gravel_01_04_0",
+      "source_layer": "village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "village_Gravel_02_04_0",
+      "source_layer": "village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "village_Gravel_04_01_0",
+      "source_layer": "village",
+      "source_material": "Gravel",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_00_03_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_01_03_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_02_03_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_-1_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_-2_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_00_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_01_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_02_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_03_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_04_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_05_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_06_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_03_07_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_04_01_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    },
+    {
+      "part_id": "water_Water_05_01_0",
+      "source_layer": "water",
+      "source_material": "Water",
+      "action": "preserve_existing"
+    }
+  ],
+  "acceptance": {
+    "base_ground_classified": true,
+    "production_ready": false,
+    "overlays_resolved": false,
+    "support_layers_validated": false,
+    "routes_validated": false,
+    "bridges_validated": false,
+    "note": "基础分类不授予通行；覆盖层、支撑层及完整占地须另行核验"
+  },
+  "payload_sha256": "c5c324bc99d15b1ac5747e03336d63b726621001f13e53e72eb8b812a389fb5e"
+}

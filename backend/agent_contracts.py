@@ -38,6 +38,38 @@ class ModelConfiguration(StrictModel):
         return value.rstrip("/")
 
 
+class RetrievalModelConfiguration(StrictModel):
+    """独立检索服务；复用消息模型的安全地址约束，不接受实际密钥。"""
+
+    enabled: bool = False
+    base_url: str = Field(default="", max_length=300)
+    model: str = Field(default="", max_length=120)
+    credential_ref: str = Field(default="", pattern=r"^$|^[A-Z][A-Z0-9_]{0,79}$")
+    timeout_seconds: int = Field(default=30, ge=1, le=120, strict=True)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_endpoint(cls, value):
+        return ModelConfiguration.validate_endpoint(value)
+
+    @model_validator(mode="after")
+    def enabled_is_complete(self):
+        if self.enabled and (not self.base_url.strip() or not self.model.strip()):
+            raise ValueError("启用模型时必须填写接口根地址和模型标识")
+        return self
+
+
+class EmbeddingConfiguration(RetrievalModelConfiguration):
+    dimensions: int = Field(default=1536, ge=1, le=8192, strict=True)
+    top_k: int = Field(default=8, ge=1, le=20, strict=True)
+    knowledge_version: str = Field(default="conquest-v1-20261110",
+        pattern=r"^conquest-v1-[0-9]{8}(?:-[a-z0-9-]+)?$", max_length=100)
+
+
+class RerankConfiguration(RetrievalModelConfiguration):
+    top_n: int = Field(default=5, ge=1, le=20, strict=True)
+
+
 class AgentPolicy(StrictModel):
     """策略偏好仅影响合法候选的选择，不修改单位和规则属性。"""
 
@@ -53,12 +85,38 @@ class AgentConfiguration(StrictModel):
     """红蓝分别保存的模型和四角色参数，不存实际密钥。"""
 
     model: ModelConfiguration = Field(default_factory=ModelConfiguration)
+    embedding: EmbeddingConfiguration = Field(default_factory=EmbeddingConfiguration)
+    rerank: RerankConfiguration = Field(default_factory=RerankConfiguration)
     prompt_version: str = Field(default="coordination-v1", min_length=1, max_length=80)
     max_total_tokens: int = Field(default=24000, ge=1024, le=200000, strict=True)
     commander: AgentPolicy = Field(default_factory=AgentPolicy)
     recon: AgentPolicy = Field(default_factory=AgentPolicy)
     ground: AgentPolicy = Field(default_factory=AgentPolicy)
     support: AgentPolicy = Field(default_factory=AgentPolicy)
+
+
+class ModelConnectionTest(StrictModel):
+    """仅测试提交的草稿，不隐式保存，不读取对局内容。"""
+
+    kind: Literal["model", "embedding", "rerank"]
+    configuration: ModelConfiguration | EmbeddingConfiguration | RerankConfiguration
+    acknowledge_cost: Literal[True]
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_protocol(cls, value):
+        if isinstance(value, dict) and isinstance(value.get("configuration"), dict):
+            expected = {"model": ModelConfiguration, "embedding": EmbeddingConfiguration, "rerank": RerankConfiguration}.get(value.get("kind"))
+            if expected:
+                value = dict(value, configuration=expected.model_validate(value["configuration"]))
+        return value
+
+    @model_validator(mode="after")
+    def matching_protocol(self):
+        expected = {"model": ModelConfiguration, "embedding": EmbeddingConfiguration, "rerank": RerankConfiguration}[self.kind]
+        if type(self.configuration) is not expected:
+            raise ValueError("模型类型与连接测试协议不一致")
+        return self
 
 
 class AgentRunRequest(StrictModel):

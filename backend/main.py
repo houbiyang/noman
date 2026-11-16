@@ -1,5 +1,6 @@
 """现有 Unity 演示功能的 HTTP 入口，默认只监听本机。"""
 
+from asyncio import timeout
 from contextlib import asynccontextmanager
 import argparse
 import logging
@@ -7,22 +8,27 @@ from threading import Event, Thread
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, Query, Request, Path
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 import psycopg
 import uvicorn
 
-from backend.contracts import CommandRequest, ConditionPreview, CreateGame, SessionRequest, PreparationPreview
+from backend.contracts import CommandRequest, ConditionPreview, CreateGame, SessionRequest, PreparationPreview, KnowledgeQuery
+from backend.knowledge import KnowledgeGateway
+from backend.retrieval_models import RetrievalModels
 from backend.demo_domain import map_manifest
 from backend.runtime import Settings, ServiceError, initialize_runtime
 from backend.service import SandboxService
-from backend.agent_contracts import AgentConfiguration, AgentRunRequest
+from backend.agent_contracts import AgentConfiguration, AgentRunRequest, ModelConnectionTest
 from backend.agent_service import AgentCoordinator
 from backend.agent_graph import AGENT_RUNTIME_REVISION
+from backend.battle_contracts import BattlePreflightRequest
+from backend.battle_preflight import BattlePreflight
 
 
 def create_app(settings: Settings) -> FastAPI:
@@ -55,6 +61,10 @@ def create_app(settings: Settings) -> FastAPI:
                   description="演示与协同测试、持久化及角色隔离；模型按红蓝配置调用，正式交战尚未实现。")
     app.state.service = service
     app.state.agents = agents
+    app.state.knowledge = KnowledgeGateway()
+    app.state.models = RetrievalModels()
+    agents.models = app.state.models
+    agents.knowledge = app.state.knowledge
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
     app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:18766", "http://localhost:18766"],
                        allow_methods=["GET", "POST", "DELETE"],
@@ -132,6 +142,31 @@ def create_app(settings: Settings) -> FastAPI:
         service.session(access_token)
         return map_manifest()
 
+    @app.post("/api/v1/games/{game_id}/knowledge/query")
+    async def knowledge_query(game_id: UUID, body: KnowledgeQuery, access_token: token):
+        # psycopg 为同步调用，在工作线程完成短事务，不阻塞异步事件循环。
+        try:
+            async with timeout(60):
+                principal = await run_in_threadpool(service.knowledge_principal, str(game_id), access_token)
+                configuration = await run_in_threadpool(agents.load_configuration, principal['side'])
+                return await app.state.models.retrieve(principal, body.question, body.knowledge_version,
+                                                       configuration, app.state.knowledge)
+        except TimeoutError as error:
+            raise ServiceError(504, "KNOWLEDGE_TIMEOUT", "知识检索整体超时") from error
+
+    @app.get('/api/v1/games/{game_id}/battle/rounds')
+    def battle_rounds(game_id: UUID, access_token: token):
+        return service.battle_rounds(str(game_id), access_token)
+
+    @app.get('/api/v1/games/{game_id}/battle/rounds/{round_number}')
+    def battle_round(game_id: UUID, round_number: Annotated[int, Path(ge=1, le=60)], access_token: token):
+        return service.battle_rounds(str(game_id), access_token, round_number)
+
+    @app.post('/api/v1/games/{game_id}/battle/preflight')
+    async def battle_preflight(game_id: UUID, body: BattlePreflightRequest, access_token: token):
+        """只读双方开战检查；不启用、迁移或推进现有对局。"""
+        return await BattlePreflight(service, agents, app.state.models).run(str(game_id), access_token, body)
+
     @app.get("/api/v1/games/{game_id}/view")
     def view(game_id: UUID, access_token: token):
         return service.view(str(game_id), access_token)
@@ -202,6 +237,12 @@ def create_app(settings: Settings) -> FastAPI:
     def save_agent_configuration(game_id: UUID, body: AgentConfiguration, access_token: token):
         """保存本方模型和四角色策略，不接收实际密钥。"""
         return agents.save_configuration(str(game_id), access_token, body)
+
+    @app.post('/api/v1/games/{game_id}/agents/models/test')
+    async def test_agent_model(game_id: UUID, body: ModelConnectionTest, access_token: token):
+        """显式同意费用后，独立测试本方草稿；无游戏或配置写入。"""
+        principal = await run_in_threadpool(agents.principal, str(game_id), access_token)
+        return await app.state.models.test(principal['role'], body, scope=str(agents.config_root))
 
     @app.get('/api/v1/games/{game_id}/agents/runs')
     def agent_runs(game_id: UUID, access_token: token):

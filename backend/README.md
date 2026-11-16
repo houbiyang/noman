@@ -317,3 +317,10 @@ python -m backend.portable test
 ```
 
 本机网页新开局使用独立启动记录与新模式。旧War Goals与默认未启用计分的演示局均保持原语义；已有记录不清空、不重算。以下领域模块分别管理规则：`qinglan_rules.py`（项目点位观测/自动封存）、`battle_rules.py`（双模式计算/兼容旧主持人裁定）。
+
+
+## LightRAG 双私库只读检索（2026-11-10）
+
+新增 `POST /api/v1/games/{game_id}/knowledge/query`，请求仅为 `question`、`knowledge_version`，复用 Bearer 席位和对局鉴权。红／蓝只查本方实例，主持人拒绝；返回冻结原文证据而非最终指挥回答。全部返回 `planning_only=true`、`execution_authorized=false`，不改变当前青岚规则、固定建议或审批。
+
+部署、模型配置、`evidence_insufficient` 三态语义及真实验收缺项见 [说明文档](../docs/LightRAG双私有知识库配置与使用说明.md)。此条记录以当前实际模块为准，不表示上文历史候选 RAG 链路均已实现。模型未填、Docker 未启动时只可运行离线测试，不宣称真实知识库就绪。

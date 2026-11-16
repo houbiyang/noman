@@ -68,12 +68,13 @@ namespace Qiongtu.Sandbox
             root.style.unityFontDefinition = FontDefinition.FromFont(runtimeFont);
             root.RegisterCallback<GeometryChangedEvent>(_ => root.EnableInClassList("compact", root.resolvedStyle.width < 1450));
             cameraRig.IsPointerOverUi = IsPointerOverUi;
-            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null;
-            cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null;
+            cameraRig.IsEditingUi = () => activePanel != null || modalAction != null || armyOverlay != null || connectionOverlay != null || settingsOverlay != null || battleOverlay != null || recordedOverlay != null;
+            cameraRig.IsMapCommand = () => pendingArmyType.HasValue || pendingMoveId != null || pendingReconId != null;
             cameraRig.IsBarracksPlacement = () => pendingArmyType.HasValue;
             cameraRig.MapClicked += HandleArmyMapClick;
             root.styleSheets.Add(Resources.Load<StyleSheet>("Sandbox/SandboxArmy"));
             BindButton("armyAction", OpenArmy);
+            InitializeBattleEntry();
             var barracksIcon = root.Q<VisualElement>(className: "army-icon");
             barracksIcon.style.backgroundImage = new StyleBackground(Resources.Load<Texture2D>("Army/infantry-barracks-card"));
             barracksIcon.style.unityBackgroundImageTintColor = Color.white;
@@ -104,6 +105,7 @@ namespace Qiongtu.Sandbox
             BindButton("cancelModalButton", CloseModal);
             root.RegisterCallback<KeyDownEvent>(HandleModalKeyboard, TrickleDown.TrickleDown);
             InitializeSettings();
+            InitializeRecordedReplay();
             InitializeServerSync();
             RefreshProjection();
             OpenSettingsFromPageLink();
@@ -117,7 +119,8 @@ namespace Qiongtu.Sandbox
         {
             projection = serverMode ? ServerProjection() : source.GetProjection(role);
             if (serverMode) role = projection.role;
-            world.ApplyProjection(projection, serverMode, serverMode ? serverClient.View?.movement_paths : null, serverMode ? serverClient.View?.units : null);
+            RefreshDeploymentStageBanner();
+            world.ApplyProjection(projection, serverMode, serverMode ? serverClient.View?.movement_paths : null, serverMode ? (serverClient.View?.units ?? Array.Empty<SandboxServerUnit>()).Concat(serverClient.View?.contacts ?? Array.Empty<SandboxServerUnit>()).ToArray() : null, serverMode ? serverClient.View : null);
             RebuildMapLabels();
             if (!projection.units.Any(unit => unit.id == selectedId)) selectedId = projection.units.FirstOrDefault()?.id;
             world.Select(selectedId);
@@ -144,6 +147,9 @@ namespace Qiongtu.Sandbox
             foreach (SandboxRole candidate in Enum.GetValues(typeof(SandboxRole)))
                 root.Q<Button>(candidate == SandboxRole.Red ? "redRole" : candidate == SandboxRole.Blue ? "blueRole" : "hostRole").EnableInClassList("selected-role", role == candidate);
             UpdateCameraButton();
+            RefreshManualBattleBar();
+            RefreshSelectedUnitControls();
+            RefreshRecordedReplayEntry();
             if (serverMode) RefreshServerControls();
             if (!serverMode && armyOverlay != null && managedArmyType.HasValue) RenderArmy();
             ObserveMatchEnd();
@@ -155,6 +161,8 @@ namespace Qiongtu.Sandbox
             if (next == role) return;
             if (settingsOverlay != null) { RequestCloseSettings(() => ChangeRole(next)); return; }
             if (serverMode) { BeginServerConnection(next); return; }
+            CloseRecordedReplay();
+            CloseSelectedUnitControls();
             CloseArmy(); CancelArmyCommand();
             PausePlayback();
             CloseModal();
@@ -179,7 +187,7 @@ namespace Qiongtu.Sandbox
             SandboxUnitData selected = projection.units.FirstOrDefault(unit => unit.id == selectedId);
             SetText("selectedSummary", selected == null ? "尚未选择单位" : selected.id + "  ·  " + selected.name);
             UpdateCameraButton();
-            OpenArmyManagement(selected.side, selected.type);
+            OpenSelectedUnitControls(selected);
         }
 
         /// <summary>展开或关闭同一抽屉，避免同时遮挡地图。</summary>
@@ -555,6 +563,14 @@ namespace Qiongtu.Sandbox
         private void Update()
         {
             if (root == null) return;
+            TickRecordedReplay();
+            if (recordedOverlay != null)
+            {
+                var replayKeyboard = Keyboard.current;
+                if (replayKeyboard?.escapeKey.wasPressedThisFrame == true) CloseRecordedReplay();
+                else if (replayKeyboard?.spaceKey.wasPressedThisFrame == true) ToggleRecordedReplay();
+                return; // 不响应地图点选、旧推进快捷键或覆盖弹窗
+            }
             ShowPendingEndResult();
             if (!serverMode && playing && Time.unscaledTime >= nextFrameAt)
             {
@@ -566,6 +582,7 @@ namespace Qiongtu.Sandbox
                 root.Q("feedbackLabel").AddToClassList("hidden");
                 feedbackUntil = 0;
             }
+            UpdateUnitHover();
             Keyboard keyboard = Keyboard.current;
             UpdateDeploymentMovement();
             if (keyboard == null) return;
@@ -574,13 +591,19 @@ namespace Qiongtu.Sandbox
                 if (keyboard.escapeKey.wasPressedThisFrame) { connectionOverlay.RemoveFromHierarchy(); connectionOverlay = null; }
                 return;
             }
+            if (battleOverlay != null)
+            {
+                if (keyboard.escapeKey.wasPressedThisFrame) CloseBattleEntry();
+                return;
+            }
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 if (modalAction != null) CloseModal();
                 else if (settingsOverlay != null) RequestCloseSettings();
                 else if (armyOverlay != null) { CloseArmy(); CancelArmyCommand(); }
-                else if (pendingArmyType.HasValue || pendingMoveId != null) CancelArmyCommand();
+                else if (pendingArmyType.HasValue || pendingMoveId != null || pendingReconId != null) CancelArmyCommand();
                 else if (activePanel != null) ClosePanel();
+                else if (selectedUnitControls != null) CloseSelectedUnitControls();
                 else cameraRig.ReturnToOverview();
             }
             if (keyboard.fKey.wasPressedThisFrame && activePanel == null && modalAction == null && armyOverlay == null && settingsOverlay == null) ToggleFollow();
@@ -589,7 +612,7 @@ namespace Qiongtu.Sandbox
         /// <summary>失焦后停止播放，避免后台继续推进演示。</summary>
         private void OnApplicationFocus(bool focused)
         {
-            if (!focused && root != null) PausePlayback();
+            if (!focused && root != null) { PausePlayback(); PauseRecordedReplay(); }
         }
 
         /// <summary>按当前投影重建轻量标签，切角色时不保留对方标识。</summary>
@@ -626,9 +649,17 @@ namespace Qiongtu.Sandbox
             }
             foreach (SandboxMapPoint point in world.MapPoints)
             {
-                var label = new Label(point.name) { pickingMode = PickingMode.Ignore };
+                var label = new Label(point.kind == "capture" ? point.id + " · " + point.name : point.name) { pickingMode = PickingMode.Ignore };
                 label.AddToClassList("map-label");
-                if (point.kind == "capture") label.AddToClassList("capture-point");
+                if (point.kind == "capture")
+                {
+                    label.AddToClassList("capture-point");
+                    var fact = serverMode ? serverClient.View?.battle_capture_points?.FirstOrDefault(p => p.point_id == point.id) : null;
+                    if (fact != null) label.text += "\n" + (fact.owner == "blue" ? "蓝方" : fact.owner == "red" ? "红方" : "中立")
+                        + (fact.contested ? " · 争夺中" : fact.advancing_side == "none" ? " · 无占领推进"
+                            : " · " + (fact.advancing_side == "blue" ? "蓝" : "红") + "方进度 " + (fact.progress_steps * 100f / 6).ToString("0") + "%");
+                    label.tooltip = point.support == "bridge_deck" ? "初始中立 · 半径250米与中央桥面相交，桥下及水域不计入" : "初始中立 · 有效半径250米";
+                }
                 if (point.kind == "deployment_red" || point.kind == "deployment_blue")
                 {
                     label.AddToClassList("deployment-zone");
@@ -758,8 +789,8 @@ namespace Qiongtu.Sandbox
         /// <summary>清理相机回调和运行时界面资源。</summary>
         private void OnDestroy()
         {
+            CloseRecordedReplay();
             playing = false;
-            CancelHealthCheck();
             if (cameraRig != null)
             {
                 cameraRig.UnitSelected -= SelectUnit;

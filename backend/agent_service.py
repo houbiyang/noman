@@ -1,5 +1,6 @@
 """持久化四角色编排，分析过程不持有对局事务或直接修改世界。"""
 
+import asyncio
 from copy import deepcopy
 from datetime import timedelta
 import json
@@ -14,6 +15,8 @@ from pydantic import ValidationError
 from backend import database
 from backend.agent_contracts import AgentConfiguration, AgentReport, CommanderPlan
 from backend.agent_model import MessageModel
+from backend.retrieval_models import RetrievalModels, endpoint_ready
+from backend.knowledge import KnowledgeGateway
 from backend.agent_graph import RunCheckpointSaver, build_graph, invoke_graph
 from backend.agent_tools import ROLES, RuleTools, freeze_view, validate_plan
 from backend.demo_domain import require
@@ -30,6 +33,7 @@ class AgentCoordinator:
     def __init__(self, sandbox, config_root=None, model_factory=MessageModel):
         """复用业务连接和身份服务，测试可以注入隔离配置与模型替身。"""
         self.sandbox, self.settings, self.model_factory = sandbox, sandbox.settings, model_factory
+        self.models, self.knowledge = RetrievalModels(), KnowledgeGateway()
         identity = sha256(self.settings.connection['database'])[:16]
         self.config_root = Path(config_root) if config_root else database.LOCAL_ROOT / 'agents' / identity
 
@@ -46,6 +50,8 @@ class AgentCoordinator:
         if not path.exists():
             configuration = AgentConfiguration()
             configuration.model.credential_ref = side.upper() + '_AI_API_KEY'
+            configuration.embedding.credential_ref = side.upper() + '_EMBEDDING_API_KEY'
+            configuration.rerank.credential_ref = side.upper() + '_RERANK_API_KEY'
             return configuration
         try:
             return AgentConfiguration.model_validate_json(path.read_text(encoding='utf-8'))
@@ -57,7 +63,10 @@ class AgentCoordinator:
         principal = self.principal(game_id, bearer)
         configuration = self.load_configuration(principal['role'])
         return dict(side=principal['role'], configuration=configuration.model_dump(),
-                    configured=MessageModel.available(configuration), configuration_scope='本机当前数据库的本方配置')
+                    configured=MessageModel.available(configuration),
+                    retrieval_status={kind: dict(enabled=getattr(configuration, kind).enabled,
+                        credentials_ready=endpoint_ready(getattr(configuration, kind))) for kind in ('embedding', 'rerank')},
+                    configuration_scope='本机当前数据库的本方配置')
 
     def save_configuration(self, game_id, bearer, configuration):
         """使用受保护临时文件原子替换本方配置，不改动另一方。"""
@@ -105,7 +114,8 @@ class AgentCoordinator:
                 insert(connection, 'ai_runs', dict(id=identity, game_id=game_id, branch_id=game['active_branch_id'],
                     base_snapshot_id=game['head_snapshot_id'], side=principal['role'], execution_epoch=game['execution_epoch'],
                     agent_role=role, input_view=frozen, model_manifest=dict(source='multi_agent', configuration=configuration.model_dump(),
-                    provider_connection_tested=False), knowledge_manifest=dict(source='runtime_rules_and_reports', external_retrieval=False),
+                    provider_connection_tested=False), knowledge_manifest=dict(source='runtime_rules_and_reports',
+                        external_retrieval=configuration.embedding.enabled or configuration.rerank.enabled),
                     input_view_sha256=sha256(frozen), hash_format_version=HASH_VERSION,
                     checkpoint_thread_id=thread if role == 'commander' else thread + '/' + role,
                     checkpoint_ref=checkpoint, status='queued'))
@@ -118,7 +128,9 @@ class AgentCoordinator:
         return dict(run_id=str(row['id']), role=row['agent_role'], side=row['side'], status=row['status'],
                     branch_id=str(row['branch_id']), created_at=row['created_at'], finished_at=row['finished_at'],
                     output=row['output_payload'], error=row['error_payload'], usage=row['usage'],
-                    stages=(row['checkpoint_ref'] or {}).get('stages', []))
+                    stages=(row['checkpoint_ref'] or {}).get('stages', []),
+                    knowledge=dict(row.get('knowledge_manifest') or {},
+                                   retrieval=(row['checkpoint_ref'] or {}).get('knowledge_retrieval')))
 
     def runs(self, game_id, bearer):
         """只列出本方协调运行，限制数量，避免下载全部历史。"""
@@ -253,6 +265,23 @@ class AgentCoordinator:
         require(MessageModel.available(configuration), 'MODEL_NOT_CONFIGURED', '本方模型未配置，或服务进程未加载对应密钥环境变量', 503)
         self._guard(run_id, execution_id)
         view, reports = root['input_view'], {}
+        knowledge = checkpoint.get('knowledge_retrieval')
+        if (configuration.embedding.enabled or configuration.rerank.enabled) and knowledge is None:
+            rules = view.get('manifest', {}).get('victory_rules', {})
+            principal = dict(side=root['side'], active_game_rules=rules.get('rule_version') or
+                             rules.get('version') or rules.get('mode') or 'demo_no_conquest_rules')
+            knowledge = asyncio.run(self.models.retrieve(principal, checkpoint['reason'],
+                configuration.embedding.knowledge_version, configuration, self.knowledge,
+                lambda: self._guard(run_id, execution_id)))
+            self._guard(run_id, execution_id)
+            with self.settings.connect() as connection:
+                current_row = connection.execute('SELECT checkpoint_ref,status FROM ai_runs WHERE id=%s FOR UPDATE', (run_id,)).fetchone()
+                current = current_row['checkpoint_ref']
+                require(current_row['status'] == 'running' and current.get('execution_id') == execution_id, 'AGENT_BASIS_STALE', '运行租约已变更', 409)
+                current['knowledge_retrieval'] = knowledge
+                connection.execute("UPDATE ai_runs SET checkpoint_ref=%s,updated_at=clock_timestamp() WHERE id=%s",
+                    (Jsonb(current), run_id))
+        knowledge_input = dict(knowledge_evidence=knowledge) if knowledge else {}
 
         def analyze(role):
             """每个兵种拥有独立角色策略、工具白名单和持久化报告。"""
@@ -262,7 +291,7 @@ class AgentCoordinator:
             with self.settings.connect() as connection:
                 connection.execute("UPDATE ai_runs SET status='running',started_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=%s AND status='queued'", (child['id'],))
             tools = RuleTools(view, role)
-            result = self.model_factory(configuration).analyze(role, dict(state=tools.role_view(), reason=checkpoint['reason']),
+            result = self.model_factory(configuration).analyze(role, dict(state=tools.role_view(), reason=checkpoint['reason'], **knowledge_input),
                                                                tools, AgentReport, lambda: self._guard(run_id, execution_id))
             for task in result['output']['suggested_tasks']:
                 tools.unit(task['unit_id'])
@@ -278,7 +307,7 @@ class AgentCoordinator:
             require(consumed < configuration.max_total_tokens, 'MODEL_BUDGET_EXCEEDED', '兵种报告已用尽本次预算，停止总指挥调用')
             tools = RuleTools(view, 'commander')
             result = self.model_factory(configuration).analyze('commander', dict(state=tools.role_view(), reports=role_reports,
-                reason=checkpoint['reason']), tools, CommanderPlan, lambda: self._guard(run_id, execution_id))
+                reason=checkpoint['reason'], **knowledge_input), tools, CommanderPlan, lambda: self._guard(run_id, execution_id))
             require(consumed + result.get('usage', {}).get('total_tokens', 0) <= configuration.max_total_tokens,
                     'MODEL_BUDGET_EXCEEDED', '本次累计用量超过预算，未发布方案')
             result['output'] = validate_plan(view, result['output'])

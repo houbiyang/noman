@@ -35,6 +35,7 @@ namespace Qiongtu.Sandbox
     public sealed class SandboxClientSettings
     {
         public int formatVersion = 1;
+        // Legacy health-check draft fields are retained for storage compatibility, not used for connections.
         public string serviceBaseUrl = "http://127.0.0.1:8000/api/v1";
         public int serviceTimeoutSeconds = 10;
         public SandboxSideAiSettings red = new SandboxSideAiSettings();
@@ -60,10 +61,6 @@ namespace Qiongtu.Sandbox
             var errors = new List<SandboxSettingsIssue>();
             if (settings == null || settings.formatVersion != 1)
             { errors.Add(new SandboxSettingsIssue("formatVersion", "设置格式不支持，原记录已保留")); return errors; }
-            Endpoint(errors, "serviceBaseUrl", settings.serviceBaseUrl, true);
-            if (!string.IsNullOrWhiteSpace(settings.serviceBaseUrl) && !settings.serviceBaseUrl.TrimEnd('/').EndsWith("/api/v1", StringComparison.Ordinal))
-                errors.Add(new SandboxSettingsIssue("serviceBaseUrl", "仿真服务根地址须以 /api/v1 结尾"));
-            Range(errors, "serviceTimeoutSeconds", settings.serviceTimeoutSeconds, 1, 120);
             Side(errors, "red", settings.red); Side(errors, "blue", settings.blue);
             return errors;
         }

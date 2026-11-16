@@ -26,6 +26,7 @@ class CreateGame(StrictModel):
     task_type: TaskType = "patrol"
     is_demo: StrictBool
     spatial_test: StrictBool = False
+    unit_interactions: StrictBool = False
     victory_mode: Literal["none", "war_goals", "qinglan_control"] = "none"
     scenario_version_id: UUID | None = None
     rule_version_id: UUID | None = None
@@ -241,7 +242,18 @@ class SettleGoalStage(StrictModel):
     evidence: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 
 
+class UnitOrder(StrictModel):
+    unit_id: ShortText
+    life_id: ShortText
+    action: Literal["recon", "attack", "resupply", "repair", "dock", "barracks", "stop"]
+    target_id: ShortText | None = None
+    target_life_id: ShortText | None = None
+    position: Position | None = None
+    resource: Literal["energy", "ammo"] = "energy"
+
+
 PAYLOAD_MODELS = {
+    "unit_order": UnitOrder, "enable_unit_interactions": EmptyPayload,
     "movement_order": MovementOrder, "advance_deployment_movement": DeploymentMovementStep,
     "place_barracks": PlaceBarracks, "spawn_from_barracks": SpawnFromBarracks, "delete_unit": DeleteUnit,
     "settle_goal_stage": SettleGoalStage, "surrender": EmptyPayload, "archive_match": ArchivePayload,
@@ -252,3 +264,10 @@ PAYLOAD_MODELS = {
     "complete_exit": ExitPayload,
     **{name: EmptyPayload for name in ("start_game", "pause", "continue", "advance_step", "begin_exit", "reload_demo_plan")},
 }
+
+
+class KnowledgeQuery(StrictModel):
+    """只允许问题与明确版本；禁止注入阵营、地址、历史和世界状态。"""
+
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=2000)]
+    knowledge_version: Annotated[str, StringConstraints(pattern=r"^conquest-v1-[0-9]{8}(?:-[a-z0-9-]+)?$", max_length=100)]

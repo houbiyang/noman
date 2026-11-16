@@ -1,0 +1,41 @@
+.selected-unit-controls {
+    position: absolute;
+    left: 22%;
+    right: 22%;
+    bottom: 70px;
+    max-height: 360px;
+    padding: 14px 20px;
+    background-color: rgba(7, 28, 22, 0.98);
+    border-width: 1px;
+    border-color: rgb(61, 119, 92);
+    border-top-width: 3px;
+    border-top-color: rgb(95, 195, 149);
+    border-radius: 6px;
+    color: rgb(226, 239, 229);
+}
+.selected-unit-heading {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.selected-unit-resources {
+    white-space: normal;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: rgb(193, 217, 201);
+}
+.selected-unit-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+.selected-unit-controls .army-unit-actions {
+    flex-wrap: wrap;
+}
+.selected-unit-controls .army-footnote {
+    white-space: normal;
+    font-size: 12px;
+    margin-top: 6px;
+}

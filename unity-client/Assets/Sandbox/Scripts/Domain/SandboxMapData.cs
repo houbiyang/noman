@@ -12,6 +12,9 @@ namespace Qiongtu.Sandbox
         public string name;
         public string kind;
         public string partnerId;
+        // 仅 capture 类型使用，来自独立版本化的 capture-points.json。
+        public float radius;
+        public string initialOwner, support, bridgeRoadId, areaPolicy;
         public float x;
         public float z;
     }

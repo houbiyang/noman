@@ -193,6 +193,8 @@ def migration_sql(database: str, enable_vectors: bool = True) -> str:
     files.append(BACKEND_ROOT / "migrations" / "009_agent_coordination.sql")
     files.append(BACKEND_ROOT / "migrations" / "007_battle_reports.sql")
     files.append(BACKEND_ROOT / "migrations" / "010_history_agent_commands.sql")
+    files.append(BACKEND_ROOT / "migrations" / "011_unit_interactions.sql")
+    files.append(BACKEND_ROOT / "migrations" / "012_manual_battle_commands.sql")
     # 两条分支的旧命令约束互不包含；统一使用最终完整约束校验，防止升级时拒绝已有合法历史。
     constraint_pattern = r"ALTER TABLE sandbox\.game_commands ADD CONSTRAINT game_commands_command_type_check CHECK \([\s\S]*?\n\);"
     final_constraint = re.search(constraint_pattern, files[-1].read_text(encoding="utf-8-sig"))

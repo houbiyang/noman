@@ -7,7 +7,7 @@ namespace Qiongtu.Sandbox
     /// <summary>向本机接入服务申请当前地图与所选角色的会话。</summary>
     [Serializable] public sealed class SandboxServerLaunchInput
     {
-        public string role, map_hash;
+        public string role, map_hash, capture_layout_sha256;
     }
 
     /// <summary>本机服务返回的单席位连接信息，不包含引导权限或其他角色凭据。</summary>
@@ -31,6 +31,11 @@ namespace Qiongtu.Sandbox
         public SandboxServerClock clock;
         public SandboxServerMap map;
         public SandboxServerUnit[] units;
+        public SandboxServerUnit[] contacts;
+        public SandboxServerUnitInteractions unit_interactions;
+        public SandboxAttackEvent[] attack_events;
+        public SandboxManualBattleView manual_battle;
+        public SandboxReplayPoint[] battle_capture_points;
         public SandboxServerCamp[] camps;
         public SandboxServerTask[] tasks;
         public SandboxServerCondition[] conditions;
@@ -61,7 +66,26 @@ namespace Qiongtu.Sandbox
     /// <summary>以十进制字符串传输的业务坐标。</summary>
     [Serializable] public sealed class SandboxServerPosition { public string x, y, coordinate_system_id = "unity-demo-120x80-v1"; }
     /// <summary>经过服务端角色过滤的单位。</summary>
-    [Serializable] public sealed class SandboxServerUnit { public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public bool in_barracks; public SandboxServerPosition position; }
+    [Serializable] public sealed class SandboxServerUnitInteractions { public bool enabled; public string rule_version_id, geometry_policy; public int elapsed_seconds; }
+    /// <summary>已提交、按开火时可见权限过滤的纯表现事件；不能用于推导额外伤害。</summary>
+    [Serializable] public sealed class SandboxAttackEndpoint
+    {
+        public string unit_id, life_id, unit_type, side;
+        public SandboxServerPosition position;
+        public bool docked;
+    }
+    [Serializable] public sealed class SandboxAttackEvent
+    {
+        public string event_id;
+        public double at, amount, hp_after, ammo_after;
+        public bool lethal;
+        public SandboxAttackEndpoint source, target;
+    }
+    [Serializable] public sealed class SandboxServerStocks { public double energy, ammo, repair; }
+    [Serializable] public class SandboxServerUnitOrder { public string unit_id, life_id, action, resource = "energy"; }
+    [Serializable] public sealed class SandboxServerTargetUnitOrder : SandboxServerUnitOrder { public string target_id, target_life_id; }
+    [Serializable] public sealed class SandboxServerReconOrder { public string unit_id, life_id, action = "recon"; public SandboxServerPosition position; }
+    [Serializable] public sealed class SandboxServerUnit { public string interaction_action, interaction_target_id; public string life_id; public double max_durability, ammo, max_ammo, speed_m_per_minute, current_speed_m_per_minute; public bool docked; public SandboxServerStocks stocks; public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public bool in_barracks; public SandboxServerPosition position; }
     /// <summary>以世界米制表达的后端已确认路径点。</summary>
     [Serializable] public sealed class SandboxServerMovementPoint { public float x, z; }
     /// <summary>角色过滤后的移动路线、单次试走轨迹和预计成本。</summary>
@@ -191,13 +215,18 @@ namespace Qiongtu.Sandbox
     /// <summary>把服务端 JSON 对象校验并映射为现有三维显示投影。</summary>
     public static class SandboxServerProjection
     {
-        /// <summary>还原 Unity 为缺失建议字段生成的默认空对象，显式字段或实际正文继续接受权限检查。</summary>
+        /// <summary>还原Unity为缺失的可选协议/建议字段生成的空对象；显式字段继续接受权限检查。</summary>
         /// <param name="view">刚完成反序列化的服务端视图。</param>
         /// <param name="json">同一次请求的原始 JSON，仅用于判断可选字段是否出现。</param>
         public static void NormalizeMissingPlan(SandboxServerView view, string json)
         {
+            // JsonUtility会为未出现在旧HTTP响应中的嵌套对象创建空实例。
+            // 没有此还原，旧局也会被误认为新手动局并停止同步。
+            if (view?.manual_battle != null && json != null && !json.Contains("\"manual_battle\"")
+                && string.IsNullOrEmpty(view.manual_battle.mode) && string.IsNullOrEmpty(view.manual_battle.schema_version))
+                view.manual_battle = null;
             SandboxServerPlan plan = view?.decisions?.own_plan;
-            if (view?.role != "host" || plan == null || json == null || json.Contains("\"own_plan\"")) return;
+            if ((view?.role != "host" && view?.manual_battle?.mode != "manual") || plan == null || json == null || json.Contains("\"own_plan\"")) return;
             if (plan.version == 0 && plan.resource_limit == 0 && string.IsNullOrEmpty(plan.proposal_id)
                 && string.IsNullOrEmpty(plan.side) && string.IsNullOrEmpty(plan.status) && string.IsNullOrEmpty(plan.priority)
                 && string.IsNullOrEmpty(plan.recon_assignment) && string.IsNullOrEmpty(plan.ground_assignment)
@@ -243,7 +272,29 @@ namespace Qiongtu.Sandbox
                 if (!string.IsNullOrEmpty(camp.unit_type) && camp.position == null) return "后端兵种兵营缺少位置";
             }
             if (view.role == "host" && view.decisions.own_plan != null) return "主持人视图包含未授权的私有建议";
-            if (view.role != "host" && (view.decisions.own_plan == null || view.decisions.own_plan.side != view.role)) return "本方建议归属无效";
+            if (view.manual_battle == null && view.role != "host" && (view.decisions.own_plan == null || view.decisions.own_plan.side != view.role)) return "本方建议归属无效";
+            if (view.manual_battle != null)
+            {
+                var battle = view.manual_battle;
+                if (battle.schema_version != "qinglan-manual-planning-v1" || battle.mode != "manual"
+                    || (battle.stage != "planning" && battle.stage != "finished") || battle.round_seconds != 60 || battle.maximum_rounds != 60
+                    || battle.round_number < 1 || battle.round_number > 60 || battle.completed_rounds < 0 || battle.completed_rounds > 60
+                    || battle.elapsed_seconds < 0 || battle.elapsed_seconds > 3600 || battle.elapsed_seconds % 5 != 0
+                    || battle.submitted == null || battle.own_drafts == null || battle.own_drafts.Length > 30
+                    || view.decisions.own_plan != null || battle.completed_rounds != view.clock.simulation_step)
+                    return "手动战斗协议、轮次或角色投影无效";
+                if (battle.stage == "planning" && (battle.completed_rounds >= 60 || battle.round_number != battle.completed_rounds + 1
+                    || battle.elapsed_seconds != battle.completed_rounds * 60)) return "手动战斗时钟与轮次不一致";
+                bool locked = view.role == "blue" ? battle.submitted.blue : battle.submitted.red;
+                if ((view.role == "host" && (battle.own_drafts.Length > 0 || battle.can_edit || battle.can_submit))
+                    || (view.role != "host" && battle.can_resolve)
+                    || ((battle.can_edit || battle.can_submit) && (battle.stage != "planning" || locked))
+                    || (battle.can_resolve && (!battle.engine_ready || battle.stage != "planning" || !battle.submitted.blue || !battle.submitted.red)))
+                    return "手动战斗提交权限或私有草稿范围无效";
+                if (battle.own_drafts.Any(item => item == null || !view.units.Any(u => u.unit_id == item.unit_id && u.life_id == item.life_id))
+                    || battle.own_drafts.Select(item => item.unit_id).Distinct().Count() != battle.own_drafts.Length)
+                    return "本方手动草稿单位或生命实例无效";
+            }
             if (view.tasks.Any(task => task == null || task.nodes == null || (view.role != "host" && task.side != view.role))) return "任务对象或归属无效";
             if (view.tasks.Any(task => task.nodes.Any(node => node == null || string.IsNullOrEmpty(node.node_id)))
                 || view.timeline.Any(record => record == null || string.IsNullOrEmpty(record.event_id))
@@ -268,10 +319,13 @@ namespace Qiongtu.Sandbox
             {
                 role = Role(view.role), title = view.game.title, step = view.clock.simulation_step,
                 taskType = view.tasks.FirstOrDefault()?.title ?? "尚未配置任务",
-                units = view.units.Select(unit => new SandboxUnitData {
+                units = view.units.Concat(view.contacts ?? Array.Empty<SandboxServerUnit>()).GroupBy(unit => unit.unit_id).Select(group => group.First()).Where(unit => unit.position != null).Select(unit => new SandboxUnitData {
                     id = unit.unit_id, name = unit.name, side = Role(unit.side), status = unit.status,
                     type = unit.unit_type == "recon" ? SandboxUnitType.Recon : unit.unit_type == "ground" ? SandboxUnitType.Ground : SandboxUnitType.Support,
                     x = float.Parse(unit.position.x, CultureInfo.InvariantCulture), z = float.Parse(unit.position.y, CultureInfo.InvariantCulture),
+                    health = (float)unit.durability, maxHealth = (float)unit.max_durability,
+                    speedMPerMinute = (float)unit.speed_m_per_minute, currentSpeedMPerMinute = (float)unit.current_speed_m_per_minute, energy = (float)unit.energy,
+                    ammo = (float)unit.ammo, maxAmmo = (float)unit.max_ammo, hasCombatResources = !string.IsNullOrEmpty(unit.life_id), docked = unit.docked,
                     barracksId = unit.camp_id
                 }).ToArray(),
                 barracks = (view.camps ?? Array.Empty<SandboxServerCamp>()).Where(camp => camp.position != null)

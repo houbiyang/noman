@@ -51,7 +51,7 @@ class Navigator:
         self.meta, self.grid = navigation()
         require(self.meta['source_sha256'] == state['manifest']['map_source_sha256'],
                 'MOVEMENT_MAP_STALE', '移动测试区域与当前地图不一致，请重新发布通行数据')
-        self.rules = profile()
+        self.rules = state.get('unit_interactions',{}).get('rules',{}).get('movement_profile') or profile()
         self.kind = unit['unit_type']
         self.parameters = self.rules['unit_profiles'][self.kind]
         self.cell, self.columns, self.rows = self.meta['cell_m'], self.meta['columns'], self.meta['rows']
@@ -357,9 +357,9 @@ def plan(state, unit, target, mode='move', waypoints=None):
                 trace_sequence=0,last_trace=[])
 
 
-def advance_unit(state, unit, active, deployment=False, distance_limit=None):
+def advance_unit(state, unit, active, deployment=False, distance_limit=None, time_fraction=1.0, energy_factor=1.0):
     """推进一份独立移动时间预算；部署试走只扣测试能源，不改变对局时钟。"""
-    remaining = 1.0
+    remaining = time_fraction
     current = spatial.meters(unit['position'])
     trace = [list(current)]
     energy_field = 'movement_test_energy' if deployment else 'energy'
@@ -373,7 +373,7 @@ def advance_unit(state, unit, active, deployment=False, distance_limit=None):
         distance = math.dist(current,piece['end'])
         if distance < 1e-8:
             active['segment_index'] += 1; continue
-        amount = min(distance,remaining*piece['speed_m_per_step'],energy/piece['energy_per_m'] if piece['energy_per_m'] else math.inf,
+        amount = min(distance,remaining*piece['speed_m_per_step'],energy/(piece['energy_per_m']*energy_factor) if piece['energy_per_m'] else math.inf,
                      distance_limit-moved if distance_limit is not None else math.inf)
         if amount <= 1e-9:
             if distance_limit is not None and moved >= distance_limit-1e-9:
@@ -381,24 +381,45 @@ def advance_unit(state, unit, active, deployment=False, distance_limit=None):
             active['status']='blocked'; unit['status']='移动能源耗尽'; break
         next_point = tuple(current[axis]+(piece['end'][axis]-current[axis])*amount/distance for axis in (0,1))
         radius = active['movement_profile']['unit_profiles'][unit['unit_type']]['radius_m']
-        blocked = False
+        # Clip to the first swept-circle contact instead of rejecting the entire
+        # minute's displacement when an obstacle is hundreds of metres ahead.
+        safe_amount = amount
         if unit['unit_type'] != 'recon':
+            direction = tuple((next_point[axis]-current[axis])/amount for axis in (0,1))
             for other in state['units']:
                 if (other['unit_id']==unit['unit_id'] or other['unit_type']=='recon' or is_garrisoned(state,other)
                     or other['unit_id'] in active.get('formation_member_ids',())):
                     continue
                 other_point=spatial.meters(other['position'])
                 separation=radius+active['movement_profile']['unit_profiles'][other['unit_type']]['radius_m']+1
+                offset=tuple(other_point[axis]-current[axis] for axis in (0,1))
+                projection=sum(offset[axis]*direction[axis] for axis in (0,1))
                 previous_distance=math.dist(current,other_point)
-                if (previous_distance >= separation and spatial.segment_distance(other_point,current,next_point)<separation
-                    or previous_distance < separation and math.dist(next_point,other_point)<previous_distance-1e-6):
-                    blocked=True; break
-        if blocked:
+                if previous_distance < separation:
+                    # Existing overlap may be resolved by moving away, never by
+                    # crossing through the other unit to the opposite side.
+                    if projection > 1e-9:
+                        safe_amount=0
+                    continue
+                if projection <= 0:
+                    continue
+                perpendicular_squared=max(0,previous_distance**2-projection**2)
+                if perpendicular_squared >= separation**2:
+                    continue
+                contact=projection-math.sqrt(separation**2-perpendicular_squared)
+                safe_amount=min(safe_amount,max(0,contact-1e-4))
+        blocked = safe_amount < amount-1e-9
+        amount = safe_amount
+        if amount > 1e-9:
+            next_point=tuple(current[axis]+(piece['end'][axis]-current[axis])*amount/distance for axis in (0,1))
+        else:
             active['status']='waiting'; unit['status']='前方受阻，等待通行'; break
         if active['mode'] != 'reverse_move':
             unit['heading_degrees']=round(math.degrees(math.atan2(next_point[0]-current[0],next_point[1]-current[1]))%360,6)
         current=next_point; trace.append(list(current))
-        moved += amount; energy -= amount*piece['energy_per_m']; remaining -= amount/piece['speed_m_per_step']
+        moved += amount; energy -= amount*piece['energy_per_m']*energy_factor; remaining -= amount/piece['speed_m_per_step']
+        if blocked:
+            active['status']='waiting'; unit['status']='前方受阻，等待通行'; break
         if amount >= distance-1e-8:
             active['segment_index'] += 1
     unit['position']=spatial.business(current)

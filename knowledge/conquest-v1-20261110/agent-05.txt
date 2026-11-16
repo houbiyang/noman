@@ -1,0 +1,19 @@
+## 5. 输出结构与边界
+
+### 5.1 兵种报告建议结构
+
+报告包含 `report_id`、`side`、`agent_role`、`unit_ids`、`observed_step`、`source_report_ids`、`availability_summary`、`task_progress`、`facts`、`uncertainties`、`blocked_dependencies`。每条事实关联对象、来源和有效时间；同一报告不混入生成模型的猜测作为观察事实。
+
+解释性文字和事实分别保存；模型摘要不能覆盖原始报告。复盘显示可读摘要与来源，不披露模型内部推理链。
+
+### 5.2 总指挥建议结构
+
+输出适配现有 `ProposalView`：摘要、`assignments`、`task_priorities`、`resource_limit`、预计影响、`uncertainties`、`evidence`，并关联原分析运行及依据。引用用稳定证据标识，不拼服务器路径或虚构页码。
+
+人工只修改本方分工、优先级与额度，原建议不被覆盖。预计资源变化由规则计算，不采信模型自行填的计费数。`requires_confirmation` 由规则判定，模型不能自行设为 false 绕过首次／重大确认。
+
+### 5.3 建议接受检查顺序
+
+先检查结构及允许字段，再检查对象归属、可用性、主动作／任务占用、路线、资源与截止条件；最后在采用事务中复核当前分支和实际依据。显示“格式正确”不表示“已合法采用”。
+
+没有完整内容时不创建伪已生成建议；分析排队和模型不可用只产生真实运行状态。结果晚到可供诊断，失去采用资格后不能改变当前局。

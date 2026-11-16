@@ -10,12 +10,18 @@ namespace Qiongtu.Sandbox
         public const float ReconAltitude = 6f * 8f;
         public const float GroundClearance = .08f;
         public Bounds VisualBounds => visualBounds;
-        public bool IsAirborne => type == SandboxUnitType.Recon;
+        private bool docked;
+        public void SetDocked(bool value) { docked = value; if (CombatActor) CombatActor.SetAirborne(IsAirborne); }
+        public bool IsAirborne => type == SandboxUnitType.Recon && !docked;
         public Vector3 MapLabelPosition => new Vector3(transform.position.x, visualBounds.max.y + .8f, transform.position.z);
         private Renderer[] renderers;
         private BoxCollider pickCollider;
         private Bounds visualBounds;
         public string UnitId { get; private set; }
+        public string LifeId { get; set; }
+        public SandboxCombatActor CombatActor { get; private set; }
+        private bool destroyed => CombatActor && CombatActor.Destroyed;
+        public void SetDestroyed(bool value) { if (CombatActor) CombatActor.SetDestroyed(value); }
         public bool IsMoving => path.Count > 0;
         public bool IsGarrisoned => garrisoned;
         private SandboxUnitType type;
@@ -48,6 +54,9 @@ namespace Qiongtu.Sandbox
                 if (part.name.StartsWith("RotorPivot_")) rotors.Add(part);
                 if (part.name.StartsWith("WheelPivot_")) wheels.Add(part);
             }
+            Transform modelRoot = visual.GetChild(0);
+            CombatActor = modelRoot.GetComponent<SandboxCombatActor>() ?? modelRoot.gameObject.AddComponent<SandboxCombatActor>();
+            CombatActor.Configure(sideColor, type == SandboxUnitType.Recon && !docked);
             block = new MaterialPropertyBlock(); block.SetColor(BaseColor, sideColor);
             foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>())
                 if (renderer.sharedMaterial.name.StartsWith("TeamAccent")) renderer.SetPropertyBlock(block);
@@ -162,9 +171,9 @@ namespace Qiongtu.Sandbox
             }
             // Idle, restored and moving units all use the same surface-relative altitude.
             Vector3 anchored = transform.position;
-            anchored.y = SandboxWorld.Surface(anchored.x, anchored.z).y + (type == SandboxUnitType.Recon ? ReconAltitude : GroundClearance);
+            anchored.y = SandboxWorld.Surface(anchored.x, anchored.z).y + (IsAirborne ? ReconAltitude : GroundClearance);
             transform.position = anchored;
-            foreach (Transform rotor in rotors) rotor.Rotate(Vector3.up, dt * (moving ? 2400 : 1700), Space.Self);
+            foreach (Transform rotor in rotors) rotor.Rotate(Vector3.up, dt * (destroyed ? 45 : moving ? 2400 : 1700), Space.Self);
             foreach (Transform wheel in wheels) wheel.Rotate(Vector3.right, traveled * Mathf.Rad2Deg / (0.4f * ModelScale), Space.Self);
             float spawn = Mathf.Clamp01((Time.time - spawnAt) / 0.35f);
             UpdateVisualPose(Time.time, moving, spawn);
@@ -180,15 +189,15 @@ namespace Qiongtu.Sandbox
         private void UpdateVisualPose(float time, bool moving, float spawn)
         {
             visual.localScale = Vector3.one * ModelScale * Mathf.Lerp(.2f, 1, 1 - Mathf.Pow(1 - Mathf.Clamp01(spawn), 3));
-            visual.localPosition = type == SandboxUnitType.Recon ? Vector3.up * Mathf.Sin(time * 2.4f + phase) * .16f
+            visual.localPosition = IsAirborne ? Vector3.up * Mathf.Sin(time * 2.4f + phase) * .16f
                 : Vector3.up * Mathf.Sin(time * 22 + phase) * Mathf.Min(speed, 1) * .025f;
-            visual.localRotation = type == SandboxUnitType.Recon ? Quaternion.Euler(moving ? -5 : Mathf.Sin(time + phase) * 1.3f, 0, Mathf.Sin(time * 1.8f + phase) * 1.4f) : Quaternion.identity;
+            visual.localRotation = IsAirborne ? Quaternion.Euler(moving ? -5 : Mathf.Sin(time + phase) * 1.3f, 0, Mathf.Sin(time * 1.8f + phase) * 1.4f) : Quaternion.identity;
             visualBounds = renderers[0].bounds;
             for (int i = 1; i < renderers.Length; i++) visualBounds.Encapsulate(renderers[i].bounds);
             // Sample the whole enlarged footprint, not only the model's centre. Lift the visual,
             // not the authoritative XZ/target/root, so restoring or refreshing cannot accumulate offsets.
             float surface = SandboxWorld.HighestSurface(visualBounds);
-            float lift = Mathf.Max(0, surface + (type == SandboxUnitType.Recon ? ReconAltitude : GroundClearance) - visualBounds.min.y);
+            float lift = destroyed ? 0 : Mathf.Max(0, surface + (IsAirborne ? ReconAltitude : GroundClearance) - visualBounds.min.y);
             visual.localPosition += Vector3.up * lift;
             visualBounds.center += Vector3.up * lift;
             if (pickCollider == null) return;
@@ -201,7 +210,7 @@ namespace Qiongtu.Sandbox
             pickCollider.size = Vector3.Max(new Vector3(Mathf.Abs(a.x) + Mathf.Abs(b.x) + Mathf.Abs(c.x),
                 Mathf.Abs(a.y) + Mathf.Abs(b.y) + Mathf.Abs(c.y), Mathf.Abs(a.z) + Mathf.Abs(b.z) + Mathf.Abs(c.z)) * 2,
                 new Vector3(3, 1.8f, 3) * ModelScale);
-            pickCollider.enabled = true;
+            pickCollider.enabled = !destroyed;
         }
     }
 }

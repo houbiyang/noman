@@ -1,0 +1,588 @@
+{
+  "schema_version": "qinglan-rulebook-parameters-v1",
+  "version": "qinglan-rulebook-main-v1.1-terrain-v1.0-2026-11-13",
+  "source": {
+    "path": "docs/rules/青岚_游戏规则总册_分类目录完整版_v1.1.md",
+    "sha256": "4476cb523a6e7067b235c94240e77756a94d5c1303ef607bc5c2aa376f16ca12"
+  },
+  "modules": {
+    "main": "1.1",
+    "terrain": "1.0"
+  },
+  "match": {
+    "duration_seconds": 3600,
+    "step_seconds": 5,
+    "plan_interval_seconds": 60,
+    "maximum_steps": 720,
+    "maximum_planning_rounds": 60,
+    "automatic_score_victory_threshold": null,
+    "end_priority": [
+      "both_eliminated_compare_exact_score_then_control_steps_then_draw",
+      "one_eliminated_loses",
+      "time_limit_compare_exact_score_then_control_steps_then_draw",
+      "otherwise_continue"
+    ],
+    "surrender": "own_operator_next_unstarted_step_boundary",
+    "simultaneous_surrender": "draw",
+    "technical_abort": "no_competitive_verdict"
+  },
+  "roster": {
+    "mode": "user_configured_per_side",
+    "unit_types": [
+      "recon",
+      "ground",
+      "support"
+    ],
+    "minimum_per_type": 0,
+    "minimum_total_per_side": 1,
+    "fixed_total_per_side": null,
+    "default_counts": null,
+    "capacity_limit": null,
+    "capacity_limit_status": "requires_release_capacity_manifest_before_activation",
+    "asymmetric_allowed": true,
+    "reinforcements": false,
+    "production": false,
+    "respawn": false,
+    "birth_protection_seconds": 0,
+    "initial_resources": "full",
+    "initial_recon_state": "docked",
+    "initial_tasks": [],
+    "initial_last_fired_at": null,
+    "initial_last_damaged_at": null
+  },
+  "unit_profiles": {
+    "recon": {
+      "durability": 40,
+      "energy": 100,
+      "speed_m_per_minute": 800,
+      "energy_per_km": 5,
+      "observation_m": 1400,
+      "ammo": 0,
+      "kill_value": 5,
+      "ground_radius_m": 2,
+      "can_attack": false,
+      "can_capture": false
+    },
+    "ground": {
+      "durability": 100,
+      "energy": 100,
+      "speed_m_per_minute": 400,
+      "energy_per_km": 8,
+      "observation_m": 900,
+      "ammo": 60,
+      "kill_value": 10,
+      "ground_radius_m": 2,
+      "can_attack": true,
+      "can_capture": true
+    },
+    "support": {
+      "durability": 80,
+      "energy": 100,
+      "speed_m_per_minute": 300,
+      "energy_per_km": 10,
+      "observation_m": 700,
+      "ammo": 0,
+      "kill_value": 8,
+      "ground_radius_m": 3,
+      "can_attack": false,
+      "can_capture": true,
+      "stocks": {
+        "energy": 200,
+        "ammo": 120,
+        "repair": 100
+      }
+    }
+  },
+  "attack": {
+    "damage": 16,
+    "moving_damage_factor": 0.6,
+    "range_ground_m": 600,
+    "range_air_m": 800,
+    "cooldown_seconds": 10,
+    "ammo_per_shot": 1,
+    "max_shots_per_step": 1,
+    "moving_energy_factor": 1.25,
+    "friendly_fire": false,
+    "random_hit": false,
+    "terrain_damage_factor": 1,
+    "simultaneous_damage": true,
+    "retired_unit_scores_once": true,
+    "non_attack_retirement_awards_kill_value": false,
+    "first_shot_earliest_seconds": 5,
+    "range_target_selection_order": [
+      "nearest_legal_target",
+      "lowest_durability",
+      "persistent_shooter_target_id_cursor"
+    ]
+  },
+  "drone": {
+    "flight_energy_per_minute": 2,
+    "flight_energy_per_step_exact": {
+      "numerator": 1,
+      "denominator": 6
+    },
+    "takeoff_seconds": 5,
+    "landing_seconds": 5,
+    "takeoff_extra_energy": 1,
+    "landing_extra_energy": 1,
+    "transition_total_energy_exact": {
+      "numerator": 7,
+      "denominator": 6
+    },
+    "transition_minimum_energy_comparison": "strictly_greater_than_transition_total",
+    "docked_energy_per_minute": 0,
+    "docked_can_observe": false,
+    "transition_can_observe": false,
+    "transition_can_move": false,
+    "transition_can_receive_service": false,
+    "forest_inside_observation_m": 1000,
+    "forest_entry_max_length_m": 600,
+    "forest_boundary_counts_inside": true,
+    "airborne_zero_energy": "permanent_retirement_no_enemy_kill_credit",
+    "docked_zero_energy": "disabled_not_retired",
+    "landing_allowed_surface_types": [
+      "road",
+      "gravel",
+      "open",
+      "field"
+    ],
+    "landing_requires_published_surface": true,
+    "landing_forbidden": [
+      "forest_coverage",
+      "water",
+      "mud",
+      "rooftop",
+      "bridge"
+    ],
+    "failed_landing_after_enemy_entry": "remain_airborne_no_energy_refund"
+  },
+  "low_energy": {
+    "base_trigger_energy": 30,
+    "service_route_reserve_energy": 10,
+    "formula": "max(30, C_service + 10)",
+    "comparison": "energy <= trigger",
+    "unknown_service_cost": "unavailable_not_zero",
+    "clamp_trigger_to_capacity": false,
+    "extra_model_call_on_trigger": false,
+    "no_plan": "stop_unsafe_deepening_at_legal_position"
+  },
+  "capture": {
+    "point_count": 5,
+    "radius_m": 250,
+    "point_weight": 1,
+    "capture_seconds": 30,
+    "neutralize_seconds": 30,
+    "capture_steps": 6,
+    "neutralize_steps": 6,
+    "initial_owner": "neutral",
+    "initial_progress_seconds": 0,
+    "eligible_unit_types": [
+      "ground",
+      "support"
+    ],
+    "requires_positive_energy": true,
+    "progress_requires_full_step_stationary_survivor": true,
+    "moving_enemy_can_suppress": true,
+    "contested_progress": "reset_unfinished_stage",
+    "multiple_units_speedup": false,
+    "ownership_persists_when_empty": true,
+    "new_owner_income_starts": "next_complete_step",
+    "income_requires_owner_at_step_start_and_no_transition": true,
+    "income_requires_no_enemy_in_frozen_presence": true,
+    "income_requires_friendly_garrison": false,
+    "same_step_enemy_death_does_not_remove_suppression": true,
+    "income_control_steps_per_point_per_step": 1,
+    "total_control_capacity_steps": 3600,
+    "candidate_points_status": "unvalidated_candidates_not_current_runtime_binding",
+    "candidate_points": [
+      {
+        "point_id": "CAPTURE_A",
+        "name": "西南镇",
+        "x_m": 3000,
+        "z_m": 3000,
+        "radius_m": 250
+      },
+      {
+        "point_id": "CAPTURE_C",
+        "name": "北岸镇",
+        "x_m": 4500,
+        "z_m": 8500,
+        "radius_m": 250
+      },
+      {
+        "point_id": "CAPTURE_D",
+        "name": "中央桥西",
+        "x_m": 5500,
+        "z_m": 5800,
+        "radius_m": 250
+      },
+      {
+        "point_id": "CAPTURE_E",
+        "name": "南桥东岸",
+        "x_m": 7350,
+        "z_m": 3000,
+        "radius_m": 250
+      },
+      {
+        "point_id": "CAPTURE_G",
+        "name": "机场入口",
+        "x_m": 8400,
+        "z_m": 9300,
+        "radius_m": 250
+      }
+    ],
+    "requires_approved_surface_masks": true,
+    "overlap_allowed": false,
+    "barracks_service_overlap_allowed": false,
+    "fair_arrival_difference_target": {
+      "absolute_seconds": 5,
+      "shorter_route_fraction": 0.05,
+      "combine": "max",
+      "status": "suggested_validation_target"
+    },
+    "minimum_independent_approaches_to_side_near_points": 2
+  },
+  "score": {
+    "control_max": 70,
+    "kill_max": 20,
+    "energy_max": 15,
+    "ammo_max": 9,
+    "material_max": 6,
+    "resource_max": 30,
+    "total_max": 120,
+    "display_digits": 2,
+    "normalize_to_100": false,
+    "control_formula": "70 * N / 3600",
+    "enemy_initial_value_formula": "5*U_enemy + 10*T_enemy + 8*L_enemy",
+    "kill_formula": "20 * K / V_enemy",
+    "resource_formula": "15*Eend/E0 + 9*Aend/A0 + 6*Mend/M0",
+    "total_formula": "C + D + R",
+    "resource_settlement": "once_at_end_live_values_are_estimates",
+    "early_finish_denominators": "keep_initial_full_duration_denominators",
+    "tie_breaker": "exact_score_then_control_steps_then_draw",
+    "initial_resource_estimate": 30
+  },
+  "service": {
+    "range_m": 100,
+    "range_inclusive": true,
+    "field_targets_per_step": 1,
+    "field_resource_types_per_step": 1,
+    "amount_per_step": 2,
+    "repair_material_per_durability": 1,
+    "must_be_stationary_full_step": true,
+    "provider_requires_positive_own_energy": true,
+    "requires_continuous_legal_unblocked_surface": true,
+    "max_ground_local_slope": 0.1,
+    "recon_must_be_docked": true,
+    "receive_and_provide_same_step": false,
+    "self_service": false,
+    "sources_per_receiver_per_step": 1,
+    "restored_eligibility": "next_step",
+    "request_types": [
+      "quantity",
+      "target_balance"
+    ],
+    "queue_order": [
+      "continuous_registration_simulation_time",
+      "persistent_rotating_stable_unit_id_cursor"
+    ],
+    "refresh_equivalent_request_resets_priority": false,
+    "queue_scope": "one_shared_candidate_order_per_side_across_all_three_barracks"
+  },
+  "barracks": {
+    "count_per_side": 3,
+    "footprint_width_m": 60,
+    "footprint_length_m": 60,
+    "range_m": 100,
+    "quiet_seconds": 15,
+    "slots_per_barracks_per_step": 4,
+    "maximum_slots_per_side_per_step": 12,
+    "energy_per_step": 50,
+    "ammo_per_step": 50,
+    "durability_per_step": 50,
+    "stock_energy_per_step": 50,
+    "stock_ammo_per_step": 60,
+    "stock_repair_per_step": 50,
+    "public_reserve_per_side": {
+      "energy": 1200,
+      "ammo": 600,
+      "repair": 200
+    },
+    "reserve_shared_across_barracks": true,
+    "automatic_regeneration": false,
+    "blocks_movement": true,
+    "blocks_observation": false,
+    "blocks_fire": false,
+    "provides_observation": false,
+    "attackable": false,
+    "counts_as_living_unit": false,
+    "max_site_local_slope": 0.05,
+    "site_surface_types": [
+      "open",
+      "gravel"
+    ],
+    "relocation_during_match": false,
+    "delivery_order": [
+      "own_energy",
+      "own_ammo",
+      "durability",
+      "stock_energy",
+      "stock_ammo",
+      "stock_repair"
+    ]
+  },
+  "resource_accounting": {
+    "initial_energy_formula": "100*(U+T+L) + 200*L + 1200",
+    "initial_ammo_formula": "60*T + 120*L + 600",
+    "initial_material_formula": "100*L + 200",
+    "conservation_formula": "remaining = initial - consumed - permanently_lost",
+    "death_remaining_balances": "permanent_loss_after_actual_shot_cost",
+    "internal_transfer_creates_resources": false,
+    "cross_type_exchange": false,
+    "public_reserves_lost_with_units": false,
+    "nonpositive_score_denominator": "reject"
+  },
+  "map": {
+    "width_m": 12000,
+    "depth_m": 12000,
+    "deployment_regions": {
+      "red": {
+        "x_min_m": 1000,
+        "x_max_m": 1900,
+        "z_min_m": 3200,
+        "z_max_m": 10400
+      },
+      "blue": {
+        "x_min_m": 10000,
+        "x_max_m": 11200,
+        "z_min_m": 1600,
+        "z_max_m": 8800
+      }
+    },
+    "safety_margin_m": 1,
+    "observation_fire_anchor_height_m": 2,
+    "intersection_tolerance_m": 0.01,
+    "distance_metric": "horizontal_center_distance_inclusive_then_surface_checks",
+    "max_landing_local_slope": 0.05,
+    "position_grid_m": 0.001,
+    "path_length_grid_m": 0.001,
+    "friendly_unit_blocking": false,
+    "enemy_ground_unit_blocking": true,
+    "requires_full_swept_trajectory": true,
+    "navigation_outside_own_deployment": "approved_roads_bridges_and_access_segments_only",
+    "route_tiebreak": [
+      "travel_time",
+      "energy",
+      "legal_road_preference",
+      "fixed_path_id_sequence"
+    ],
+    "map_data_status": "requires_geometry_airspace_surface_and_access_validation"
+  },
+  "terrain": {
+    "module_version": "1.0",
+    "surface_factors": {
+      "ground": {
+        "road": 1,
+        "bridge": 1,
+        "gravel": 0.8,
+        "open": 0.65,
+        "field": 0.5,
+        "sparse_forest": 0.4,
+        "dense_forest": null,
+        "water": null,
+        "mud": null,
+        "obstacle": null,
+        "unknown": null
+      },
+      "support": {
+        "road": 1,
+        "bridge": 1,
+        "gravel": 0.7,
+        "open": 0.45,
+        "field": 0.3,
+        "sparse_forest": null,
+        "dense_forest": null,
+        "water": null,
+        "mud": null,
+        "obstacle": null,
+        "unknown": null
+      }
+    },
+    "null_surface_factor_means": "forbidden_not_zero_speed",
+    "slope_measure": "max(abs(longitudinal),abs(cross_slope))",
+    "slope_bands": [
+      {
+        "min_exclusive": null,
+        "min_inclusive": 0,
+        "max_inclusive": 0.1,
+        "ground": 1,
+        "support": 1
+      },
+      {
+        "min_exclusive": 0.1,
+        "max_inclusive": 0.2,
+        "ground": 0.85,
+        "support": 0.7
+      },
+      {
+        "min_exclusive": 0.2,
+        "max_inclusive": 0.35,
+        "ground": 0.6,
+        "support": null
+      },
+      {
+        "min_exclusive": 0.35,
+        "max_inclusive": null,
+        "ground": null,
+        "support": null
+      }
+    ],
+    "max_slope": {
+      "ground": 0.35,
+      "support": 0.2
+    },
+    "bridge_min_clear_width_m": {
+      "ground": 6,
+      "support": 8
+    },
+    "bridge_uses_own_slope": true,
+    "drone_uses_ground_factors": false,
+    "terrain_attack_damage_factor": 1,
+    "terrain_attack_cooldown_factor": 1,
+    "terrain_capture_rate_factor": 1,
+    "terrain_score_weight_factor": 1,
+    "legal_service_throughput_factor": 1,
+    "fast_mode_enabled": false,
+    "reverse_mode_enabled": false,
+    "idle_ground_energy_per_minute": 0,
+    "speed_formula": "base_speed * f * s",
+    "segment_time_formula": "horizontal_length_m * 60 / speed",
+    "segment_energy_formula": "horizontal_length_m / 1000 * base_energy_per_km / (f * s)",
+    "local_slope_uses_full_footprint": true,
+    "unknown_surface_policy": "reject"
+  },
+  "planning": {
+    "round_budget_real_seconds": 120,
+    "format_repair_maximum": 1,
+    "joint_recovery_rounds_per_failure": 2,
+    "human_confirmation_timeout_seconds": null,
+    "control_modes": [
+      "human_confirmation",
+      "autonomous_ai"
+    ],
+    "common_snapshot_barrier": true,
+    "fast_side_can_act_early": false,
+    "whole_round_budget_includes_tools_and_repair": true
+  },
+  "playback": {
+    "initial_buffer_seconds": 180,
+    "produce_at_boundary_when_buffer_lte_seconds": 120,
+    "maximum_normal_buffer_seconds": 180,
+    "resume_buffer_seconds": 120,
+    "speed_bands": [
+      {
+        "min_inclusive": 120,
+        "max_exclusive": null,
+        "speed": 2
+      },
+      {
+        "min_inclusive": 60,
+        "max_exclusive": 120,
+        "speed": 1
+      },
+      {
+        "min_exclusive": 0,
+        "max_exclusive": 60,
+        "speed": 0.5
+      },
+      {
+        "buffer_equals": 0,
+        "speed": 0
+      }
+    ],
+    "only_committed_results": true,
+    "all_views_use_same_playback_time": true,
+    "early_terminal_drains_without_prefill": true,
+    "changes_authoritative_clock": false
+  },
+  "precision": {
+    "resource_hp_score": "exact_decimal_or_rational_deterministic_accumulation",
+    "display_rounding_writes_state": false,
+    "combat_comparison": "unrounded",
+    "route_subgrid_remainder": "retain_only_same_uninterrupted_route_clear_on_stop_block_arrival_cancel"
+  },
+  "provenance": {
+    "match": [
+      "main-3",
+      "main-19"
+    ],
+    "roster": [
+      "main-4-1",
+      "main-6"
+    ],
+    "unit_profiles": [
+      "main-4-1",
+      "main-4-4"
+    ],
+    "attack": [
+      "main-4-2",
+      "main-12"
+    ],
+    "drone": [
+      "main-4-3",
+      "main-10",
+      "terrain-11"
+    ],
+    "low_energy": [
+      "main-10-3"
+    ],
+    "capture": [
+      "main-3",
+      "main-13",
+      "main-24"
+    ],
+    "score": [
+      "main-3",
+      "main-16"
+    ],
+    "service": [
+      "main-5-1",
+      "main-14",
+      "terrain-10"
+    ],
+    "barracks": [
+      "main-5-1",
+      "main-6-3",
+      "terrain-11"
+    ],
+    "resource_accounting": [
+      "main-15"
+    ],
+    "map": [
+      "main-5-2",
+      "main-9",
+      "main-21",
+      "main-24"
+    ],
+    "terrain": [
+      "terrain-3",
+      "terrain-4",
+      "terrain-5",
+      "terrain-7",
+      "terrain-8",
+      "terrain-9",
+      "terrain-10"
+    ],
+    "planning": [
+      "main-5-3",
+      "main-18"
+    ],
+    "playback": [
+      "main-5-3",
+      "main-20"
+    ],
+    "precision": [
+      "main-21-2"
+    ]
+  }
+}

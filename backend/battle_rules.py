@@ -49,8 +49,8 @@ def evaluate(value: dict | None) -> dict:
     result = dict(final=False, verdict="待裁定", winner=None, redPoints=0, bluePoints=0,
                   reason="缺少战争目标逐阶段结算证据，不能从步数、单位击杀或任务状态推定胜负。",
                   calculations=[], milestones=[], stageScores=[], scoreMaximum=0, redScore100=0.0, blueScore100=0.0, redPercent=0.0, bluePercent=0.0)
-    project = bool(value and value.get("ruleVersion") == qinglan_rules.VERSION and value.get("mode") == qinglan_rules.MODE)
-    stage_minutes, goal_limit = (20, 3) if project else (15, 6)
+    project = qinglan_rules.supported(value)
+    stage_minutes, goal_limit = (20, len(qinglan_rules.point_ids(value["ruleVersion"]))) if project else (15, 6)
     if not project and (not value or value.get("ruleVersion") != VERSION or value.get("mode") != "war_goals"):
         return result
     stages, elapsed = value.get("stages"), value.get("elapsedMinutes")
@@ -61,7 +61,7 @@ def evaluate(value: dict | None) -> dict:
             return result
         if any(type(stage.get(k)) is not int or not 0 <= stage[k] <= goal_limit for k in ("redGoals", "blueGoals")):
             return result
-        if project and stage["confirmed"] and not qinglan_rules.valid_stage(stage):
+        if project and stage["confirmed"] and not qinglan_rules.valid_stage(stage, value["ruleVersion"]):
             return result
         if stage["confirmed"] and not str(stage.get("evidence", "")).strip():
             return result

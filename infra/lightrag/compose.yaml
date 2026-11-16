@@ -1,0 +1,42 @@
+name: noman-lightrag
+x-common: &common
+  # v1.5.7 官方多架构 OCI 索引，2026-11-10 从 GHCR 核验。
+  image: ghcr.io/hkuds/lightrag:v1.5.7@sha256:5bdbd524931b011df246fe20888d110cef691e6804c12cde636a2b746d7de27e
+  restart: unless-stopped
+  init: true
+  security_opt: [no-new-privileges:true]
+  environment:
+    HOST: 0.0.0.0
+    PORT: '9621'
+    WORKING_DIR: /app/data/rag_storage
+    INPUT_DIR: /app/data/inputs
+    PROMPT_DIR: /app/data/prompts
+  logging:
+    driver: json-file
+    options: {max-size: '10m', max-file: '2'}
+services:
+  red:
+    <<: *common
+    env_file:
+      - path: ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE:?Set KNOWLEDGE_RELEASE}/red/service.env
+        format: raw
+    ports: ['127.0.0.1:9622:9621']
+    volumes:
+      - ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE}/red/storage:/app/data/rag_storage
+      - ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE}/red/inputs:/app/data/inputs
+      - ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE}/red/prompts:/app/data/prompts
+    networks: [red]
+  blue:
+    <<: *common
+    env_file:
+      - path: ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE}/blue/service.env
+        format: raw
+    ports: ['127.0.0.1:9623:9621']
+    volumes:
+      - ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE}/blue/storage:/app/data/rag_storage
+      - ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE}/blue/inputs:/app/data/inputs
+      - ../../.local/lightrag/releases/${KNOWLEDGE_RELEASE}/blue/prompts:/app/data/prompts
+    networks: [blue]
+networks:
+  red: {}
+  blue: {}

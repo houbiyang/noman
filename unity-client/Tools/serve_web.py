@@ -68,10 +68,10 @@ class SandboxWebHandler(http.server.SimpleHTTPRequestHandler):
             return
         try:
             body = json.loads(self.rfile.read(int(length)))
-            if not isinstance(body, dict) or set(body) != {"role", "map_hash"}:
+            if not isinstance(body, dict) or set(body) != {"role", "map_hash", "capture_layout_sha256"}:
                 self.reply_json(400, dict(error=dict(message="接入参数无效")))
                 return
-            result = self.server.launch_provider.session(body["role"], body["map_hash"])
+            result = self.server.launch_provider.session(body["role"], body["map_hash"], body["capture_layout_sha256"])
         except (ValueError, OSError, WebLaunchError) as error:
             message = str(error) if isinstance(error, WebLaunchError) else "本机接入未完成，请稍后重试"
             self.reply_json(503, dict(error=dict(message=message)))

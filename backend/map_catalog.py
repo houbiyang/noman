@@ -11,7 +11,7 @@ from backend.runtime import sha256
 
 
 SCHEMA_VERSION = "map-elevation-roads-v2"
-CONVERTER_VERSION = "qinglan-catalog-v2.1"
+CONVERTER_VERSION = "qinglan-catalog-v2.2"
 
 
 def number(value) -> str:
@@ -181,6 +181,13 @@ def convert(source: dict, source_sha256: str) -> dict:
         source_roads_sha256=sha256(source["roads"]), derived_nodes=len(nodes) - len(source["nodes"]),
         visual_coverage_status="not_verified", warnings=["桥头连接与中央桥梁任务点高度需复核", "建筑保留显示变换，未转换为精确占地"],
         assumptions=["源道路未配置方向，按测试双向保存", "源道路未配置通行政策，保存为未知"]))
+    # 据点层单独版本化：底图及移动源摘要保持不变，数据库场景摘要覆盖叠加层。
+    from backend.capture_map import current_layout, objectives
+    layout, layout_hash = current_layout()
+    result["capture_layout"] = deepcopy(layout)
+    result["capture_points"] = objectives(source)
+    result["import_audit"]["capture_layout_sha256"] = layout_hash
+    result["map_version"] += "-captures-" + layout_hash[:12]
     result["content_sha256"] = sha256(result)
     validate(result)
     return result
@@ -190,6 +197,9 @@ def validate(value: dict) -> None:
     """检查转换结果、道路引用、高程完整性和内容摘要。"""
     source = value["source_payload"]
     validate_source(source)
+    from backend.capture_map import validate as validate_captures, objectives
+    validate_captures(value["capture_layout"], source)
+    require(value["capture_points"] == objectives(source, value["capture_layout"]), "CAPTURE_SOURCE_CHANGED", "据点转换与源配置不一致", 422)
     require(value["elevation_grid"]["values"] == source["heights"], "MAP_HEIGHT_CHANGED", "入库高程与源数据不一致", 422)
     nodes = {node["node_id"]: node for node in value["road_nodes"]}
     edges = value["road_edges"]

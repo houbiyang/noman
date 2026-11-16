@@ -19,19 +19,29 @@ def enable(state, rules):
     probe = dict(unit_id='map-validation', side='red', unit_type='ground', position=spatial.business((3000, 6000)), energy=100, durability=100)
     navigator = movement.Navigator(state, probe, 'move')
     points = []
-    for source in data['points']:
-        if source['id'] not in ('TASK_A', 'TASK_B', 'TASK_C'):
+    from backend import qinglan_rules
+    from backend.capture_map import on_support
+    definition = state['manifest'].get('victory_rules', {})
+    five_points = definition.get('rule_version') == qinglan_rules.VERSION
+    sources = [dict(id=p['point_id'], name=p['name'], x=float(p['x']), z=float(p['z']), capture_definition=deepcopy(p))
+               for p in definition['objectives']] if five_points else data['points']
+    for source in sources:
+        if not five_points and source['id'] not in ('TASK_A', 'TASK_B', 'TASK_C'):
             continue
         center = (source['x'], source['z'])
-        candidates = [center] + [(center[0] + math.cos(angle * math.pi / 4) * rules['capture_radius_m'] * .7,
-                                 center[1] + math.sin(angle * math.pi / 4) * rules['capture_radius_m'] * .7) for angle in range(8)]
-        legal = next((point for point in candidates if navigator.clear(point)), None)
+        capture = source.get('capture_definition', {})
+        radius = capture.get('radius_m', rules['capture_radius_m'])
+        candidates = [center] + [(center[0] + math.cos(angle * math.pi / 4) * radius * .7,
+                                 center[1] + math.sin(angle * math.pi / 4) * radius * .7) for angle in range(8)]
+        legal = next((point for point in candidates if on_support(capture, *point, probe) and navigator.clear(point)), None)
         points.append(dict(point_id=source['id'], name=source['name'], position=spatial.business(center),
                            approach_position=spatial.business(legal) if legal else None,
                            navigation_status='test_surface_verified' if legal else 'needs_verification',
                            navigation_layer='test_surface', owner=None, status='neutral', candidate_side=None,
                            progress_kind=None, progress_steps=0))
-    require(len(points) == 3, 'CONTROL_POINTS_MISSING', '当前地图缺少三个共享控制点')
+        if capture:
+            points[-1]['capture_definition'] = capture
+    require(len(points) == (5 if five_points else 3), 'CONTROL_POINTS_MISSING', '当前地图缺少对应版本的共享控制点')
     state['coordination'] = dict(schema_version='coordination-test-v1', test_only=True, rules=deepcopy(rules),
                                  points=points, plans={}, all_held=dict(red=0, blue=0), last_scored_step=0,
                                  geometry_policy='movement_grid_surface_only',
@@ -62,8 +72,11 @@ def in_point(state, unit, point):
         return False
     if point['navigation_status'] != 'test_surface_verified':
         return False
-    radius = state['coordination']['rules']['capture_radius_m']
+    from backend.capture_map import on_support
+    capture = point.get('capture_definition', {})
+    radius = capture.get('radius_m', state['coordination']['rules']['capture_radius_m'])
     return (math.dist(spatial.meters(unit['position']), spatial.meters(point['position'])) <= radius + 1e-6
+            and on_support(capture, *spatial.meters(unit['position']), unit)
             and movement.Navigator(state, unit, 'move').clear(spatial.meters(unit['position'])))
 
 

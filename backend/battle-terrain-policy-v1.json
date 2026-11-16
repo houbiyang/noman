@@ -1,0 +1,27 @@
+{
+  "schema_version": "qinglan-base-ground-policy-v1",
+  "version": "qinglan-base-ground-open-2026-11-15-v1",
+  "approval": {
+    "date": "2026-11-15",
+    "scope": "用户确认将现有未分类GroundLow/GroundHigh地面标注为开阔地，保留其他已有地表分类"
+  },
+  "base_layers": [
+    "terrain",
+    "landscape"
+  ],
+  "base_materials": {
+    "GroundLow": "open",
+    "GroundHigh": "open"
+  },
+  "other_parts": "preserve_existing_no_reclassification",
+  "outside_playable_boundary": "forbidden",
+  "overlays_must_be_resolved_before_ground_use": true,
+  "grants_route_permission": false,
+  "bridge_grade_policy": "actual_support_triangles_not_surfaceHeight_or_riverbed",
+  "changes_existing_games": false,
+  "approved_map": {
+    "map_id": "qinglan-strategic-v6",
+    "definition_sha256": "0877653cbc3f6a4db86c28e28251f8cd731b0e67003780af21594b606ce057d2",
+    "geometry_sha256": "ffaa2deee0a40b1dedba83cd03091e2209ad7623245333f4bb5b5a2027f01194"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "verified_at": "2026-11-10",
+  "version": "v1.5.7",
+  "release_published_at": "2026-09-02T07:23:55Z",
+  "official_release_url": "https://github.com/HKUDS/LightRAG/releases/tag/v1.5.7",
+  "image": "ghcr.io/hkuds/lightrag:v1.5.7",
+  "oci_index_digest": "sha256:5bdbd524931b011df246fe20888d110cef691e6804c12cde636a2b746d7de27e",
+  "platforms": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:31437bcfb1c5842c5a7e496d5b7414dd43b1db861a00abdfa133c1dd43a19243",
+      "size": 3724,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:04716d2f10557342e033395c6490903ed0849a41ac5f89008736a7383e8bad7a",
+      "size": 3724,
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    }
+  ],
+  "license": "MIT",
+  "sources": [
+    "https://github.com/HKUDS/LightRAG/blob/v1.5.7/env.example",
+    "https://github.com/HKUDS/LightRAG/blob/v1.5.7/docker-compose.yml",
+    "https://github.com/HKUDS/LightRAG/blob/v1.5.7/lightrag/api/routers/query_routes.py",
+    "https://github.com/HKUDS/LightRAG/blob/v1.5.7/lightrag/api/routers/document_routes.py",
+    "https://github.com/HKUDS/LightRAG/blob/v1.5.7/.github/workflows/docker-publish.yml",
+    "https://github.com/HKUDS/LightRAG/blob/v1.5.7/LICENSE"
+  ],
+  "verification": "已核验 GitHub 发布、tag 源码与 GHCR OCI manifest；未拉取或启动镜像，非运行及安全漏洞验收。"
+}

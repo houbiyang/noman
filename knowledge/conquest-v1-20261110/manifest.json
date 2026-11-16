@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "version": "conquest-v1-20261110",
+  "ruleset": "conquest-v1",
+  "planning_only": true,
+  "documents": [
+    {
+      "id": "cq-01",
+      "file": "cq-01.txt",
+      "file_source": "conquest-v1-20261110--cq-01.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-01 模式与版本",
+      "source_line": 24,
+      "sha256": "febf503270567f9d096b99b6cc2c14ca298446fe4741c753825dd2c43d589737",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "cq-02",
+      "file": "cq-02.txt",
+      "file_source": "conquest-v1-20261110--cq-02.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-02 测试参数与地图区域",
+      "source_line": 30,
+      "sha256": "155bff410faee5882598a3746c7b4715f73304dc44d36eac3702319a77da7a37",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "cq-03",
+      "file": "cq-03.txt",
+      "file_source": "conquest-v1-20261110--cq-03.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-03 三兵种资格与主动作",
+      "source_line": 45,
+      "sha256": "bbb7fae2cd7e731ceb1f38e89844f6909df9bad3a4216c7ca1de61c9226b6aac",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "cq-04",
+      "file": "cq-04.txt",
+      "file_source": "conquest-v1-20261110--cq-04.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-04 占领、中立化和争夺",
+      "source_line": 54,
+      "sha256": "2a90254b14f686de3b5fa26e80d3e3005c69a6be6afae498e48e67e821ad5d64",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "cq-05",
+      "file": "cq-05.txt",
+      "file_source": "conquest-v1-20261110--cq-05.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-05 积分与胜负",
+      "source_line": 67,
+      "sha256": "b3074c53907d0f7fe41cc57808f49fcddbd30fa3c96862d2f9a941e2513443ae",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "cq-06",
+      "file": "cq-06.txt",
+      "file_source": "conquest-v1-20261110--cq-06.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-06 时间、事件与人工确认",
+      "source_line": 81,
+      "sha256": "2da3c3302449e799aa45b267e3ee38523d50c344344a2fc998b1d283ace80b67",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "cq-07",
+      "file": "cq-07.txt",
+      "file_source": "conquest-v1-20261110--cq-07.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-07 信息、存档与公平性",
+      "source_line": 89,
+      "sha256": "1f81e7ef01a5645122f97d69717d8de00640654b53c57cc404fb5ad6714ead57",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "cq-08",
+      "file": "cq-08.txt",
+      "file_source": "conquest-v1-20261110--cq-08.txt",
+      "source_path": "docs/02仿真规则与参数.md",
+      "source_section": "CQ-08 旧模式及实施边界",
+      "source_line": 99,
+      "sha256": "758e1bf7183d5df52c95417032992cb021714991c564c3c832a13b46cf598d4a",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "agent-01",
+      "file": "agent-01.txt",
+      "file_source": "conquest-v1-20261110--agent-01.txt",
+      "source_path": "docs/09智能体执行协议.md",
+      "source_section": "占点协同协议增量",
+      "source_line": 5,
+      "sha256": "de0552f7a70fab34744e55420dcd7619c8ab1edad4c935d93a8ea3e09056e6db",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "agent-02",
+      "file": "agent-02.txt",
+      "file_source": "conquest-v1-20261110--agent-02.txt",
+      "source_path": "docs/09智能体执行协议.md",
+      "source_section": "2. 三层职责与实际调用",
+      "source_line": 42,
+      "sha256": "d8889b8b24d2a530f23bebb8464774d92553b0be9b6ad619bd7556d0e2ef04c3",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "agent-03",
+      "file": "agent-03.txt",
+      "file_source": "conquest-v1-20261110--agent-03.txt",
+      "source_path": "docs/09智能体执行协议.md",
+      "source_section": "3. 四角色协议表",
+      "source_line": 54,
+      "sha256": "539130bfed54de84290e0f47d0a0b4ac117b475a86a2c736781d45bde6642d53",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "agent-04",
+      "file": "agent-04.txt",
+      "file_source": "conquest-v1-20261110--agent-04.txt",
+      "source_path": "docs/09智能体执行协议.md",
+      "source_section": "4. 通用输入包",
+      "source_line": 67,
+      "sha256": "4115b352e6b32f72d9f314c0bf0cf690f7bde96c3dc2b13bf41d1d1d7c673734",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "agent-05",
+      "file": "agent-05.txt",
+      "file_source": "conquest-v1-20261110--agent-05.txt",
+      "source_path": "docs/09智能体执行协议.md",
+      "source_section": "5. 输出结构与边界",
+      "source_line": 83,
+      "sha256": "2bb0217d6a443f93eed3560f02b8b664f3c6315ee8c96aaa00dc510e14db52b9",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "agent-06",
+      "file": "agent-06.txt",
+      "file_source": "conquest-v1-20261110--agent-06.txt",
+      "source_path": "docs/09智能体执行协议.md",
+      "source_section": "7. 模型调用与失败协议",
+      "source_line": 121,
+      "sha256": "61ac9143598589e3728fc427c6cf9118ef1790b581d16bc6d90288d34500b46d",
+      "status": "target_design_test_baseline"
+    },
+    {
+      "id": "agent-07",
+      "file": "agent-07.txt",
+      "file_source": "conquest-v1-20261110--agent-07.txt",
+      "source_path": "docs/09智能体执行协议.md",
+      "source_section": "10.5 证据、存档与分析边界",
+      "source_line": 219,
+      "sha256": "d4fb0bb9b34c09a00165fca08e6d9b88fe44636ce1c68f97ad4a55b6f7539d28",
+      "status": "target_design_test_baseline"
+    }
+  ]
+}

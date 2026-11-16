@@ -60,6 +60,7 @@ namespace Qiongtu.Sandbox
         public event Action LogChanged;
         public IReadOnlyList<SandboxClientLogEntry> RecentLogs => recentLogs;
         public SandboxServerView View { get; private set; }
+        public int ConnectionGeneration { get; private set; }
         public bool Busy { get; private set; }
         public bool Healthy { get; private set; }
         public bool HasPending => pendingBody != null || queuedMovementKind != null;
@@ -85,6 +86,7 @@ namespace Qiongtu.Sandbox
         public bool ConnectAutomatically(string role)
         {
             if (Busy || HasPending || (role != "red" && role != "blue" && role != "host")) return false;
+            ConnectionGeneration++;
             automaticRole = role; endpoint = null; bearer = null; gameId = null; View = null; Healthy = false;
             Status = "正在自动接入后端…";
             AddLog("开始接入本机后端 · " + role, SandboxClientLogCategory.Connection);
@@ -101,7 +103,7 @@ namespace Qiongtu.Sandbox
                 && page.Scheme == "http" && (page.Host == "127.0.0.1" || page.Host == "localhost"))
                 origin = page.GetLeftPart(UriPartial.Authority);
             yield return Request("POST", origin + "/api/local-session",
-                JsonUtility.ToJson(new SandboxServerLaunchInput { role = automaticRole, map_hash = mapHash }), null, null);
+                JsonUtility.ToJson(new SandboxServerLaunchInput { role = automaticRole, map_hash = mapHash, capture_layout_sha256 = SandboxCaptureLayout.ContentHash }), null, null);
             SandboxServerLaunch launch = responseCode == 200 ? ReadJson<SandboxServerLaunch>() : null;
             Busy = false;
             if (launch == null || launch.role != automaticRole || !Connect(launch.api_url, launch.game_id, launch.access_token))
@@ -123,6 +125,7 @@ namespace Qiongtu.Sandbox
                 || address.AbsolutePath.TrimEnd('/') != "/api/v1" || !Guid.TryParse(targetGame, out _)
                 || string.IsNullOrWhiteSpace(accessToken) || accessToken.Length > 256 || accessToken.Contains("\n") || accessToken.Contains("\r"))
             { Feedback?.Invoke("请填写本机 /api/v1 地址、有效对局 UUID 和席位令牌"); return false; }
+            ConnectionGeneration++;
             endpoint = api.TrimEnd('/'); gameId = Guid.Parse(targetGame).ToString(); bearer = accessToken.Trim(); View = null; Healthy = false;
             StartCoroutine(Refresh());
             return true;
@@ -145,7 +148,7 @@ namespace Qiongtu.Sandbox
             if (Busy || HasPending || !Healthy || View == null) { Feedback?.Invoke("同步尚未就绪或原命令待核对，请稍后重试"); return; }
             SandboxServerContext context = basis ?? View.context;
             string head = JsonUtility.ToJson(new SandboxServerCommandHead { context = context, command_type = kind });
-            pendingBody = head.Substring(0, head.Length - 1) + ",\"payload\":" + (payload == null ? "{}" : JsonUtility.ToJson(payload)) + "}";
+            pendingBody = head.Substring(0, head.Length - 1) + ",\"payload\":" + (payload == null ? "{}" : payload is SandboxBattleDraftPayload draft ? draft.ToJson() : JsonUtility.ToJson(payload)) + "}";
             pendingKey = Guid.NewGuid().ToString();
             pendingCommandType = kind;
             pendingBranchId = context.branch_id;
@@ -170,6 +173,26 @@ namespace Qiongtu.Sandbox
         {
             if (Busy || HasPending || !Healthy || View == null || !Guid.TryParse(id, out _)) { completed?.Invoke(null); return; }
             StartCoroutine(ArchiveRequest("/archives/" + id, text => completed?.Invoke(text == null ? null : JsonUtility.FromJson<SandboxServerArchiveDetail>(text))));
+        }
+
+        /// <summary>主持人专属只读接口；复用串行GET，不创建命令/存档。</summary>
+        public bool LoadBattleReplayIndex(Action<SandboxReplayIndex> completed)
+        {
+            if (Busy || HasPending || !Healthy || View?.role != "host" || View.manual_battle == null) return false;
+            StartCoroutine(ArchiveRequest("/battle/rounds", text => completed?.Invoke(text == null ? null : ReadReplayJson<SandboxReplayIndex>(text))));
+            return true;
+        }
+        public bool LoadBattleReplayRound(int number, Action<SandboxReplayResponse> completed)
+        {
+            if (Busy || HasPending || !Healthy || View?.role != "host" || View.manual_battle == null || number < 1 || number > 60) return false;
+            StartCoroutine(ArchiveRequest("/battle/rounds/" + number, text => completed?.Invoke(text == null ? null : ReadReplayJson<SandboxReplayResponse>(text))));
+            return true;
+        }
+
+        private static T ReadReplayJson<T>(string text) where T : class
+        {
+            try { return JsonUtility.FromJson<T>(text); }
+            catch (ArgumentException) { return null; }
         }
 
         private IEnumerator ArchiveRequest(string path, Action<string> completed)
@@ -317,6 +340,27 @@ namespace Qiongtu.Sandbox
             }
             else Feedback?.Invoke(PublicError());
             Busy = false; nextPoll = Time.realtimeSinceStartup + 1;
+        }
+
+        /// <summary>只读开战检查；不发送命令，不以配置存在代替真实模型连通。</summary>
+        public bool CheckBattle(string mode, bool probeAi, Action<SandboxBattlePreflightResult, string> completed)
+        {
+            if (Busy || HasPending || !Healthy || View == null || View.role != "host" || (mode != "agent" && mode != "manual")) return false;
+            StartCoroutine(BattlePreflightRequest(mode, probeAi, completed));
+            return true;
+        }
+
+        private IEnumerator BattlePreflightRequest(string mode, bool probeAi, Action<SandboxBattlePreflightResult, string> completed)
+        {
+            Busy = true;
+            var input = new SandboxBattlePreflightInput { mode = mode, probe_ai = probeAi, acknowledge_cost = probeAi };
+            yield return Fetch("POST", "/battle/preflight", JsonUtility.ToJson(input), null);
+            var result = responseCode == 200 ? ReadJson<SandboxBattlePreflightResult>() : null;
+            string error = result?.checks == null || !result.read_only || result.mode != mode
+                ? (responseCode == 200 ? "开战检查返回格式无效；未启动战斗。" : PublicError()) : null;
+            Busy = false; nextPoll = Time.realtimeSinceStartup + 1;
+            AddLog(error ?? "开战依赖检查完成（只读，未开战）", SandboxClientLogCategory.Connection, error != null);
+            completed?.Invoke(error == null ? result : null, error);
         }
 
         private IEnumerator Fetch(string method, string path, string body, string requestKey)

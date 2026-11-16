@@ -153,3 +153,22 @@ Button.danger-button:hover { background-color: #754b40; border-color: #d59c85; }
 .compact .bottom-dock Button { padding-left: 9px; padding-right: 9px; margin-left: 2px; margin-right: 2px; }
 .compact .waiting-card { left: 29%; width: 490px; }
 .compact .drawer { width: 360px; }
+
+/* 常驻阶段提示：独立于feedbackLabel，不设关闭按钮或定时隐藏。 */
+.deployment-stage-banner {
+    position: absolute;
+    left: 31%;
+    right: 31%;
+    top: 18px;
+    min-height: 66px;
+    padding: 10px 18px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(14, 37, 29, 0.96);
+    border-width: 1px;
+    border-color: #9aaa78;
+    border-top-width: 3px;
+    border-radius: 7px;
+}
+.deployment-stage-title { color: #e0dbac; font-size: 19px; -unity-font-style: bold; -unity-text-align: middle-center; }
+.deployment-stage-detail { color: #b9c9b7; font-size: 12px; white-space: normal; -unity-text-align: middle-center; margin-top: 5px; }

@@ -1,0 +1,185 @@
+[
+  {
+    "id": "Q01",
+    "question": "占点半径是多少，边界包含吗？",
+    "expected_sources": [
+      "cq-02"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q02",
+    "question": "侦察无人机能占领和中立化吗？",
+    "expected_sources": [
+      "cq-03"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q03",
+    "question": "保障单位能独立争夺控制点吗？",
+    "expected_sources": [
+      "cq-03"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q04",
+    "question": "中立点需要几个完整合格步占领？",
+    "expected_sources": [
+      "cq-02",
+      "cq-04"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q05",
+    "question": "敌方已控点夺取要经过哪些阶段？",
+    "expected_sources": [
+      "cq-04"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q06",
+    "question": "新占点当步是否产生胜利分？",
+    "expected_sources": [
+      "cq-05",
+      "cq-04"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q07",
+    "question": "全控胜利需要几个完整稳定步？",
+    "expected_sources": [
+      "cq-05"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q08",
+    "question": "首次分配和攻守点变化需要谁确认？",
+    "expected_sources": [
+      "cq-06",
+      "agent-01"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q09",
+    "question": "陆兵刚移动进区域能同时占领吗？",
+    "expected_sources": [
+      "cq-03"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q10",
+    "question": "增加陆兵数量能加速占点吗？",
+    "expected_sources": [
+      "cq-03",
+      "cq-04"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q11",
+    "question": "双方同一步达到60分怎样判定胜负？",
+    "expected_sources": [
+      "cq-05"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q12",
+    "question": "第60步比分相同如何结算？",
+    "expected_sources": [
+      "cq-05"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q13",
+    "question": "已占点没有驻军会变中立吗？",
+    "expected_sources": [
+      "cq-04"
+    ],
+    "critical": false
+  },
+  {
+    "id": "Q14",
+    "question": "天气冻结时发生争夺如何处理进度？",
+    "expected_sources": [
+      "cq-07"
+    ],
+    "critical": false
+  },
+  {
+    "id": "Q15",
+    "question": "公开争夺状态能否揭示敌方身份数量坐标？",
+    "expected_sources": [
+      "cq-07",
+      "agent-01"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q16",
+    "question": "击毁和资源节省会产生额外胜利分吗？",
+    "expected_sources": [
+      "cq-05"
+    ],
+    "critical": false
+  },
+  {
+    "id": "Q17",
+    "question": "人工等待和暂停会推进占点计时吗？",
+    "expected_sources": [
+      "cq-01",
+      "cq-06"
+    ],
+    "critical": false
+  },
+  {
+    "id": "Q18",
+    "question": "模型可以绕过首次确认直接采用方案吗？",
+    "expected_sources": [
+      "agent-05",
+      "agent-01"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q19",
+    "question": "资料未命中时能否编造原文引用？",
+    "expected_sources": [
+      "agent-06"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q20",
+    "question": "文档引用是否必须追溯当时原文版本？",
+    "expected_sources": [
+      "agent-07"
+    ],
+    "critical": true
+  },
+  {
+    "id": "Q21",
+    "question": "读档后按离线时间补分吗？",
+    "expected_sources": [
+      "cq-07"
+    ],
+    "critical": false
+  },
+  {
+    "id": "Q22",
+    "question": "每个逻辑兵种角色都必须为每个地图单位持续调用模型吗？",
+    "expected_sources": [
+      "agent-02"
+    ],
+    "critical": false
+  }
+]

@@ -37,6 +37,11 @@ namespace Qiongtu.Sandbox.Editor
                 Check(loaded.showGrid && !loaded.showLabels && loaded.red.temperature == .2f, "display booleans and decimal round trip");
                 settings.showGrid = false;
                 Check(store.TrySave(settings, out message) && !store.Load(out warning).showGrid, "atomic replacement updates existing record");
+                settings.serviceBaseUrl = "legacy-invalid-address";
+                settings.serviceTimeoutSeconds = -1;
+                Check(store.TrySave(settings, out message), "removed health-check fields do not block display settings saves");
+                loaded = store.Load(out warning);
+                Check(warning.Length == 0 && loaded.serviceBaseUrl == "legacy-invalid-address", "legacy health-check drafts remain readable without resetting display preferences");
                 string before = File.ReadAllText(path);
                 settings.red.generation.credentialRef = "sk-do-not-store-this";
                 Check(!store.TrySave(settings, out message) && File.ReadAllText(path) == before, "invalid secret input never overwrites saved settings");

@@ -56,17 +56,19 @@ namespace Qiongtu.Sandbox
     {
         public const string Version = "broken-arrow-war-goals-2026-11-02-v1";
         public const string ProjectVersion = "qinglan-control-2026-11-06-v1";
+        public const string CurrentProjectVersion = "qinglan-control-2026-11-13-five-points-v2";
         public const string ProjectReference = "青岚_演示结果计分规则.md / 项目适配规则（非断箭官方参数）";
-        public static bool IsProject(SandboxVictoryEvidence input) => input != null && input.mode == "qinglan_control" && input.ruleVersion == ProjectVersion;
+        public static bool IsProject(SandboxVictoryEvidence input) => input != null && input.mode == "qinglan_control" && (input.ruleVersion == ProjectVersion || input.ruleVersion == CurrentProjectVersion);
         public static bool IsSupported(SandboxVictoryEvidence input) => IsProject(input) || (input != null && input.mode == "war_goals" && input.ruleVersion == Version);
         public static int StageMinutes(SandboxVictoryEvidence input) => IsProject(input) ? 20 : 15;
-        public static int GoalLimit(SandboxVictoryEvidence input) => IsProject(input) ? 3 : 6;
+        public static int GoalLimit(SandboxVictoryEvidence input) => IsProject(input) ? (input.ruleVersion == CurrentProjectVersion ? 5 : 3) : 6;
         public static string OwnerLabel(string owner) => owner == "red" ? "红方驻守" : owner == "blue" ? "蓝方驻守" : owner == "contested" ? "双方争夺 · 不计分" : "无人驻守 · 不计分";
-        private static bool ValidObjectives(SandboxGoalStage stage)
+        private static bool ValidObjectives(SandboxGoalStage stage, SandboxVictoryEvidence input)
         {
             var points = stage.objectives;
-            if (points == null || points.Length != 3 || points.Any(p => p == null)
-                || !points.Select(p => p.point_id).OrderBy(x => x).SequenceEqual(new[] { "TASK_A", "TASK_B", "TASK_C" })) return false;
+            string[] ids = input.ruleVersion == CurrentProjectVersion ? new[] { "P-01", "P-02", "P-03", "P-04", "P-05" } : new[] { "TASK_A", "TASK_B", "TASK_C" };
+            if (points == null || points.Length != ids.Length || points.Any(p => p == null)
+                || !points.Select(p => p.point_id).OrderBy(x => x).SequenceEqual(ids)) return false;
             foreach (var p in points)
             {
                 if (p.redUnits < 0 || p.blueUnits < 0) return false;
@@ -110,9 +112,9 @@ namespace Qiongtu.Sandbox
                 var stage = input.stages[i];
                 if (stage == null || stage.stage != i + 1 || stage.redGoals < 0 || stage.blueGoals < 0
                     || stage.redGoals > goalLimit || stage.blueGoals > goalLimit
-                    || (project && stage.confirmed && !ValidObjectives(stage))
+                    || (project && stage.confirmed && !ValidObjectives(stage, input))
                     || (stage.confirmed && string.IsNullOrWhiteSpace(stage.evidence)))
-                { result.reason = "目标结算证据无效：阶段须为 1/2/3，每方目标数须在 0 至 " + goalLimit + " 之间，确认须附依据；项目模式须与三个点位归属一致。"; return result; }
+                { result.reason = "目标结算证据无效：阶段须为 1/2/3，每方目标数须在 0 至 " + goalLimit + " 之间，确认须附依据；项目模式须与对应版本的点位归属一致。"; return result; }
             }
             if (project && !ValidProjectTimeline(input))
             { result.reason = "项目计分证据无效：阶段必须按时间顺序封存，未结算阶段不能包含点位分。"; return result; }

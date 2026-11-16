@@ -5,19 +5,34 @@ from decimal import Decimal
 from backend.map_catalog import current_map
 from backend.demo_domain import require
 
-VERSION = 'qinglan-control-2026-11-06-v1'
+LEGACY_VERSION = 'qinglan-control-2026-11-06-v1'
+VERSION = 'qinglan-control-2026-11-13-five-points-v2'
 MODE = 'qinglan_control'
-POINT_IDS = ('TASK_A', 'TASK_B', 'TASK_C')
+LEGACY_POINT_IDS = ('TASK_A', 'TASK_B', 'TASK_C')
+POINT_IDS = tuple(p['point_id'] for p in current_map()['capture_points'])
 _points = {p['point_id']: p for p in current_map()['points']}
-DEFINITION = dict(mode=MODE, rule_version=VERSION, stage_minutes=20, stages=3,
+LEGACY_DEFINITION = dict(mode=MODE, rule_version=LEGACY_VERSION, stage_minutes=20, stages=3,
                   weights=[1, 2, 3], radius_m=400, eligible_types=['ground', 'support'],
                   tie_breaker='draw', adjudication='server_position_snapshot',
                   objectives=[dict(point_id=k, name=_points[k]['name'], x=_points[k]['position']['x'],
-                                   z=_points[k]['position']['z']) for k in POINT_IDS])
+                                   z=_points[k]['position']['z']) for k in LEGACY_POINT_IDS])
+DEFINITION = dict(LEGACY_DEFINITION, rule_version=VERSION, radius_m=250,
+                  capture_layout_sha256=current_map()['import_audit']['capture_layout_sha256'],
+                  position_layer_policy='published_surface_only_no_underbridge',
+                  objectives=deepcopy(current_map()['capture_points']))
+
+
+def supported(value):
+    return bool(value and value.get('mode') == MODE and value.get('ruleVersion') in (VERSION, LEGACY_VERSION))
+
+
+def point_ids(version):
+    return POINT_IDS if version == VERSION else LEGACY_POINT_IDS
+
 
 
 def enabled(state):
-    return state['manifest'].get('victory_rules') == DEFINITION
+    return state['manifest'].get('victory_rules') in (DEFINITION, LEGACY_DEFINITION)
 
 
 def initialize(state):
@@ -35,27 +50,34 @@ def initialize(state):
 
 def observe(state):
     """Decimal米制距离；只公开目标内人数/归属，不公开敌方坐标或单位编号。"""
-    # 业务坐标仅存9位小数，先恢复到微米，消除换算误差而不扩大400米半径。
+    # 旧对局按冻结400米规则继续；新版使用250米与指定支撑面的交集。
+    definition = state['manifest']['victory_rules']
     observed = []
     for point in state['manifest']['victory_rules']['objectives']:
         counts = dict(red=0, blue=0)
         for unit in state['units']:
-            if unit['unit_type'] not in DEFINITION['eligible_types'] or (unit.get('durability') or 0) <= 0:
+            if unit['unit_type'] not in definition['eligible_types'] or (unit.get('durability') or 0) <= 0:
+                continue
+            if 'unit_interactions' in state and ((unit.get('energy') or 0) <= 0 or unit['unit_id'] not in state['unit_interactions'].get('observation_eligible_ids',[unit['unit_id']])):
                 continue
             x = (Decimal(unit['position']['x']) * 100).quantize(Decimal('0.000001')) - Decimal(str(point['x']))
             z = (Decimal(unit['position']['y']) * 150).quantize(Decimal('0.000001')) - Decimal(str(point['z']))
-            if x*x + z*z <= Decimal(DEFINITION['radius_m'])**2:
-                counts[unit['side']] += 1
+            if x*x + z*z > Decimal(str(point.get('radius_m', definition['radius_m'])))**2:
+                continue
+            from backend.capture_map import on_support
+            if not on_support(point, x + Decimal(str(point['x'])), z + Decimal(str(point['z'])), unit):
+                continue
+            counts[unit['side']] += 1
         owner = 'contested' if all(counts.values()) else 'red' if counts['red'] else 'blue' if counts['blue'] else 'neutral'
         observed.append(dict(point_id=point['point_id'], name=point['name'], owner=owner,
                              redUnits=counts['red'], blueUnits=counts['blue']))
     return observed
 
 
-def valid_stage(stage):
+def valid_stage(stage, version=VERSION):
     """结果读端同样核对逐点证据，不能仅信任客户端/档案汇总数。"""
     points = stage.get('objectives')
-    if not isinstance(points, list) or len(points) != 3 or {p.get('point_id') for p in points if isinstance(p, dict)} != set(POINT_IDS):
+    if not isinstance(points, list) or len(points) != len(point_ids(version)) or {p.get('point_id') for p in points if isinstance(p, dict)} != set(point_ids(version)):
         return False
     for p in points:
         if any(type(p.get(k)) is not int or p[k] < 0 for k in ('redUnits','blueUnits')):

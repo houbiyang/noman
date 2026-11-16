@@ -161,12 +161,20 @@ namespace Qiongtu.Sandbox
             var actions = SettingsGroup(detail, "report-toolbar");
             AddButton(actions, "查看计算过程与关键节点", () => {
                 showingPreview = entry.source == "preview"; resultEvidence = entry.victory; resultArchiveTitle = entry.title;
+                resultManualArchive = entry.manualBattle; resultManualArchivePoints = entry.battlePoints;
                 NavigateReport("results");
             }, "report-primary").name = "viewArchivedResult";
         }
 
         private void BuildResultReport()
         {
+            bool archived = !string.IsNullOrEmpty(resultArchiveTitle);
+            var manualResult = archived ? resultManualArchive : ManualBattle;
+            if (manualResult?.mode == "manual")
+            {
+                BuildManualResultReport(manualResult, archived ? resultManualArchivePoints : serverClient.View.battle_capture_points, archived);
+                return;
+            }
             ReportHeading("穹图 / 结果审计", "演示结果", "演示结果 · 青岚三点驻守加权计分。原始文档与项目适配规则分别标注。");
             var sources = SettingsGroup(settingsContent, "report-toolbar");
             var choices = ResultChoices.ToList();
@@ -208,16 +216,16 @@ namespace Qiongtu.Sandbox
             var blue = ReportCard(hero, "蓝方" + scoreKind); blue.AddToClassList("report-score-blue");
             AddText(blue, !usableEvidence ? "—" : blueScore100, "report-score-number").name = "blueScore100"; AddText(blue, usableEvidence ? "满分100分 · 原始积分 " + result.bluePoints + " / " + result.scoreMaximum : "缺少有效结算证据", "report-muted");
             AddText(settingsContent, !usableEvidence ? "— : —" : redScore100 + " : " + blueScore100, "report-score-summary").name = "resultScore";
-            if (!showingPreview && resultEvidence == null) AddText(settingsContent, "当前对局没有可用结算证据；未启用计分模式的旧演示截止不是获胜依据。新建青岚适配模式采用 20/40/60 分钟三点驻守自动结算。", "report-notice");
+            if (!showingPreview && resultEvidence == null) AddText(settingsContent, "当前对局没有可用结算证据；未启用计分模式的旧演示截止不是获胜依据。新建青岚适配模式采用 20/40/60 分钟五点驻守自动结算。", "report-notice");
             if (!showingPreview && string.IsNullOrEmpty(resultArchiveTitle) && serverMode) BuildServerAdjudication();
             if (project && !showingPreview && resultEvidence.liveObjectives != null)
             {
-                var current = ReportCard(settingsContent, "当前点位态势 · 非已结算得分", "400米范围内的有效地面单位；仅20/40/60分钟的已提交位置快照计分。点位人数和归属是公开计分信息，不展示敌方坐标或单位编号。");
+                var current = ReportCard(settingsContent, "当前点位态势 · 非已结算得分", (goalLimit == 5 ? "250米范围内的有效地面单位；中央点仅桥面有效。" : "旧版400米范围内的有效地面单位。") + "仅20/40/60分钟的已提交位置快照计分，不展示敌方坐标或单位编号。");
                 foreach (var point in resultEvidence.liveObjectives)
                     AddText(current, point.name + " · " + SandboxBattleRules.OwnerLabel(point.owner) + " · 红 " + point.redUnits + " / 蓝 " + point.blueUnits, "report-muted");
             }
             var grid = SettingsGroup(settingsContent, "report-result-grid");
-            var breakdown = ReportCard(grid, "阶段表现", project ? "三个地图点位 · 阶段权重 1 / 2 / 3；不计击毁、资源或未实现任务。" : "旧战争目标规则 · 阶段权重 1 / 2 / 3"); breakdown.AddToClassList("report-breakdown");
+            var breakdown = ReportCard(grid, "阶段表现", project ? goalLimit + "个地图点位 · 阶段权重 1 / 2 / 3；不计击毁、资源或未实现任务。" : "旧战争目标规则 · 阶段权重 1 / 2 / 3"); breakdown.AddToClassList("report-breakdown");
             if (usableEvidence)
                 for (int i = 0; i < 3; i++)
                 {
@@ -234,14 +242,14 @@ namespace Qiongtu.Sandbox
             var nodes = ReportCard(grid, "关键节点", "阶段结算 / 累计比分变化"); nodes.AddToClassList("report-decisions");
             foreach (string milestone in result.milestones) AddText(nodes, milestone, "report-timeline");
             if (result.milestones.Length == 0) AddText(nodes, "没有已确认的阶段结算节点；原始事件可在历史档案查看。", "report-muted");
-            var calc = ReportCard(settingsContent, "计算过程", project ? "每阶段 20 分钟，三个点位400米内单方有效地面单位驻守才得分。每点 × 阶段权重；争夺/无人均为0。60分钟前不判最终胜负。" : "每阶段15分钟、六个目标，主持人确认后结算。");
+            var calc = ReportCard(settingsContent, "计算过程", project ? "每阶段20分钟，" + goalLimit + "个点位" + (goalLimit == 5 ? "250米内（中央点仅桥面）" : "400米内") + "单方有效地面单位驻守才得分。每点×阶段权重；争夺/无人均为0。60分钟前不判最终胜负。" : "每阶段15分钟、六个目标，主持人确认后结算。");
             if (usableEvidence) AddText(calc, scoreKind + " = 本方累计分 ÷ 理论满分 × 100（满分100分，非双方分数占比）\n红方 " + result.redPoints + " ÷ " + result.scoreMaximum + " × 100 = " + redScore100
                 + "\n蓝方 " + result.bluePoints + " ÷ " + result.scoreMaximum + " × 100 = " + blueScore100
                 + "\n保留两位小数；未结束时只是当前得分。投降胜负沿用原规则，不改写积分。", "report-calculation").name = "score100Calculation";
             foreach (string line in result.calculations) AddText(calc, line, "report-calculation");
             if (result.calculations.Length == 0) AddText(calc, "暂无可核验的目标结算，不能生成比分。", "report-muted");
             var reference = ReportCard(settingsContent, "规则依据与适配边界", project ? SandboxBattleRules.ProjectReference : SandboxBattleRules.Reference);
-            if (project) AddText(reference, "规则版本：" + SandboxBattleRules.ProjectVersion + "\n继承三阶段与1/2/3权重；改为60分钟、三个地图点位、半径400米。仅ground/support且测试耐久>0计入，侦察无人机不计入；两方同时驻守不得分。各阶段独立取样，不继承无人驻守点的归属。理论满分18；同分记平局；不启用骤死、征服持续产分、任务分或击毁分。这些是项目演示参数，不是断箭官方数值。", "report-muted");
+            if (project) AddText(reference, "规则版本：" + resultEvidence.ruleVersion + "\n继承三阶段与1/2/3权重；60分钟、" + goalLimit + "个点位、半径" + (goalLimit == 5 ? "250米（中央点裁切到桥面）" : "400米") + "。仅ground/support且测试耐久>0计入，侦察无人机不计入；两方同时驻守不得分。各阶段独立取样，不继承无人驻守点的归属。理论满分" + (goalLimit * 6) + "；同分记平局；不启用骤死、征服持续产分、任务分或击毁分。这些是项目演示参数，不是断箭官方数值。", "report-muted");
             else AddText(reference, "规则版本：" + SandboxBattleRules.Version + "\n36 分是理论满分，不是提前获胜线；摧毁目标不等于击杀任意单位。平局、征服阈值、骤死时长不擅自补全；本项目单席位队伍须开始至少 5 分钟后由本方确认投降；不支持多人投票。", "report-muted");
         }
 

@@ -32,6 +32,8 @@ namespace Qiongtu.Sandbox
         public SandboxHistoryObservation observation;
         public bool hasVictory;
         public SandboxVictoryEvidence victory;
+        public SandboxManualBattleView manualBattle;
+        public SandboxReplayPoint[] battlePoints;
     }
 
     public sealed class SandboxHistoryStore

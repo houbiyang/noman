@@ -638,5 +638,32 @@ class CurrentFeatureTests(unittest.TestCase):
         self.assertNotEqual(self.view()["context"]["snapshot_id"], observed["context"]["snapshot_id"])
 
 
+    def test_knowledge_seat_routing_uses_real_database_auth(self):
+        """真实会话与对局校验；网络检索仍模拟，不声称真实建图。"""
+        body=dict(question="占点范围和资格",knowledge_version="conquest-v1-20261110")
+        observed=[]
+        async def query(principal, question, version):
+            observed.append(principal)
+            return dict(side=principal['side'], planning_only=True, execution_authorized=False)
+        with patch.object(self.client.app.state.knowledge, 'query', side_effect=query):
+            for side in ('red','blue'):
+                result=self.client.post(self.path+'/knowledge/query',headers=self.headers[side],json=body)
+                self.assertEqual(result.status_code,200,result.text)
+                self.assertEqual(result.json()['side'],side)
+            result=self.client.post(self.path+'/knowledge/query',headers=self.headers['host'],json=body)
+            self.assertEqual(result.status_code,403,result.text)
+        self.assertEqual([p['side'] for p in observed],['red','blue'])
+        self.assertTrue(all(p['active_game_rules'] != 'conquest-v1' for p in observed))
+
+    def test_knowledge_cross_game_and_invalid_session_never_query(self):
+        body=dict(question="占点范围和资格",knowledge_version="conquest-v1-20261110")
+        with patch.object(self.client.app.state.knowledge, 'query') as query:
+            result=self.client.post(f'/api/v1/games/{uuid4()}/knowledge/query',headers=self.headers['red'],json=body)
+            self.assertEqual(result.status_code,404,result.text)
+            result=self.client.post(self.path+'/knowledge/query',headers={'Authorization':'Bearer invalid'},json=body)
+            self.assertEqual(result.status_code,401,result.text)
+            query.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

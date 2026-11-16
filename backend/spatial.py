@@ -229,14 +229,14 @@ def set_preparation(state: dict, actor: str, payload: dict) -> tuple[dict, dict]
     return state, dict(title="测试准备配置已保存", detail="完整占地和道路接入已校验；正式参数未批准", side=side, visibility=side, private_plan=False)
 
 
-def advance(state: dict) -> None:
+def advance(state: dict, time_fraction=1.0, attack_units=()) -> None:
     """每步沿冻结路线推进并扣能源，资源耗尽后保留可恢复进度。"""
     for active in state["routes"]:
         if active.get('movement_profile'):
             if not active.get('deployment_test') and active['status'] in ('queued','moving','waiting'):
                 from backend.movement import advance_unit
                 unit = next(unit for unit in state['units'] if unit['unit_id']==active['unit_id'])
-                advance_unit(state,unit,active)
+                advance_unit(state,unit,active,time_fraction=time_fraction,energy_factor=1.25 if unit["unit_id"] in attack_units else 1.0)
             continue
         if active["status"] not in ("queued", "moving"):
             continue
@@ -244,7 +244,8 @@ def advance(state: dict) -> None:
         rules = state["manifest"]["spatial_profile"]["unit_profiles"][unit["unit_type"]]
         if unit["durability"] <= 0 or unit["energy"] <= 0:
             active["status"] = "blocked"; unit["status"] = "资源不足或单位失效"; continue
-        allowance = min(rules["speed_m_per_step"], unit["energy"] * 1000 / rules["energy_per_km"] if rules["energy_per_km"] else math.inf)
+        energy_factor = 1.25 if unit["unit_id"] in attack_units else 1.0
+        allowance = min(rules["speed_m_per_step"] * time_fraction, unit["energy"] * 1000 / (rules["energy_per_km"] * energy_factor) if rules["energy_per_km"] else math.inf)
         moved = 0.0
         current = meters(unit["position"])
         while allowance > 0 and active["segment_index"] < len(active["points"]) - 1:
@@ -256,7 +257,7 @@ def advance(state: dict) -> None:
             if amount >= distance:
                 active["segment_index"] += 1
         unit["position"] = business(current)
-        unit["energy"] = round(max(0, unit["energy"] - moved / 1000 * rules["energy_per_km"]), 6)
+        unit["energy"] = round(max(0, unit["energy"] - moved / 1000 * rules["energy_per_km"] * energy_factor), 6)
         active["traveled_m"] = round(active["traveled_m"] + moved, 6)
         active["status"] = "arrived" if active["segment_index"] == len(active["points"]) - 1 else "moving"
         unit["status"] = "测试路线已到达" if active["status"] == "arrived" else "沿测试路线移动"

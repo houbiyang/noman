@@ -16,6 +16,16 @@ BASE_AMOUNTS = (50, 50, 50, 50, 60, 50)
 KILL_POINTS = {'drone': 5, 'ground': 10, 'support': 8}
 
 
+def energy_supply_threshold(estimated_service_cost):
+    """只验证已确认估算的阈值算术，不证明路线、停靠点或服务可用。"""
+    if (not isinstance(estimated_service_cost, (int, float))
+            or isinstance(estimated_service_cost, bool)
+            or not math.isfinite(estimated_service_cost)
+            or estimated_service_cost < 0):
+        raise ValueError('a finite nonnegative confirmed cost estimate is required')
+    return max(30, estimated_service_cost + 10)
+
+
 @dataclass
 class CommonRound:
     authority: int
@@ -508,6 +518,34 @@ class ProtectionAndRetainedRiskTests(unittest.TestCase):
         spawn, protection, next_plan = 125, 15, 180
         self.assertEqual(max(0, next_plan - (spawn + protection)), 40)
         # 下一轮推理期间权威冻结，不把现实120秒再计入暴露。
+
+
+class EnergySupplyThresholdTests(unittest.TestCase):
+    def test_fixed_floor(self):
+        for cost in (0, 5, 20):
+            self.assertEqual(energy_supply_threshold(cost), 30)
+
+    def test_dynamic_route_reserve(self):
+        self.assertEqual(energy_supply_threshold(28), 38)
+
+    def test_thirty_is_inclusive(self):
+        threshold = energy_supply_threshold(10)
+        self.assertTrue(30 <= threshold)
+        self.assertFalse(30.001 <= threshold)
+
+    def test_dynamic_boundary_is_inclusive(self):
+        threshold = energy_supply_threshold(28)
+        self.assertTrue(38 <= threshold)
+        self.assertFalse(38.001 <= threshold)
+
+    def test_infeasible_full_energy_not_clamped(self):
+        self.assertEqual(energy_supply_threshold(95), 105)
+        self.assertTrue(100 <= energy_supply_threshold(95))
+
+    def test_unknown_or_invalid_cost_not_free_route(self):
+        for cost in (None, -1, float('inf'), float('nan'), '28', True):
+            with self.subTest(cost=cost), self.assertRaises(ValueError):
+                energy_supply_threshold(cost)
 
 
 class TerminalReferenceTests(unittest.TestCase):

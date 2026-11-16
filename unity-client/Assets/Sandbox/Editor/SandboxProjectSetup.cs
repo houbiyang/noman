@@ -98,12 +98,25 @@ namespace Qiongtu.Sandbox.Editor
         [MenuItem("穹图/阶段一/构建网页版")]
         public static void BuildWeb()
         {
+            PrepareScene();
+            BuildCurrentWeb();
+        }
+
+        /// <summary>仅重新编译现有场景及资源，更新据点层时不重建或覆盖底图网格。</summary>
+        [MenuItem("穹图/阶段一/构建现有场景网页版")]
+        public static void BuildCurrentWeb()
+        {
+            SandboxCaptureChecks.Run();
+            SandboxDeploymentBannerChecks.Run();
+            SandboxBattleEntryChecks.Run();
+            SandboxSelectedUnitChecks.Run();
+            SandboxManualBattleChecks.Run();
+            SandboxRoundReplayChecks.Run();
             if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.WebGL, BuildTarget.WebGL))
                 throw new InvalidOperationException("当前编辑器缺少 Web 构建支持模块");
             if (AssetDatabase.LoadAssetAtPath<Font>("Assets/Sandbox/Resources/Fonts/NotoSansCJKsc-Regular.otf") == null)
                 throw new InvalidOperationException("缺少网页中文字体，请恢复工程中的字体资源");
-            PrepareScene();
-            if (!Application.isBatchMode && SceneManager.GetActiveScene().path != ScenePath) return;
+            if (!File.Exists(ScenePath)) throw new InvalidOperationException("请先生成沙盘场景");
             PlayerSettings.WebGL.template = "PROJECT:Qiongtu";
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
             PlayerSettings.WebGL.decompressionFallback = true;

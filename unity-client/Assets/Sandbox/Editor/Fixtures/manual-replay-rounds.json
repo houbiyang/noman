@@ -1,0 +1,2455 @@
+{
+  "records": [
+    {
+      "schema_version": "qinglan-battle-round-replay-v1",
+      "round_number": 1,
+      "start_seconds": 0,
+      "end_seconds": 60,
+      "finished": false,
+      "rule_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scenario_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "previous_round_sha256": null,
+      "before_world_sha256": "f44cbca1148906af1de60a517bb101d82ebc0644922ab829467996b937325b8d",
+      "after_world_sha256": "1c03b2a4240d21da7136093ad3ddf9b4ac267aa6abbe0ff1f48e6da4c9c656a4",
+      "initial_world": {
+        "elapsed_seconds": 0,
+        "units": [
+          {
+            "unit_id": "B-G01",
+            "life_id": "B-G01-life",
+            "side": "blue",
+            "unit_type": "ground",
+            "position": {
+              "x_mm": 1000,
+              "z_mm": 1000,
+              "height_mm": 0
+            },
+            "durability": "100",
+            "energy": "100",
+            "ammo": "60",
+            "max_durability": "100",
+            "max_energy": "100",
+            "max_ammo": "60",
+            "base_speed_m_per_minute": "400",
+            "speed_m_per_minute": "0",
+            "retired": false,
+            "docked": false
+          },
+          {
+            "unit_id": "R-G01",
+            "life_id": "R-G01-life",
+            "side": "red",
+            "unit_type": "ground",
+            "position": {
+              "x_mm": 1000,
+              "z_mm": 1000,
+              "height_mm": 0
+            },
+            "durability": "100",
+            "energy": "100",
+            "ammo": "60",
+            "max_durability": "100",
+            "max_energy": "100",
+            "max_ammo": "60",
+            "base_speed_m_per_minute": "400",
+            "speed_m_per_minute": "0",
+            "retired": false,
+            "docked": false
+          }
+        ],
+        "capture_points": [
+          {
+            "point_id": "P-01",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-02",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-03",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-04",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-05",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          }
+        ],
+        "blue_score": "0",
+        "red_score": "0"
+      },
+      "frames": [
+        {
+          "at_seconds": 5,
+          "world": {
+            "elapsed_seconds": 5,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": [
+            {
+              "event_id": "move-1",
+              "kind": "move",
+              "at_seconds": 5,
+              "source_id": "B-G01",
+              "source_life_id": "B-G01-life",
+              "trace": [
+                {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                {
+                  "x_mm": 3000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                {
+                  "x_mm": 3000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "at_seconds": 10,
+          "world": {
+            "elapsed_seconds": 10,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": [
+            {
+              "event_id": "1-hit",
+              "kind": "hit",
+              "at_seconds": 10,
+              "source_id": "B-G01",
+              "source_life_id": "B-G01-life",
+              "target_id": "R-G01",
+              "target_life_id": "R-G01-life",
+              "source_position": {
+                "x_mm": 6000,
+                "z_mm": 4000,
+                "height_mm": 0
+              },
+              "target_position": {
+                "x_mm": 1000,
+                "z_mm": 1000,
+                "height_mm": 0
+              }
+            },
+            {
+              "event_id": "shot-1",
+              "kind": "shot",
+              "at_seconds": 10,
+              "source_id": "B-G01",
+              "source_life_id": "B-G01-life",
+              "target_id": "R-G01",
+              "target_life_id": "R-G01-life",
+              "source_position": {
+                "x_mm": 6000,
+                "z_mm": 4000,
+                "height_mm": 0
+              },
+              "target_position": {
+                "x_mm": 1000,
+                "z_mm": 1000,
+                "height_mm": 0
+              }
+            }
+          ]
+        },
+        {
+          "at_seconds": 15,
+          "world": {
+            "elapsed_seconds": 15,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 20,
+          "world": {
+            "elapsed_seconds": 20,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 25,
+          "world": {
+            "elapsed_seconds": 25,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 30,
+          "world": {
+            "elapsed_seconds": 30,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 35,
+          "world": {
+            "elapsed_seconds": 35,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 40,
+          "world": {
+            "elapsed_seconds": 40,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 45,
+          "world": {
+            "elapsed_seconds": 45,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 50,
+          "world": {
+            "elapsed_seconds": 50,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 55,
+          "world": {
+            "elapsed_seconds": 55,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 60,
+          "world": {
+            "elapsed_seconds": 60,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        }
+      ],
+      "payload_sha256": "cbfc2050c9e193d7f860b5b6468f6baf0b62de7fe9d3b9fc66b58d0c719e0ca2"
+    },
+    {
+      "schema_version": "qinglan-battle-round-replay-v1",
+      "round_number": 2,
+      "start_seconds": 60,
+      "end_seconds": 120,
+      "finished": false,
+      "rule_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scenario_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "previous_round_sha256": "cbfc2050c9e193d7f860b5b6468f6baf0b62de7fe9d3b9fc66b58d0c719e0ca2",
+      "before_world_sha256": "1c03b2a4240d21da7136093ad3ddf9b4ac267aa6abbe0ff1f48e6da4c9c656a4",
+      "after_world_sha256": "0339140d8552ed75d71868530b0f057a165a7464d99df33178c610bba955dcd0",
+      "initial_world": {
+        "elapsed_seconds": 60,
+        "units": [
+          {
+            "unit_id": "B-G01",
+            "life_id": "B-G01-life",
+            "side": "blue",
+            "unit_type": "ground",
+            "position": {
+              "x_mm": 6000,
+              "z_mm": 4000,
+              "height_mm": 0
+            },
+            "durability": "100",
+            "energy": "100",
+            "ammo": "59",
+            "max_durability": "100",
+            "max_energy": "100",
+            "max_ammo": "60",
+            "base_speed_m_per_minute": "400",
+            "speed_m_per_minute": "0",
+            "retired": false,
+            "docked": false
+          },
+          {
+            "unit_id": "R-G01",
+            "life_id": "R-G01-life",
+            "side": "red",
+            "unit_type": "ground",
+            "position": {
+              "x_mm": 1000,
+              "z_mm": 1000,
+              "height_mm": 0
+            },
+            "durability": "84",
+            "energy": "100",
+            "ammo": "60",
+            "max_durability": "100",
+            "max_energy": "100",
+            "max_ammo": "60",
+            "base_speed_m_per_minute": "400",
+            "speed_m_per_minute": "0",
+            "retired": false,
+            "docked": false
+          }
+        ],
+        "capture_points": [
+          {
+            "point_id": "P-01",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-02",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-03",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-04",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          },
+          {
+            "point_id": "P-05",
+            "owner": "neutral",
+            "advancing_side": "none",
+            "progress_steps": 0,
+            "contested": false
+          }
+        ],
+        "blue_score": "0",
+        "red_score": "0"
+      },
+      "frames": [
+        {
+          "at_seconds": 65,
+          "world": {
+            "elapsed_seconds": 65,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 70,
+          "world": {
+            "elapsed_seconds": 70,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": [
+            {
+              "event_id": "2-hit",
+              "kind": "hit",
+              "at_seconds": 70,
+              "source_id": "B-G01",
+              "source_life_id": "B-G01-life",
+              "target_id": "R-G01",
+              "target_life_id": "R-G01-life",
+              "source_position": {
+                "x_mm": 6000,
+                "z_mm": 4000,
+                "height_mm": 0
+              },
+              "target_position": {
+                "x_mm": 1000,
+                "z_mm": 1000,
+                "height_mm": 0
+              }
+            }
+          ]
+        },
+        {
+          "at_seconds": 75,
+          "world": {
+            "elapsed_seconds": 75,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 80,
+          "world": {
+            "elapsed_seconds": 80,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 85,
+          "world": {
+            "elapsed_seconds": 85,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 90,
+          "world": {
+            "elapsed_seconds": 90,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 95,
+          "world": {
+            "elapsed_seconds": 95,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 100,
+          "world": {
+            "elapsed_seconds": 100,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 105,
+          "world": {
+            "elapsed_seconds": 105,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 110,
+          "world": {
+            "elapsed_seconds": 110,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 115,
+          "world": {
+            "elapsed_seconds": 115,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        },
+        {
+          "at_seconds": 120,
+          "world": {
+            "elapsed_seconds": 120,
+            "units": [
+              {
+                "unit_id": "B-G01",
+                "life_id": "B-G01-life",
+                "side": "blue",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 6000,
+                  "z_mm": 4000,
+                  "height_mm": 0
+                },
+                "durability": "100",
+                "energy": "100",
+                "ammo": "59",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              },
+              {
+                "unit_id": "R-G01",
+                "life_id": "R-G01-life",
+                "side": "red",
+                "unit_type": "ground",
+                "position": {
+                  "x_mm": 1000,
+                  "z_mm": 1000,
+                  "height_mm": 0
+                },
+                "durability": "84",
+                "energy": "100",
+                "ammo": "60",
+                "max_durability": "100",
+                "max_energy": "100",
+                "max_ammo": "60",
+                "base_speed_m_per_minute": "400",
+                "speed_m_per_minute": "0",
+                "retired": false,
+                "docked": false
+              }
+            ],
+            "capture_points": [
+              {
+                "point_id": "P-01",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-02",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-03",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-04",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              },
+              {
+                "point_id": "P-05",
+                "owner": "neutral",
+                "advancing_side": "none",
+                "progress_steps": 0,
+                "contested": false
+              }
+            ],
+            "blue_score": "0",
+            "red_score": "0"
+          },
+          "events": []
+        }
+      ],
+      "payload_sha256": "526b5c56bf40fe77a399f2c0bc01f77c89448ab125ef1ef2f2786fd8070bdd34"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """为本机地图页面准备一个可复用对局，每次只返回所选席位的会话。"""
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -53,7 +54,7 @@ class LocalWebLaunch:
         database.write_private_json(temporary, record)
         os.replace(temporary, path)
 
-    def session(self, role: str, map_hash: str) -> dict:
+    def session(self, role: str, map_hash: str, capture_layout_sha256: str | None = None) -> dict:
         """为当前地图复用同一对局，仅签发或复用请求角色自身的会话。"""
         if role not in ("red", "blue", "host"):
             raise WebLaunchError("请选择有效角色")
@@ -63,12 +64,16 @@ class LocalWebLaunch:
             raise WebLaunchError("地图版本已变化，请刷新最新地图页面")
         try:
             with self.lock:
-                path = database.LOCAL_ROOT / ("web-launch-qinglan-control-v1-" + map_hash + ".json")
+                layout_path = definition_path.with_name("capture-points.json")
+                layout_hash = hashlib.sha256(layout_path.read_bytes()).hexdigest() if layout_path.exists() else "legacy"
+                if layout_path.exists() and capture_layout_sha256 != layout_hash:
+                    raise WebLaunchError("据点版本已变化，请刷新最新地图页面")
+                path = database.LOCAL_ROOT / ("web-launch-qinglan-control-v2-" + map_hash + "-" + layout_hash + ".json")
                 if path.exists():
                     record = json.loads(path.read_text(encoding="utf-8"))
                 else:
-                    record = dict(map_hash=map_hash, creation_request_key=str(uuid4()),
-                                  creation_payload=dict(title="青岚三阶段驻守演示", is_demo=True, spatial_test=True, victory_mode="qinglan_control"), sessions={})
+                    record = dict(map_hash=map_hash, capture_layout_sha256=layout_hash, creation_request_key=str(uuid4()),
+                                  creation_payload=dict(title="青岚五据点驻守演示", is_demo=True, spatial_test=True, unit_interactions=True, victory_mode="qinglan_control"), sessions={})
                     self.save(path, record)
                 if not record.get("game_id"):
                     game = self.request("POST", "/games", record["creation_payload"], bootstrap=True,

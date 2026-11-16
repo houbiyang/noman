@@ -14,6 +14,7 @@ namespace Qiongtu.Sandbox
         private readonly List<Material> ownedMaterials = new List<Material>();
         private readonly List<Mesh> ownedMeshes = new List<Mesh>();
         private Transform unitRoot;
+        private SandboxAttackPlayback attackPlayback;
         private readonly Dictionary<string, GameObject> barracksViews = new Dictionary<string, GameObject>();
         private LineRenderer barracksSelectionRing;
         private SandboxBarracksData[] visibleBarracks = new SandboxBarracksData[0];
@@ -26,17 +27,6 @@ namespace Qiongtu.Sandbox
         private GameObject captureMarkers;
         private GameObject deploymentMarkers;
         private SandboxMapPoint[] mapPoints;
-        /// <summary>按两侧各两处近端目标及北、中、南三处争夺目标安排公开占点。</summary>
-        private static readonly SandboxMapPoint[] CapturePoints =
-        {
-            new SandboxMapPoint { id = "CAPTURE_A", name = "A · 西南镇", kind = "capture", x = 3000, z = 3000 },
-            new SandboxMapPoint { id = "CAPTURE_B", name = "B · 城市西区", kind = "capture", x = 4140, z = 5000 },
-            new SandboxMapPoint { id = "CAPTURE_C", name = "C · 北岸镇", kind = "capture", x = 4500, z = 8500 },
-            new SandboxMapPoint { id = "CAPTURE_D", name = "D · 中央桥西", kind = "capture", x = 5500, z = 5800 },
-            new SandboxMapPoint { id = "CAPTURE_E", name = "E · 南桥东岸", kind = "capture", x = 7350, z = 3000 },
-            new SandboxMapPoint { id = "CAPTURE_F", name = "F · 工业货场北侧", kind = "capture", x = 8200, z = 5800 },
-            new SandboxMapPoint { id = "CAPTURE_G", name = "G · 机场入口", kind = "capture", x = 8400, z = 9300 }
-        };
         private LineRenderer selectionRing;
         private LineRenderer selectionProjection;
         private Material redMaterial;
@@ -51,6 +41,8 @@ namespace Qiongtu.Sandbox
 
         /// <summary>当前公开的稳定地图标记。</summary>
         public SandboxMapPoint[] MapPoints => mapPoints ?? Definition.points;
+        /// <summary>仅供只读回放复制的静态地图，不包含实时单位。</summary>
+        public GameObject ReplayMapSource => mapRoot;
         /// <summary>实际显示地图范围，供相机取景与边界限制共用。</summary>
         public Vector2 MapSize => new Vector2(Definition.width, Definition.length);
 
@@ -99,14 +91,27 @@ namespace Qiongtu.Sandbox
         /// <summary>按新的角色投影更新场景，移除不再允许显示的对象。</summary>
         /// <param name="projection">当前有效的角色投影。</param>
         /// <param name="authoritative">是否直接采用后端坐标，避免客户端动画改写权威位置。</param>
-        public void ApplyProjection(SandboxProjection projection, bool authoritative = false, SandboxServerMovementPath[] movementPaths = null, SandboxServerUnit[] serverUnits = null)
+        public void ApplyProjection(SandboxProjection projection, bool authoritative = false, SandboxServerMovementPath[] movementPaths = null, SandboxServerUnit[] serverUnits = null, SandboxServerView serverView = null)
         {
+            if (attackPlayback == null)
+            {
+                var effects = new GameObject("Committed attack playback"); effects.transform.SetParent(transform, false);
+                attackPlayback = effects.AddComponent<SandboxAttackPlayback>();
+                attackPlayback.Initialize((id, life) => unitViews.TryGetValue(id, out var item) && item.LifeId == life && !item.IsGarrisoned ? item.CombatActor : null);
+            }
+            attackPlayback.Apply(serverView);
             bool layoutChanged = ApplyBarracks(projection.barracks ?? new SandboxBarracksData[0]);
             var allowed = new HashSet<string>();
             int spawnIndex = 0;
             foreach (SandboxUnitData unit in projection.units)
             {
                 allowed.Add(unit.id);
+                var serverUnit = serverUnits == null ? null : Array.Find(serverUnits, item => item.unit_id == unit.id);
+                if (unitViews.TryGetValue(unit.id, out SandboxUnitView oldView) && serverUnit != null && oldView.LifeId != serverUnit.life_id)
+                {
+                    oldView.ReleaseRoute(); oldView.gameObject.SetActive(false); ReleaseUnitObject(oldView.gameObject);
+                    unitViews.Remove(unit.id); movementPlaybackTokens.Remove(unit.id);
+                }
                 if (!unitViews.TryGetValue(unit.id, out SandboxUnitView view))
                 {
                     view = BuildUnit(unit);
@@ -117,7 +122,10 @@ namespace Qiongtu.Sandbox
                         if (camp != null) view.SpawnAt(ArmyPosition(camp.x, SandboxArmyLayout.ExitZ(camp.z), unit.type), spawnIndex++ * .45f);
                     }
                 }
-                Vector3 position = ArmyPosition(unit.x, unit.z, unit.type);
+                view.LifeId = serverUnit?.life_id;
+                view.SetDestroyed(unit.hasCombatResources && unit.health <= 0 && !attackPlayback.HasPendingDeath(unit.id, view.LifeId));
+                view.SetDocked(unit.docked);
+                Vector3 position = ArmyPosition(unit.x, unit.z, unit.docked ? SandboxUnitType.Ground : unit.type);
                 SandboxServerMovementPath movement = movementPaths == null ? null : System.Array.Find(movementPaths, item => item.unit_id == unit.id);
                 if (authoritative)
                 {
@@ -214,6 +222,7 @@ namespace Qiongtu.Sandbox
         /// <summary>清除旧角色的对象引用及选中标记。</summary>
         public void ClearProjection()
         {
+            if (attackPlayback != null) attackPlayback.Clear();
             foreach (SandboxUnitView view in unitViews.Values)
             {
                 view.ReleaseRoute();
@@ -288,38 +297,25 @@ namespace Qiongtu.Sandbox
             }
         }
 
-        /// <summary>叠加七处公开占点的边界，不生成占领归属、进度或计分状态。</summary>
+        /// <summary>从同源五据点配置绘制有效占领面，归属和计分仍由服务器裁定。</summary>
         /// <param name="definition">当前米制地图，原有设施和任务标记保持原样。</param>
         private void BuildCaptureMarkers(SandboxMapData definition)
         {
             captureMarkers = NewGroup("CaptureMarkers");
-            mapPoints = new SandboxMapPoint[definition.points.Length + CapturePoints.Length + definition.deploymentZones.Length];
-            Array.Copy(definition.points, mapPoints, definition.points.Length);
-            Array.Copy(CapturePoints, 0, mapPoints, definition.points.Length, CapturePoints.Length);
-            foreach (SandboxMapPoint point in CapturePoints)
+            SandboxMapPoint[] captures = SandboxCaptureLayout.Load(definition).points;
+            // 旧 TASK_A/B/C 留在底图数据支持历史模式，不冒充新版占领点。
+            SandboxMapPoint[] visible = definition.points.Where(p => p.kind != "task").Concat(captures).ToArray();
+            mapPoints = new SandboxMapPoint[visible.Length + definition.deploymentZones.Length];
+            Array.Copy(visible, mapPoints, visible.Length);
+            foreach (SandboxMapPoint point in captures)
             {
-                Vector3[] boundary = CaptureBoundary(point, 200);
+                Vector3[] boundary = SandboxCaptureLayout.Boundary(definition, point);
                 CreateLine(point.id + "Outline", captureMarkers.transform, boundary, 12, new Color(0.12f, 0.15f, 0.12f));
                 LineRenderer ring = CreateLine(point.id, captureMarkers.transform, boundary, 6, new Color(0.91f, 0.82f, 0.47f));
                 ring.sharedMaterial.EnableKeyword("_EMISSION");
                 ring.sharedMaterial.SetColor("_EmissionColor", new Color(0.45f, 0.36f, 0.12f));
                 ring.sortingOrder = 1;
             }
-        }
-
-        /// <summary>逐点采样占点边界高度，使圆圈沿地形表面连续显示。</summary>
-        /// <param name="point">占点中心及其稳定身份。</param>
-        /// <param name="radius">显示半径，单位为米，不作为后端判定范围。</param>
-        /// <returns>包含重复首尾顶点的闭合边界。</returns>
-        private static Vector3[] CaptureBoundary(SandboxMapPoint point, float radius)
-        {
-            var boundary = new Vector3[97];
-            for (int index = 0; index < boundary.Length; index++)
-            {
-                float angle = index * Mathf.PI * 2 / (boundary.Length - 1);
-                boundary[index] = Surface(point.x + Mathf.Cos(angle) * radius, point.z + Mathf.Sin(angle) * radius) + Vector3.up * 6;
-            }
-            return boundary;
         }
 
         /// <summary>从后端共用的地图定义标注双方兵营部署范围，不另建一套坐标边界。</summary>
@@ -339,7 +335,7 @@ namespace Qiongtu.Sandbox
                 border.sharedMaterial.SetColor("_EmissionColor", color * 0.5f);
                 border.sortingOrder = 1;
                 BuildDeploymentFill(zone, color);
-                mapPoints[definition.points.Length + CapturePoints.Length + index] = new SandboxMapPoint
+                mapPoints[mapPoints.Length - definition.deploymentZones.Length + index] = new SandboxMapPoint
                 {
                     id = zone.id + "_LABEL",
                     name = (redSide ? "红方" : "蓝方") + "兵营部署区\n" + (zone.maxX - zone.minX).ToString("0")
@@ -491,7 +487,7 @@ namespace Qiongtu.Sandbox
             var root = new GameObject(unit.id);
             root.transform.SetParent(unitRoot, false);
             var visual = new GameObject("AnimatedModel"); visual.transform.SetParent(root.transform, false);
-            GameObject prefab = Resources.Load<GameObject>("Army/" + DemoSandboxViewSource.ArmyKey(unit.type));
+            GameObject prefab = Resources.Load<GameObject>((unit.type == SandboxUnitType.Ground ? "Combat/" : "Army/") + DemoSandboxViewSource.ArmyKey(unit.type));
             if (prefab == null) throw new InvalidOperationException("缺少已导入军队模型，请执行军队资源生成");
             GameObject model = Instantiate(prefab, visual.transform, false);
             // Preserve baked mesh dimensions and put the lowest point on the sampled terrain.

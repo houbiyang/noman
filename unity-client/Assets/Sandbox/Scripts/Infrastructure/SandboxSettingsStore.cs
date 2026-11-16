@@ -53,7 +53,7 @@ namespace Qiongtu.Sandbox
                 if (File.Exists(path)) File.Replace(path + ".tmp", path, null);
                 else File.Move(path + ".tmp", path);
 #endif
-                message = "已保存到本机 · 显示设置已生效 · AI 配置等待后端接入";
+                message = "已保存到本机 · 显示设置已生效 · 原 AI 草稿保留，模型配置请在协同工作台保存";
                 return true;
             }
             catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)

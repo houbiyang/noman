@@ -57,6 +57,22 @@ class WebLaunchTests(TestCase):
 
         self.provider.request = request
 
+    def test_capture_revision_binds_session_and_rejects_stale_client(self):
+        import hashlib
+        layout = self.root / "unity-client/Assets/Sandbox/Resources/Maps/QinglanValley/capture-points.json"
+        layout.write_text('{"version":"one"}')
+        old = hashlib.sha256(layout.read_bytes()).hexdigest()
+        with self.assertRaises(WebLaunchError):
+            self.provider.session("red", self.map_hash)
+        self.assertFalse(self.calls)
+        self.provider.session("red", self.map_hash, old)
+        layout.write_text('{"version":"two"}')
+        with self.assertRaises(WebLaunchError):
+            self.provider.session("red", self.map_hash, old)
+        current = hashlib.sha256(layout.read_bytes()).hexdigest()
+        self.provider.session("red", self.map_hash, current)
+        self.assertEqual(sum(path == "/games" for _, path, _ in self.calls), 2)
+
     def test_refresh_reuses_game_and_selected_session(self):
         """重复打开复用同一对局及同一有效席位。"""
         first = self.provider.session("red", self.map_hash)
