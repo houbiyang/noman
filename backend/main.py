@@ -27,6 +27,8 @@ from backend.service import SandboxService
 from backend.agent_contracts import AgentConfiguration, AgentRunRequest, ModelConnectionTest
 from backend.agent_service import AgentCoordinator
 from backend.agent_graph import AGENT_RUNTIME_REVISION
+from backend.battle_setup import CreateManualBattle, warnings as manual_setup_warnings
+from backend.manual_deployment_preview import CampPreviewRequest
 from backend.battle_contracts import BattlePreflightRequest
 from backend.battle_preflight import BattlePreflight
 
@@ -116,6 +118,27 @@ def create_app(settings: Settings) -> FastAPI:
     def create_game(body: CreateGame, idempotency_key: request_key):
         result, replayed = service.create_game(body, idempotency_key)
         return JSONResponse(status_code=200 if replayed else 201, content=jsonable_encoder(dict(**result, replayed=replayed)))
+
+    @app.get('/api/v1/battle/setup', dependencies=[Depends(bootstrap)])
+    def manual_setup():
+        return service.manual_setup()
+
+    @app.post('/api/v1/battle/deployment-preview', dependencies=[Depends(bootstrap)])
+    def deployment_preview(body: CampPreviewRequest):
+        from backend.manual_deployment_preview import preview
+        return preview(getattr(service.battle_executor, 'geometry', None), body)
+
+    @app.post('/api/v1/battle/deployment-validate', dependencies=[Depends(bootstrap)])
+    def deployment_validate(body: CreateManualBattle):
+        from backend.manual_deployment_preview import validate_setup
+        return validate_setup(getattr(service.battle_executor, 'geometry', None), body)
+
+    @app.post('/api/v1/battle/games', dependencies=[Depends(bootstrap)])
+    def create_manual_battle(body: CreateManualBattle, idempotency_key: request_key):
+        result, replayed = service.create_manual_battle(body, idempotency_key)
+        return JSONResponse(status_code=200 if replayed else 201,
+            content=jsonable_encoder(dict(**result, replayed=replayed, mode='manual',
+                warnings=manual_setup_warnings(body))))
 
     @app.get("/api/v1/game-creations/{creation_key}", dependencies=[Depends(bootstrap)])
     def creation(creation_key: UUID):

@@ -9,3 +9,6 @@
 .battle-check { padding:12px 14px; margin:0 8px 8px 0; background-color:rgb(22,48,35); border-left-width:3px; border-left-color:rgb(131,172,113); }
 .battle-check-warning { border-left-color:rgb(213,176,105); background-color:rgb(43,49,30); }
 .battle-check-title { font-size:16px; -unity-font-style:bold; color:rgb(222,230,200); margin-bottom:5px; white-space:normal; }
+
+.manual-placement-row { flex-direction:row; margin-bottom:10px; }
+.manual-placement-row > .settings-field { flex-grow:1; flex-basis:0; min-width:0; margin-right:8px; }

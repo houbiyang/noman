@@ -1,5 +1,6 @@
 """随机隔离PG/HTTP权限与无写入审计；不启动用户现有对局。"""
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 import json
 import unittest
 from uuid import uuid4
@@ -60,7 +61,7 @@ class PreflightDatabaseTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         result = response.json()
         facts = {c['key']: c for c in result['checks']}
-        for key in ('backend_database', 'deployment', 'rulebook', 'capacity', 'map'):
+        for key in ('backend_database', 'deployment', 'rulebook', 'capacity', 'map', 'battle_command_schema'):
             self.assertEqual(facts[key]['status'], 'passed', key)
         self.assertEqual(facts['battle_engine']['status'], 'failed')
         self.assertEqual(facts['battle_scenario']['status'], 'failed')
@@ -96,4 +97,64 @@ class PreflightDatabaseTests(unittest.TestCase):
         before = self.snapshot()
         response = self.client.post(self.path, headers=self.headers['host'], json={'mode': 'agent', 'probe_ai': True})
         self.assertEqual(response.status_code, 422)
+        self.assertEqual(before, self.snapshot())
+
+
+    @contextmanager
+    def temporary_constraint(self, text):
+        original = database.execute(self.database_name, "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+            "WHERE conrelid='sandbox.game_commands'::regclass AND conname='game_commands_command_type_check';").strip()
+        try:
+            database.execute(self.database_name,
+                'ALTER TABLE sandbox.game_commands DROP CONSTRAINT game_commands_command_type_check;' + text)
+            yield
+        finally:
+            database.execute(self.database_name,
+                'ALTER TABLE sandbox.game_commands DROP CONSTRAINT IF EXISTS game_commands_command_type_check;'
+                'ALTER TABLE sandbox.game_commands ADD CONSTRAINT game_commands_command_type_check ' + original + ';')
+
+    def test_schema_check_uses_catalog_without_management_table_privileges(self):
+        with self.settings.connect() as connection:
+            self.assertFalse(connection.execute("SELECT has_schema_privilege(current_user,'infrastructure','USAGE') AS allowed").fetchone()['allowed'])
+        before = self.snapshot()
+        response = self.client.post(self.path, headers=self.headers['host'], json={'mode': 'manual'})
+        self.assertEqual(response.status_code, 200, response.text)
+        facts = {c['key']: c for c in response.json()['checks']}
+        self.assertEqual(facts['battle_command_schema']['status'], 'passed')
+        self.assertEqual(before, self.snapshot())
+
+    def test_missing_command_constraint_is_reported_without_any_write(self):
+        before = self.snapshot()
+        with self.temporary_constraint(''):
+            response = self.client.post(self.path, headers=self.headers['host'], json={'mode': 'manual'})
+            self.assertEqual(response.status_code, 200, response.text)
+            result = response.json()
+            facts = {c['key']: c for c in result['checks']}
+            self.assertEqual(facts['battle_command_schema']['status'], 'failed')
+            self.assertFalse(result['ready'])
+            self.assertFalse(result['manual_fallback_available'])
+        self.assertEqual(before, self.snapshot())
+
+    def test_unvalidated_command_constraint_is_not_migration_success(self):
+        original = database.execute(self.database_name, "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+            "WHERE conrelid='sandbox.game_commands'::regclass AND conname='game_commands_command_type_check';").strip()
+        before = self.snapshot()
+        with self.temporary_constraint('ALTER TABLE sandbox.game_commands ADD CONSTRAINT game_commands_command_type_check '
+                                      + original + ' NOT VALID;'):
+            response = self.client.post(self.path, headers=self.headers['host'], json={'mode': 'manual'})
+            self.assertEqual(response.status_code, 200, response.text)
+            facts = {c['key']: c for c in response.json()['checks']}
+            self.assertEqual(facts['battle_command_schema']['status'], 'failed')
+        self.assertEqual(before, self.snapshot())
+
+    def test_local_only_schema_cannot_be_mistaken_for_cross_branch_compatibility(self):
+        before = self.snapshot()
+        source = (database.BACKEND_ROOT / 'migrations/012_manual_battle_commands.sql').read_text()
+        # temporary_constraint已删除原CHECK，此处只取旧版ADD语句；不修改迁移登记。
+        statement = source[source.index('ALTER TABLE sandbox.game_commands ADD CONSTRAINT'):]
+        with self.temporary_constraint(statement):
+            response = self.client.post(self.path, headers=self.headers['host'], json={'mode': 'manual'})
+            self.assertEqual(response.status_code, 200, response.text)
+            facts = {c['key']: c for c in response.json()['checks']}
+            self.assertEqual(facts['battle_command_schema']['status'], 'failed')
         self.assertEqual(before, self.snapshot())

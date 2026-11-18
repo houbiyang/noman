@@ -112,6 +112,91 @@ class ExecutionTests(TestCase):
     def settle(self, state):
         return manual_battle.settle(state, 'host', dict(round_number=state['manual_battle']['round_number']), self.engine)
 
+    def test_submission_geometry_sees_only_own_adopted_movement_and_copies(self):
+        calls = []
+        def validate(u):
+            calls.append(deepcopy(u))
+            u['energy'] = '0'
+        self.geometry.validate_movement_submission = validate
+        state = self.state
+        red = unit(state, side='red')
+        red['movement'] = dict(action='move', position=dict(x='99', y='99'))
+        move = order(state, movement=dict(action='move', position=dict(x='20', y='20')))
+        state = manual_battle.draft(state, 'blue', dict(round_number=1, intents=[move]))
+        before = deepcopy(state)
+        self.engine.validate_submission(state, 'blue')
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]['side'], 'blue')
+        self.assertEqual(calls[0]['movement'], state['manual_battle']['drafts']['blue'][move['unit_id']]['movement'])
+        self.assertEqual(state, before)
+        self.assertEqual(self.geometry.step_calls, 0)
+
+    def test_illegal_takeoff_and_dynamic_landing_conflict_settle_without_deadlock(self):
+        self.geometry.flight_legal = lambda u, action: (False, False)
+        after, record = self.settle(lock(self.state, [order(self.state, 'recon', task=dict(action='takeoff'))]))
+        self.assertEqual(unit(after, 'recon')['air_state'], 'docked')
+        self.assertEqual(unit(after, 'recon')['energy'], '100')
+        self.assertEqual(record['end_seconds'], 60)
+        # 静态起降合法但本步动态占地不空：保持飞行，不抛错/穿过地面单位。
+        self.geometry.flight_legal = lambda u, action: (True, True)
+        self.geometry.landing_clear = lambda u, state: False
+        drone = unit(self.state, 'recon'); drone['air_state'] = 'flying'; drone['position_mm']['height_mm'] = 30000
+        after, record = self.settle(lock(self.state, [order(self.state, 'recon', task=dict(action='land'))]))
+        self.assertEqual(unit(after, 'recon')['air_state'], 'flying')
+        self.assertEqual(unit(after, 'recon')['position_mm']['height_mm'], 30000)
+        self.assertEqual(record['end_seconds'], 60)
+        self.assertEqual(len(record['frames']), 12)
+
+    def test_area_attack_selects_visible_in_area_only_and_persists(self):
+        target = unit(self.state, side='red')
+        for enemy in self.state['units']:
+            if enemy['side'] == 'red' and enemy['unit_id'] != target['unit_id']:
+                enemy['position_mm']['z_mm'] += 100000
+        position = self.geometry.display_position(target['position_mm'])
+        task = order(self.state, task=dict(action='attack_area', position=position, radius_m=10))
+        after, record = self.settle(lock(self.state, [task]))
+        hits = [e for f in record['frames'] for e in f['events'] if e['kind'] == 'hit']
+        self.assertEqual(len(hits), 6)
+        self.assertEqual({e['target_id'] for e in hits}, {target['unit_id']})
+        self.assertEqual(unit(after)['ammo'], '54')
+        self.geometry.observed = False
+        after, record = self.settle(lock(self.state, [task]))
+        self.assertFalse(any(e['kind'] == 'shot' for f in record['frames'] for e in f['events']))
+        self.assertEqual(unit(after)['ammo'], '60')
+
+    def test_field_ammo_and_repair_exact_quantities_finish_and_conserve(self):
+        for resource, action in (('ammo', 'resupply'), ('repair', 'repair')):
+            with self.subTest(resource=resource):
+                state = state_fixture(); target = unit(state); source = unit(state, 'support')
+                if resource == 'ammo':
+                    spend(state, target, 'ammo', 10)
+                else:
+                    target['durability'] = '90'
+                task = dict(action=action, target_id=target['unit_id'], target_life_id=target['life_id'], quantity='5')
+                if action == 'resupply':
+                    task['resource'] = resource
+                after, record = self.settle(lock(state, [order(state, 'support', task=task)]))
+                events = [e for f in record['frames'] for e in f['events'] if e['kind'] == 'service']
+                self.assertEqual(sum(Fraction(e['amount']) for e in events), 5)
+                self.assertEqual({e['resource'] for e in events}, {resource})
+                self.assertEqual(Fraction(unit(after, 'support')['cargo'][resource]), Fraction(source['cargo'][resource])-5)
+                self.assertEqual(unit(after)['ammo' if resource == 'ammo' else 'durability'], '55' if resource == 'ammo' else '95')
+                self.assertIsNone(unit(after, 'support')['task'])
+                k.validate(after)
+
+    def test_recon_goal_is_retained_without_implicit_move_and_stop_clears_task(self):
+        drone = unit(self.state, 'recon'); drone['air_state'] = 'flying'; drone['position_mm']['height_mm'] = 30000
+        position = self.geometry.display_position(drone['position_mm'])
+        after, record = self.settle(lock(self.state, [order(self.state, 'recon', task=dict(action='recon', position=position))]))
+        result = unit(after, 'recon')
+        self.assertEqual(result['position_mm'], drone['position_mm'])
+        self.assertEqual(result['task']['action'], 'recon')
+        self.assertEqual(result['task']['position_mm'], self.geometry.position(position))
+        self.assertEqual(result['energy'], '98')
+        final, _ = self.settle(lock(after, [order(after, 'recon', task=dict(action='stop'))]))
+        self.assertIsNone(unit(final, 'recon')['task'])
+        self.assertEqual(record['end_seconds'], 60)
+
     def test_requires_complete_geometry_no_implicit_legacy_fallback(self):
         with self.assertRaises(ServiceError):
             Executor(None)

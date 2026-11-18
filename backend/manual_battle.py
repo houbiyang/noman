@@ -150,6 +150,9 @@ def validate_plan(state, actor):
         action = task.get('action')
         require(not (unit.get('movement') and action in ('takeoff', 'land')),
                 'INTENT_CONFLICT', '起降前请先停止持续移动')
+        require(not (unit.get('movement') and unit['unit_type'] == 'recon'
+                     and unit.get('air_state') != 'flying'),
+                'BATTLE_ROUTE_FORBIDDEN', '停靠或起降中的无人机不能水平移动，请先停止移动通道')
         if action in ('resupply', 'repair'):
             target = by_id.get(task['target_id'])
             # 上轮已退场的接收者在执行器中自动清除，不阻止其他存活单位锁定。
@@ -219,8 +222,11 @@ def settle(state, actor, payload, executor):
     before = deepcopy(state)
     intents = {side: list(deepcopy(info['drafts'][side]).values()) for side in SIDES}
     after, record = executor(deepcopy(before), intents)
-    from backend.battle_replay import validate_record
+    from backend.battle_replay import validate_record, round_opening
     validate_record(record)
+    initial, placements = round_opening(before, executor.project_world(before))
+    require([e for f in record['frames'] for e in f['events'] if e['kind'] == 'host_place'] == placements,
+            'ROUND_RECORD_INVALID', '首帧放置必须来自主持人的本轮记录')
     require(record['round_number'] == request.round_number
             and record['start_seconds'] == info['elapsed_seconds']
             and record['previous_round_sha256'] == info['previous_round_sha256'],
@@ -229,7 +235,7 @@ def settle(state, actor, payload, executor):
     require(record['rule_sha256'] == before['manifest']['battle_rule_sha256']
             and record['scenario_sha256'] == before['manifest']['battle_scenario_sha256'],
             'BATTLE_VERSION_CHANGED', '回放版本与本局冻结版本不一致')
-    require(record['initial_world'] == executor.project_world(before)
+    require(record['initial_world'] == initial
             and record['frames'][-1]['world'] == executor.project_world(after),
             'ROUND_RECORD_INVALID', '回放首尾必须对应实际裁决世界，不接受预演自算结果')
     elapsed = record['end_seconds']

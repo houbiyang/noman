@@ -1,9 +1,9 @@
 .manual-battle-bar {
     position: absolute;
-    left: 30%;
-    right: 30%;
+    left: 27%;
+    right: 27%;
     top: 100px;
-    padding: 12px 18px;
+    padding: 7px 12px;
     background-color: rgba(7, 28, 22, 0.97);
     border-width: 1px;
     border-color: rgb(61, 119, 92);
@@ -15,3 +15,25 @@
 .manual-battle-bar .army-footnote { white-space: normal; font-size: 12px; }
 .manual-battle-card { width: 860px; max-width: 90%; max-height: 82%; padding: 28px; }
 .manual-battle-card .body-text { white-space: normal; margin-top: 12px; margin-bottom: 12px; }
+.manual-battle-bar .selected-unit-actions { flex-direction: row; flex-wrap: wrap; }
+.manual-battle-bar .army-unit-action { width: auto; min-height: 26px; height: 26px; margin: 2px 4px; padding-left: 10px; padding-right: 10px; }
+.manual-battle-bar #manualScopeDetails { position: absolute; right: 8px; top: 5px; min-width: 95px; }
+.manual-battle-bar .army-unit-title { margin-right: 105px; }
+.manual-battle-bar .army-footnote { margin-top: 2px; margin-bottom: 2px; font-size: 11px; }
+
+/* Manual command inputs must not inherit the light native-field background. */
+.manual-battle-card .unity-text-field__input,
+.manual-battle-card .unity-base-popup-field__input {
+    background-color: rgb(13, 35, 28);
+    color: rgb(226, 239, 229);
+    border-width: 1px; border-color: rgb(93, 122, 97);
+    padding: 7px 9px;
+    min-height: 30px;
+    -unity-selection-color: rgba(93, 156, 118, .65);
+}
+.manual-battle-card .unity-base-text-field__input,
+.manual-battle-card .unity-base-popup-field__text,
+.manual-battle-card .unity-base-field__label {
+    color: rgb(226, 239, 229);
+}
+.manual-battle-card .unity-base-popup-field__arrow { -unity-background-image-tint-color: rgb(208, 220, 195); }

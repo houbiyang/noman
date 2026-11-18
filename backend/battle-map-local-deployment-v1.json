@@ -1,0 +1,368 @@
+{
+  "schema_version": "qinglan-local-manual-deployment-v1",
+  "release_scope": "local_manual_test",
+  "surface_catalog_sha256": "b80f940a24c90443e410a4c104139147d730d37845df00cb7910b2869305098f",
+  "red": {
+    "quantities": {
+      "recon": 1,
+      "ground": 1,
+      "support": 1
+    },
+    "units": [
+      {
+        "unit_type": "recon",
+        "ordinal": 1,
+        "position": {
+          "x_mm": 1470000,
+          "z_mm": 4500000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "ground",
+        "ordinal": 1,
+        "position": {
+          "x_mm": 1750000,
+          "z_mm": 4300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "support",
+        "ordinal": 1,
+        "position": {
+          "x_mm": 1450000,
+          "z_mm": 4000000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified"
+      }
+    ],
+    "camps": [
+      {
+        "unit_type": "recon",
+        "position": {
+          "x_mm": 1400000,
+          "z_mm": 4500000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor": {
+          "x_mm": 1450000,
+          "z_mm": 4500000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "ground",
+        "position": {
+          "x_mm": 1700000,
+          "z_mm": 4300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor": {
+          "x_mm": 1750000,
+          "z_mm": 4300000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "support",
+        "position": {
+          "x_mm": 1400000,
+          "z_mm": 4000000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor": {
+          "x_mm": 1450000,
+          "z_mm": 4000000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      }
+    ]
+  },
+  "blue": {
+    "quantities": {
+      "recon": 1,
+      "ground": 1,
+      "support": 1
+    },
+    "units": [
+      {
+        "unit_type": "recon",
+        "ordinal": 1,
+        "position": {
+          "x_mm": 10670000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "ground",
+        "ordinal": 1,
+        "position": {
+          "x_mm": 10850000,
+          "z_mm": 8100000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "support",
+        "ordinal": 1,
+        "position": {
+          "x_mm": 10350000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified"
+      }
+    ],
+    "camps": [
+      {
+        "unit_type": "recon",
+        "position": {
+          "x_mm": 10600000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor": {
+          "x_mm": 10650000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "ground",
+        "position": {
+          "x_mm": 10800000,
+          "z_mm": 8100000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor": {
+          "x_mm": 10850000,
+          "z_mm": 8100000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "unit_type": "support",
+        "position": {
+          "x_mm": 10300000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor": {
+          "x_mm": 10350000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      }
+    ]
+  },
+  "validation": {
+    "full_ground_facilities_and_initial_units": true,
+    "full_deployment_with_interaction": "pending separately bound dock-airspace validation"
+  },
+  "validation_state": {
+    "camps": [
+      {
+        "camp_id": "R-CAMP-recon",
+        "side": "red",
+        "unit_type": "recon",
+        "position_mm": {
+          "x_mm": 1400000,
+          "z_mm": 4500000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor_mm": {
+          "x_mm": 1450000,
+          "z_mm": 4500000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "camp_id": "R-CAMP-infantry",
+        "side": "red",
+        "unit_type": "ground",
+        "position_mm": {
+          "x_mm": 1700000,
+          "z_mm": 4300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor_mm": {
+          "x_mm": 1750000,
+          "z_mm": 4300000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "camp_id": "R-CAMP-support",
+        "side": "red",
+        "unit_type": "support",
+        "position_mm": {
+          "x_mm": 1400000,
+          "z_mm": 4000000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor_mm": {
+          "x_mm": 1450000,
+          "z_mm": 4000000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "camp_id": "B-CAMP-recon",
+        "side": "blue",
+        "unit_type": "recon",
+        "position_mm": {
+          "x_mm": 10600000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor_mm": {
+          "x_mm": 10650000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "camp_id": "B-CAMP-infantry",
+        "side": "blue",
+        "unit_type": "ground",
+        "position_mm": {
+          "x_mm": 10800000,
+          "z_mm": 8100000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor_mm": {
+          "x_mm": 10850000,
+          "z_mm": 8100000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      },
+      {
+        "camp_id": "B-CAMP-support",
+        "side": "blue",
+        "unit_type": "support",
+        "position_mm": {
+          "x_mm": 10300000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "service_anchor_mm": {
+          "x_mm": 10350000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "service_surface_id": "ground:source-verified"
+      }
+    ],
+    "units": [
+      {
+        "unit_id": "red-recon-1",
+        "side": "red",
+        "unit_type": "recon",
+        "ordinal": 1,
+        "position_mm": {
+          "x_mm": 1470000,
+          "z_mm": 4500000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "air_state": "docked"
+      },
+      {
+        "unit_id": "red-ground-1",
+        "side": "red",
+        "unit_type": "ground",
+        "ordinal": 1,
+        "position_mm": {
+          "x_mm": 1750000,
+          "z_mm": 4300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "air_state": "ground"
+      },
+      {
+        "unit_id": "red-support-1",
+        "side": "red",
+        "unit_type": "support",
+        "ordinal": 1,
+        "position_mm": {
+          "x_mm": 1450000,
+          "z_mm": 4000000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "air_state": "ground"
+      },
+      {
+        "unit_id": "blue-recon-1",
+        "side": "blue",
+        "unit_type": "recon",
+        "ordinal": 1,
+        "position_mm": {
+          "x_mm": 10670000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "air_state": "docked"
+      },
+      {
+        "unit_id": "blue-ground-1",
+        "side": "blue",
+        "unit_type": "ground",
+        "ordinal": 1,
+        "position_mm": {
+          "x_mm": 10850000,
+          "z_mm": 8100000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "air_state": "ground"
+      },
+      {
+        "unit_id": "blue-support-1",
+        "side": "blue",
+        "unit_type": "support",
+        "ordinal": 1,
+        "position_mm": {
+          "x_mm": 10350000,
+          "z_mm": 8300000,
+          "height_mm": 20000
+        },
+        "surface_id": "ground:source-verified",
+        "air_state": "ground"
+      }
+    ]
+  },
+  "payload_sha256": "8d6aca2e234af39e31492c92d889e624936843ec0a157ee6578ae345a02ccdbe"
+}

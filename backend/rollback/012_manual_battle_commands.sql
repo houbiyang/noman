@@ -6,9 +6,12 @@ SELECT pg_advisory_xact_lock(80644, 1103);
 LOCK TABLE sandbox.game_commands IN ACCESS EXCLUSIVE MODE;
 DO $guard$
 BEGIN
+    IF EXISTS (SELECT 1 FROM infrastructure.schema_migrations WHERE version >= '013_') THEN
+        RAISE EXCEPTION '存在后续迁移，须先按逆序回退，不能直接收窄012约束';
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM infrastructure.schema_migrations
         WHERE version='012_manual_battle_commands'
-          AND sha256='1edf1b717825c1173d4d3ac2e0853750db6b392e1729a120ae7faa7336c9af2f') THEN
+          AND sha256 IN ('1edf1b717825c1173d4d3ac2e0853750db6b392e1729a120ae7faa7336c9af2f', 'f717b2c1bbe7cdf29903a8c29aa18338ee15fe3f4cc609d9bed9842c16a42558')) THEN
         RAISE EXCEPTION '012未应用或摘要不匹配，停止回滚';
     END IF;
     IF EXISTS (SELECT 1 FROM sandbox.game_commands WHERE command_type IN ('battle_draft','battle_submit','battle_resolve'))
@@ -27,5 +30,5 @@ ALTER TABLE sandbox.game_commands ADD CONSTRAINT game_commands_command_type_chec
 
 -- 只有未产生新协议数据时，才撤销匹配摘要的迁移登记；在外部发布日志登记本次回滚。
 DELETE FROM infrastructure.schema_migrations WHERE version='012_manual_battle_commands'
-    AND sha256='1edf1b717825c1173d4d3ac2e0853750db6b392e1729a120ae7faa7336c9af2f';
+    AND sha256 IN ('1edf1b717825c1173d4d3ac2e0853750db6b392e1729a120ae7faa7336c9af2f', 'f717b2c1bbe7cdf29903a8c29aa18338ee15fe3f4cc609d9bed9842c16a42558');
 COMMIT;

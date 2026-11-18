@@ -96,6 +96,8 @@ class AgentCoordinator:
                         'IDEMPOTENCY_KEY_REUSED', '同一分析请求键不能替换输入')
                 return self._public(existing), True
             self.sandbox._check_context(game, principal, context)
+            require(game['state_payload'].get('manifest', {}).get('release_scope') != 'local_manual_test',
+                    'AGENT_MODE_FORBIDDEN', '本地手动测试版本仅允许双方手动提交，不支持Agent正式模式', 403)
             require(game['state_payload']['lifecycle']['phase'] in ('preparing', 'paused', 'awaiting_confirmation'),
                     'PAUSE_REQUIRED', '请先暂停对局再启动协同规划')
             require('coordination' in game['state_payload'], 'COORDINATION_REQUIRED', '请先由主持人启用协同测试规则')

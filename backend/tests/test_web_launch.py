@@ -57,6 +57,29 @@ class WebLaunchTests(TestCase):
 
         self.provider.request = request
 
+    def test_independent_pages_do_not_reuse_or_overwrite_game_pointers(self):
+        self.provider.session("host", self.map_hash)
+        original = {p.name: p.read_bytes() for p in self.local.iterdir()}
+        other = LocalWebLaunch(self.root, 18081, launch_namespace="local-manual-test")
+        other.request = self.provider.request
+        other.session("host", self.map_hash)
+        other.session("host", self.map_hash)
+        self.assertEqual(sum(path == "/games" for _, path, _ in self.calls), 2)
+        creation_keys = [o["request_key"] for _, path, o in self.calls if path == "/games"]
+        self.assertEqual(len(set(creation_keys)), 2)
+        for name, raw in original.items():
+            self.assertEqual((self.local / name).read_bytes(), raw)
+        self.assertNotEqual(other.manual_active_path(self.map_hash, "legacy"),
+                            self.provider.manual_active_path(self.map_hash, "legacy"))
+
+    def test_namespace_cannot_escape_private_storage(self):
+        for invalid in ("../public", "", "/tmp/test", "a/b", "a" * 65, 1):
+            with self.assertRaises(ValueError):
+                LocalWebLaunch(self.root, launch_namespace=invalid)
+        with self.assertRaises(ValueError):
+            self.provider.state_path("../public.json")
+        self.assertEqual(self.provider.state_path("legacy.json"), self.local / "legacy.json")
+
     def test_capture_revision_binds_session_and_rejects_stale_client(self):
         import hashlib
         layout = self.root / "unity-client/Assets/Sandbox/Resources/Maps/QinglanValley/capture-points.json"

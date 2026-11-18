@@ -10,9 +10,15 @@ namespace Qiongtu.Sandbox
     [Serializable] public sealed class SandboxBattleScoreBreakdown { public string control, kills, resources, total; }
     [Serializable] public sealed class SandboxManualBattleView
     {
-        public string schema_version, mode, stage, blue_score, red_score, winner, finish_reason;
+        public string schema_version, mode, stage, blue_score, red_score, blue_control_score, red_control_score, winner, finish_reason;
         public int round_number, completed_rounds, elapsed_seconds, round_seconds, maximum_rounds;
         public bool engine_ready, can_edit, can_submit, can_resolve;
+        public string release_scope;
+        public bool competitive_ready;
+        public string[] limitations;
+        // 只消费当前对局的冻结策略；旧局/未知版本缺省不提示空中补给。
+        public string field_energy_service_policy;
+        public bool AllowsHoverEnergy => field_energy_service_policy == "support-to-hovering-recon-v1";
         public SandboxBattleScoreBreakdown blue_breakdown, red_breakdown;
         public SandboxBattleSubmitted submitted;
         public SandboxBattleIntentView[] own_drafts;
@@ -25,7 +31,7 @@ namespace Qiongtu.Sandbox
         public SandboxReplayPosition position;
         public bool retired, docked;
     }
-    [Serializable] public sealed class SandboxReplayPoint { public string point_id, owner, advancing_side; public int progress_steps; public bool contested; }
+    [Serializable] public sealed class SandboxReplayPoint { public string point_id, owner, advancing_side; public int progress_steps; public bool contested, progress_hidden; }
     [Serializable] public sealed class SandboxReplayWorld
     {
         public int elapsed_seconds;
@@ -58,6 +64,8 @@ namespace Qiongtu.Sandbox
     {
         private readonly List<SandboxReplayFrame> frames = new List<SandboxReplayFrame>();
         private readonly List<SandboxReplayEvent> events = new List<SandboxReplayEvent>();
+        private readonly List<SandboxReplayIndexItem> spans = new List<SandboxReplayIndexItem>();
+        public int CurrentRound => spans.Last(r => r.start_seconds <= Seconds).round_number;
         public double Seconds { get; private set; }
         public int FirstSeconds { get; }
         public int LastSeconds { get; }
@@ -117,6 +125,7 @@ namespace Qiongtu.Sandbox
                 }
                 if (expected != r.end_seconds) throw new ArgumentException("回放末帧不一致");
                 if (previous == null) frames.Add(new SandboxReplayFrame { at_seconds = r.start_seconds, world = r.initial_world });
+                spans.Add(new SandboxReplayIndexItem { round_number = r.round_number, start_seconds = r.start_seconds, end_seconds = r.end_seconds });
                 frames.AddRange(r.frames); previous = r;
             }
             FirstSeconds = records[0].start_seconds; LastSeconds = records.Last().end_seconds;

@@ -188,7 +188,7 @@ class DatabaseChecks(unittest.TestCase):
         """相同摘要的迁移重复执行不重复建表。"""
         database.apply_migrations(self.test_database)
         self.assertEqual(database.execute(self.test_database, "SELECT version FROM infrastructure.schema_migrations ORDER BY version;").splitlines(),
-            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_battle_reports", "007_movement_commands", "008_barracks_spawning", "009_agent_coordination", "010_history_agent_commands"])
+            ["001_application", "002_vectors", "003_control_guards", "004_current_ui_commands", "005_map_catalog", "006_barracks_commands", "007_battle_reports", "007_movement_commands", "008_barracks_spawning", "009_agent_coordination", "010_history_agent_commands", "011_unit_interactions", "012_manual_battle_commands", "013_cross_branch_commands"])
 
     def test_02_branch_upgrade_preserves_existing_command_history(self):
         """分别从历史报告和智能体分支升级，已有合法命令不能被另一分支的旧约束拒绝。"""

@@ -13,6 +13,9 @@ from pathlib import Path
 from backend.demo_domain import require
 
 
+MAX_GEOMETRY_DENOMINATOR = 10**36
+
+
 def rational(value):
     """地图可有负坐标，但不接受布尔、NaN、无穷或任意对象。"""
     require(type(value) in (int, float, str, Decimal, Fraction),
@@ -30,7 +33,7 @@ def rational(value):
             result = Fraction(decimal)
         except (InvalidOperation, ValueError, OverflowError):
             require(False, 'BATTLE_GEOMETRY_INVALID', '几何数字无效')
-    require(abs(result) <= 10**12 and result.denominator <= 10**36,
+    require(abs(result) <= 10**12 and result.denominator <= MAX_GEOMETRY_DENOMINATOR,
             'BATTLE_GEOMETRY_INVALID', '几何数字超出支持精度或范围')
     return result
 

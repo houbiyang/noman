@@ -24,11 +24,12 @@ namespace Qiongtu.Sandbox
             SandboxMapData map = SandboxMapFactory.LoadDefinition();
             serverClient = gameObject.AddComponent<SandboxServerClient>();
             serverClient.Initialize(map.mapId, map.contentHash);
+            serverClient.CommandsBlocked = () => recordedOverlay != null || deploymentStaging;
             serverClient.Feedback += Notify;
             serverClient.Changed += OnServerChanged;
             serverClient.CommandFinished += OnServerCommandFinished;
             BindButton("connectionAction", OpenConnection);
-            BeginServerConnection(role);
+            BeginServerConnection(SandboxRole.Host);
         }
 
         /// <summary>清理旧席位画面后自动接入所选角色，不保留旧角色的私有视图。</summary>
@@ -36,6 +37,7 @@ namespace Qiongtu.Sandbox
         private void BeginServerConnection(SandboxRole next)
         {
             if (serverClient.Busy || serverClient.HasPending) { Notify("请等待同步或先核对原命令结果"); return; }
+            if (deploymentStaging) next = SandboxRole.Host;
             playing = false; serverMode = true; role = next; serverHead = null; serverBranch = null;
             deploymentMovingUnit = null;
             Application.runInBackground = true;
@@ -51,6 +53,7 @@ namespace Qiongtu.Sandbox
         /// <summary>后端保存退出成功后才结束当前客户端，失败时保留有效页面。</summary>
         private void OnServerCommandFinished(string commandType, bool succeeded)
         {
+            if (succeeded && commandType == "battle_resolve") recordedAutoPending = true;
             if (!succeeded && (commandType == "movement_order" || commandType == "advance_deployment_movement")) deploymentMovingUnit = null;
             if (succeeded && commandType == "archive_match") { serverHistoryOwner = null; if (settingsSection == "history" && settingsOverlay != null) RenderSettingsSection(); }
             if (succeeded && (commandType == "create_save" || commandType == "complete_exit")) serverSavesLoaded = false;
@@ -102,6 +105,11 @@ namespace Qiongtu.Sandbox
             {
                 string panel = activePanel; serverRefreshPanel = false; ShowPanel(panel);
             }
+            if (recordedAutoPending && !serverClient.Busy && !serverClient.HasPending)
+            {
+                recordedAutoPending = false;
+                OpenRecordedReplay();
+            }
         }
 
         private string serverBranch;
@@ -133,6 +141,15 @@ namespace Qiongtu.Sandbox
         private void RefreshServerControls()
         {
             bool writable = serverClient.Healthy && !serverClient.Busy && !serverClient.HasPending && serverClient.View != null;
+            if (deploymentStaging)
+            {
+                foreach (string name in new[] { "redRole", "blueRole", "hostRole" }) root.Q<Button>(name).SetEnabled(!serverClient.Busy);
+                foreach (string name in new[] { "stepButton", "playButton", "eventsButton" }) root.Q<Button>(name).SetEnabled(false);
+                root.Q<Button>("armyAction").SetEnabled(manualCatalogue != null);
+                SetText("phaseLabel", "部署阶段 · 双方确认后开战");
+                SetText("connectionAction", serverClient.Healthy ? "后端已连接" : "接入状态");
+                return;
+            }
             SandboxServerCapabilities permission = serverClient.View?.capabilities;
             foreach (string name in new[] { "redRole", "blueRole", "hostRole" }) root.Q<Button>(name).SetEnabled(!serverClient.Busy && !serverClient.HasPending);
             root.Q<Button>("stepButton").SetEnabled(writable && permission != null && permission.can_advance && serverClient.View.clock.phase != "running");
@@ -168,6 +185,7 @@ namespace Qiongtu.Sandbox
         /// <summary>操作只排入后端命令，成功提交后的刷新负责改变画面。</summary>
         private void SendServerCommand(string kind, object payload = null, SandboxServerContext basis = null)
         {
+            if (recordedOverlay != null) { Notify("历史播放中禁止命令；请先退出恢复最新战局"); return; }
             serverRefreshPanel = true;
             serverClient.Command(kind, payload, basis);
         }
@@ -326,7 +344,10 @@ namespace Qiongtu.Sandbox
             label += "\n血量 " + unit.durability.ToString("0.#") + "/" + unit.max_durability.ToString("0.#")
                 + " · 能源 " + unit.energy.ToString("0.#");
             if (unit.max_ammo > 0) label += " · 弹药 " + unit.ammo.ToString("0") + "/" + unit.max_ammo.ToString("0");
-            if (view.manual_battle != null) label += "\n移速 " + unit.current_speed_m_per_minute.ToString("0.#") + " 米/仿真分钟";
+            if (view.manual_battle != null) {
+                label += "\n移速 " + unit.current_speed_m_per_minute.ToString("0.#") + " 米/仿真分钟";
+                if (unit.side == view.role || view.role == "host") label += unit.movement_active ? " · 持续移动" : " · 无持续移动";
+            }
             // 接口只给本方/主持人返回任务摘要；敌方contacts不携带任何私有任务字段。
             if (unit.interaction_action == "attack") label += string.IsNullOrEmpty(unit.interaction_target_id)
                 ? "\n攻击任务 · 目标当前不可见" : "\n攻击 → " + unit.interaction_target_id;

@@ -85,7 +85,7 @@ namespace Qiongtu.Sandbox
     [Serializable] public class SandboxServerUnitOrder { public string unit_id, life_id, action, resource = "energy"; }
     [Serializable] public sealed class SandboxServerTargetUnitOrder : SandboxServerUnitOrder { public string target_id, target_life_id; }
     [Serializable] public sealed class SandboxServerReconOrder { public string unit_id, life_id, action = "recon"; public SandboxServerPosition position; }
-    [Serializable] public sealed class SandboxServerUnit { public string interaction_action, interaction_target_id; public string life_id; public double max_durability, ammo, max_ammo, speed_m_per_minute, current_speed_m_per_minute; public bool docked; public SandboxServerStocks stocks; public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public bool in_barracks; public SandboxServerPosition position; }
+    [Serializable] public sealed class SandboxServerUnit { public string interaction_action, interaction_target_id; public string life_id; public double max_durability, ammo, max_ammo, speed_m_per_minute, current_speed_m_per_minute; public bool docked, movement_active; public SandboxServerStocks stocks; public string unit_id, side, unit_type, name, status, camp_id, formation_id; public double energy, supply, durability, movement_test_energy, heading_degrees; public int movement_test_steps; public bool in_barracks; public SandboxServerPosition position; }
     /// <summary>以世界米制表达的后端已确认路径点。</summary>
     [Serializable] public sealed class SandboxServerMovementPoint { public float x, z; }
     /// <summary>角色过滤后的移动路线、单次试走轨迹和预计成本。</summary>

@@ -3,11 +3,14 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from threading import Lock
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 from uuid import uuid4
+
+from backend.manual_web_launch import ManualWebLaunch
 
 from backend import database
 
@@ -24,14 +27,25 @@ class LocalRedirectBlocker(HTTPRedirectHandler):
         return None
 
 
-class LocalWebLaunch:
+class LocalWebLaunch(ManualWebLaunch):
     """通过已有受控接口创建对局、复用会话，并将引导密钥留在服务端。"""
 
-    def __init__(self, project_root: Path, port: int = 18080):
+    def __init__(self, project_root: Path, port: int = 18080, *, launch_namespace=None):
         """绑定本项目、本机后端端口及线程互斥，拒绝由页面指定任意接口。"""
+        if launch_namespace is not None and (not isinstance(launch_namespace, str)
+                or re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", launch_namespace) is None):
+            raise ValueError("invalid local launch namespace")
+        self.launch_namespace = launch_namespace
         self.project_root = project_root
         self.base_url = f"http://127.0.0.1:{port}/api/v1"
         self.lock = Lock()
+
+    def state_path(self, name):
+        """Keep independent local pages' game pointers apart; credentials stay private."""
+        if not isinstance(name, str) or not name or Path(name).name != name or name in (".", ".."):
+            raise ValueError("invalid local launch state filename")
+        prefix = "" if self.launch_namespace is None else f"web-ns-{self.launch_namespace}-"
+        return database.LOCAL_ROOT / (prefix + name)
 
     def request(self, method: str, path: str, body=None, *, token=None, bootstrap=False, request_key=None):
         """调用已有权限接口，网络失败时不重建对局、不输出私有响应。"""
@@ -68,7 +82,10 @@ class LocalWebLaunch:
                 layout_hash = hashlib.sha256(layout_path.read_bytes()).hexdigest() if layout_path.exists() else "legacy"
                 if layout_path.exists() and capture_layout_sha256 != layout_hash:
                     raise WebLaunchError("据点版本已变化，请刷新最新地图页面")
-                path = database.LOCAL_ROOT / ("web-launch-qinglan-control-v2-" + map_hash + "-" + layout_hash + ".json")
+                path = self.state_path("web-launch-qinglan-control-v2-" + map_hash + "-" + layout_hash + ".json")
+                active = self.manual_active_path(map_hash, layout_hash)
+                if active.exists():
+                    path = active
                 if path.exists():
                     record = json.loads(path.read_text(encoding="utf-8"))
                 else:
@@ -80,22 +97,28 @@ class LocalWebLaunch:
                                         request_key=record["creation_request_key"])
                     record["game_id"] = game["game_id"]
                     self.save(path, record)
-                session = record["sessions"].get(role)
-                if session:
-                    try:
-                        current = self.request("GET", "/session", token=session["access_token"])
-                        if current["game_id"] != record["game_id"] or current["role"] != role:
-                            raise WebLaunchError("已保存会话与请求角色不一致")
-                    except HTTPError as error:
-                        if error.code not in (401, 403):
-                            raise
-                        session = None
-                if session is None:
-                    session = self.request("POST", f"/bootstrap/games/{record['game_id']}/sessions",
-                                           dict(role=role), bootstrap=True)
-                    record["sessions"][role] = session
-                    self.save(path, record)
-                return dict(api_url=self.base_url, game_id=record["game_id"], role=role,
-                            access_token=session["access_token"])
+                return self.launch_seat(path, record, role)
         except (OSError, URLError, ValueError, KeyError, TypeError) as error:
             raise WebLaunchError("本机后端暂不可用，请等待服务恢复后重试") from error
+
+    def launch_seat(self, path, record, role):
+        """只返回所选席位；每次重新确认已保存会话仍有效。调用方持有锁。"""
+        session = record["sessions"].get(role)
+        if session:
+            try:
+                current = self.request("GET", "/session", token=session["access_token"])
+                if current["game_id"] != record["game_id"] or current["role"] != role:
+                    raise WebLaunchError("已保存会话与请求角色不一致")
+            except HTTPError as error:
+                if error.code not in (401, 403):
+                    raise
+                session = None
+        if session is None:
+            session = self.request("POST", f"/bootstrap/games/{record['game_id']}/sessions",
+                                   dict(role=role), bootstrap=True)
+            if session.get("game_id") != record["game_id"] or session.get("role") != role:
+                raise WebLaunchError("新会话与请求对局或角色不一致")
+            record["sessions"][role] = session
+            self.save(path, record)
+        return dict(api_url=self.base_url, game_id=record["game_id"], role=role,
+                    access_token=session["access_token"])

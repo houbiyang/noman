@@ -25,7 +25,7 @@ class SandboxWebHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         """允许同源的浏览器运行能力，并让启动脚本核对服务目录。"""
         self.send_header("X-Qiongtu-Web", self.server.project_id)
-        self.send_header("Cache-Control", "no-store" if self.path == "/api/local-session" else "no-cache")
+        self.send_header("Cache-Control", "no-store" if self.path.startswith("/api/") else "no-cache")
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -39,6 +39,9 @@ class SandboxWebHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         """提供固定协同工作台入口，不公开工程目录、配置或会话凭据。"""
         if self.path in ('/agents', '/agents/'):
+            if self.server.launch_provider is None:
+                self.send_error(404, 'Not Found')
+                return
             from backend.demo_domain import map_manifest
             page = Path(__file__).resolve().parents[2] / 'backend' / 'agent-workbench.html'
             content = page.read_text(encoding='utf-8').replace('__AGENT_MAP_HASH__', map_manifest()['content_hash'])
@@ -53,8 +56,12 @@ class SandboxWebHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        """仅允许本机页面同源申请一个席位，不公开引导密钥或其他角色令牌。"""
-        if self.path != "/api/local-session":
+        """仅允许本机同源席位接入和主持人新局操作，引导密钥始终留在服务端。"""
+        if self.server.launch_provider is None:
+            self.reply_json(503, dict(error=dict(message="隔离构建预览未接入对局，不能创建、恢复或提交战斗")))
+            return
+        manual = self.path in ("/api/local-manual/setup", "/api/local-manual/create", "/api/local-manual/recover", "/api/local-manual/preview", "/api/local-manual/validate")
+        if self.path != "/api/local-session" and not manual:
             self.send_error(404, "Not Found")
             return
         origin = self.headers.get("Origin", "")
@@ -63,15 +70,39 @@ class SandboxWebHandler(http.server.SimpleHTTPRequestHandler):
             self.reply_json(403, dict(error=dict(message="只允许本机地图页面同源接入")))
             return
         length = self.headers.get("Content-Length", "")
-        if not length.isdecimal() or not 0 < int(length) <= 1024 or self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json":
+        if not length.isdecimal() or not 0 < int(length) <= (65536 if manual else 1024) or self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json":
             self.reply_json(400, dict(error=dict(message="接入请求格式无效")))
             return
         try:
             body = json.loads(self.rfile.read(int(length)))
-            if not isinstance(body, dict) or set(body) != {"role", "map_hash", "capture_layout_sha256"}:
+            fields = {"game_id", "map_hash", "capture_layout_sha256"} if manual else {"role", "map_hash", "capture_layout_sha256"}
+            if self.path.endswith("/preview"):
+                fields |= {"placement"}
+            if self.path.endswith("/validate"):
+                fields |= {"payload"}
+            if self.path.endswith("/create"):
+                fields |= {"request_key", "payload"}
+            elif self.path.endswith("/recover"):
+                fields |= {"request_key"}
+            if not isinstance(body, dict) or set(body) != fields:
                 self.reply_json(400, dict(error=dict(message="接入参数无效")))
                 return
-            result = self.server.launch_provider.session(body["role"], body["map_hash"], body["capture_layout_sha256"])
+            if manual:
+                authorization = self.headers.get("Authorization", "")
+                if not authorization.startswith("Bearer "):
+                    self.reply_json(401, dict(error=dict(message="请先接入主持人席位")))
+                    return
+                token = authorization[7:]
+                if self.path.endswith("/preview"):
+                    result = self.server.launch_provider.manual_preview(token, body)
+                elif self.path.endswith("/validate"):
+                    result = self.server.launch_provider.manual_validate(token, body)
+                elif self.path.endswith("/setup"):
+                    result = self.server.launch_provider.manual_setup(token, body)
+                else:
+                    result = self.server.launch_provider.manual_create(token, body, recover=self.path.endswith("/recover"))
+            else:
+                result = self.server.launch_provider.session(body["role"], body["map_hash"], body["capture_layout_sha256"])
         except (ValueError, OSError, WebLaunchError) as error:
             message = str(error) if isinstance(error, WebLaunchError) else "本机接入未完成，请稍后重试"
             self.reply_json(503, dict(error=dict(message=message)))
@@ -92,8 +123,10 @@ def main():
     """校验构建入口并监听本机端口，工程源码不会作为服务根目录。"""
     parser = argparse.ArgumentParser(description="穹图 Unity 网页本机预览")
     parser.add_argument("--directory", required=True)
+    parser.add_argument("--static-only", action="store_true", help="仅预览隔离构建，禁用席位、手动新局及协同工作台，不读取私有接入文件")
     parser.add_argument("--port", type=int, default=18766)
     parser.add_argument("--backend-port", type=int, default=18080)
+    parser.add_argument("--launch-namespace", help="本机CLI限定的对局接入隔离命名空间，不从网页接收")
     arguments = parser.parse_args()
     directory = Path(arguments.directory).resolve()
     if not (directory / "index.html").is_file() or not (directory / "Build").is_dir():
@@ -105,8 +138,8 @@ def main():
     handler = functools.partial(SandboxWebHandler, directory=str(directory))
     with http.server.ThreadingHTTPServer(("127.0.0.1", arguments.port), handler) as server:
         server.project_id = hashlib.sha256(str(directory).encode("utf-8")).hexdigest()
-        server.launch_provider = LocalWebLaunch(Path(__file__).resolve().parents[2], arguments.backend_port)
-        print(f"穹图网页版已启动：http://127.0.0.1:{arguments.port}/", flush=True)
+        server.launch_provider = None if arguments.static_only else LocalWebLaunch(Path(__file__).resolve().parents[2], arguments.backend_port, launch_namespace=arguments.launch_namespace)
+        print(f"穹图网页版已启动：http://127.0.0.1:{arguments.port}/" + ("（隔离静态预览，不接入对局）" if arguments.static_only else ""), flush=True)
         server.serve_forever()
 
 

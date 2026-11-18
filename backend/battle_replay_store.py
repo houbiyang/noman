@@ -31,6 +31,17 @@ def append_round(connection, *, game_id, branch_id, snapshot_id, snapshot_revisi
             and state['manifest'].get('battle_rule_sha256') == record['rule_sha256']
             and state['manifest'].get('battle_scenario_sha256') == record['scenario_sha256'],
             'REPLAY_COMMIT_REQUIRED', '回放与权威结果快照/冻结版本不一致')
+    placements = [{k: e[k] for k in ('source_id', 'source_life_id', 'source_position', 'target_position')}
+                  for e in record['frames'][0]['events'] if e['kind'] == 'host_place']
+    if placements:
+        audit = connection.execute("""SELECT payload FROM game_events WHERE game_id=%s AND branch_id=%s
+            AND snapshot_revision<%s AND visibility='host' AND event_type='host_test_placement'
+            AND fact_key=%s""", (game_id, branch_id, snapshot_revision,
+                                'host-placement/%d' % record['round_number'])).fetchone()
+        require(state['manifest'].get('release_scope') == 'local_manual_test' and audit is not None
+                and audit['payload'].get('previous_round_sha256') == record['previous_round_sha256']
+                and audit['payload'].get('entries') == placements,
+                'REPLAY_PLACEMENT_INVALID', '测试放置必须绑定同局同轮主持人的原始记录')
     if record['round_number'] > 1:
         predecessor = connection.execute("""SELECT payload FROM game_events
             WHERE game_id=%s AND branch_id=%s AND snapshot_revision<%s AND event_type='battle_round'

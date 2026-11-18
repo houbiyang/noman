@@ -38,8 +38,12 @@ namespace Qiongtu.Sandbox.Editor
             cursor.Play(); cursor.Advance(60); Check(cursor.World.elapsed_seconds == 60 && cursor.Playing, "continuous playback crosses round boundary");
             cursor.Pause(); cursor.Advance(5); Check(cursor.Seconds == 60, "pause freezes virtual clock");
             cursor.Play(); cursor.Advance(1000); Check(cursor.Seconds == 120 && !cursor.Playing, "playback stops at latest completed round");
+            cursor.Seek(59.99); Check(cursor.CurrentRound == 1, "round clock before boundary");
+            cursor.Seek(60); Check(cursor.CurrentRound == 2, "round clock switches at exact boundary");
+            cursor.Seek(120); Check(cursor.CurrentRound == 2, "final frame remains last recorded round");
             var single = new SandboxRoundReplayCursor(new[] { records[1] });
             Check(single.FirstSeconds == 60 && single.LastSeconds == 120, "single-round playback works without fetching all previous payloads");
+            Check(single.CurrentRound == 2, "single round retains actual number");
             Reject(() => single.Seek(59), "seek cannot read unloaded rounds");
             Reject(() => single.Advance(double.NaN), "nonfinite delta rejected");
             foreach (string invalid in new[] { "NaN", "1/0", "-1/-2", "-1", "1e2", "1/2/3" })
@@ -93,13 +97,16 @@ namespace Qiongtu.Sandbox.Editor
                 Check(root.Q<Button>("recordedReplayEntry").enabledSelf, "host can enter completed replay");
                 Call(hud, "BuildRecordedReplayPanel");
                 var overlay = root.Q("recorded-replay-overlay");
-                Check(overlay.ClassListContains("modal-backdrop") && overlay.ClassListContains("ui-blocker"), "large centered overlay blocks live map input");
-                Check(root.Q("recorded-replay-card").ClassListContains("recorded-card"), "command-console styling applied");
+                Check(!overlay.ClassListContains("modal-backdrop") && !overlay.ClassListContains("ui-blocker") && overlay.pickingMode == PickingMode.Ignore, "original map remains pointer operable outside compact controls");
+                Check(root.Q("recorded-replay-card").ClassListContains("recorded-map-controls"), "compact bottom controls applied");
                 Call(hud, "RenderRecordedFacts", records[0].frames[1].world);
                 string labels = string.Join("\n", root.Query<Label>().ToList().Select(l => l.text));
                 Check(labels.Contains("P-01") && labels.Contains("P-05"), "all frozen points present");
                 Check(labels.Contains("血量 84/100") && labels.Contains("弹药 59/60") && labels.Contains("米/分"), "historical resource labels present");
-                Check(root.Q<Image>("recorded-viewport") != null && !root.Q<Button>("recordedPlay").enabledSelf, "viewport exists, playback disabled before data load");
+                Check(root.Q<Image>("recorded-viewport") == null && !root.Q<Button>("recordedPlay").enabledSelf, "no separate RenderTexture viewport and no playback before data");
+                Check(root.Q<Button>("recordedRewind") != null && root.Q<Button>("recordedNextEvent") != null
+                    && root.Q<Label>("recordedEventSummary") != null, "in-map timeline exposes event navigation and recorded summary");
+                Check(!root.Q<Button>("recordedNextEvent").enabledSelf, "no navigation without validated cursor");
                 // 关闭与角色变化均为纯本地行为，没有发起网络读写。
                 Set(hud, "recordedScope", "outdated"); Call(hud, "RefreshRecordedReplayEntry");
                 Check(root.Q("recorded-replay-overlay") == null, "scope change clears private history");
@@ -107,6 +114,10 @@ namespace Qiongtu.Sandbox.Editor
                 Check(root.Q<Button>("recordedReplayEntry").style.display == DisplayStyle.None, "nonhost entry hidden");
                 Check(!client.LoadBattleReplayIndex(null) && !client.LoadBattleReplayRound(1, null), "client read guard rejects nonhost");
                 Check(!client.Busy && !client.HasPending && client.RecentLogs.Count == 0, "UI checks send zero network commands");
+                Check((bool)Call(hud, "TryInitializeExportedReplay", "http://127.0.0.1/?replayFile=../not-allowed.json"), "invalid read-only request still bypasses game initialization");
+                Check(root.Q<Label>(className: "recorded-note").text.Contains("未连接游戏API"), "invalid sidecar path fails closed with an explicit message");
+                Check(!client.Busy && !client.HasPending && client.RecentLogs.Count == 0, "failed preview does not read or write a game API");
+                Call(hud, "CloseRecordedReplay");
                 var cameraUsed = Camera.main; int originalMask = cameraUsed.cullingMask;
                 var stage = stageObject.AddComponent<SandboxRoundReplayStage>(); stage.Initialize(null);
                 Check((cameraUsed.cullingMask & (1 << 31)) == 0, "live camera excludes historical clones");
@@ -123,6 +134,28 @@ namespace Qiongtu.Sandbox.Editor
                 Check(renderer.gameObject.layer == 31 && stage.Camera.cullingMask == (1 << 31), "stage and camera isolated from live render layer");
                 stage.Release(); Check(cameraUsed.cullingMask == originalMask, "close restores original live culling mask");
                 Check(!stage.Camera.enabled && !stageObject.activeSelf, "close synchronously disables replay rendering");
+                var inMapObject = new GameObject("OriginalMapHistoryCheck");
+                try
+                {
+                    var inMap = inMapObject.AddComponent<SandboxRoundReplayStage>(); inMap.Initialize(null, true);
+                    Check(inMap.UsesOriginalMap && inMap.Texture == null && inMap.Camera == cameraUsed, "history uses original camera and allocates no texture");
+                    inMap.Sample(cursor);
+                    Check(inMapObject.GetComponentsInChildren<Camera>().Length == 0, "history creates no dedicated camera");
+                    inMap.Release();
+                    Check(cameraUsed.enabled && cameraUsed.cullingMask == originalMask, "exit leaves original camera active and restores mask");
+                }
+                finally { UnityEngine.Object.DestroyImmediate(inMapObject); }
+                var testWorld = go.AddComponent<SandboxWorld>(); var liveGroup = new GameObject("LiveUnits"); liveGroup.transform.SetParent(go.transform);
+                Set(testWorld, "unitRoot", liveGroup.transform);
+                testWorld.SetHistoricalPresentation(true);
+                Check(!liveGroup.activeSelf && testWorld.HistoricalPresentation, "live projection hidden without deleting authoritative models");
+                testWorld.SetHistoricalPresentation(false);
+                Check(liveGroup.activeSelf && !testWorld.HistoricalPresentation, "exit restores live model selection objects");
+                Set(hud, "world", testWorld); Call(hud, "BuildRecordedReplayPanel");
+                Check(testWorld.HistoricalPresentation, "opening map history isolates presentation");
+                Call(hud, "RecordedFailure", "network fixture failure");
+                Check(!testWorld.HistoricalPresentation && liveGroup.activeSelf, "load failure restores hidden live models");
+                Call(hud, "CloseRecordedReplay");
                 Debug.Log("[RoundReplayChecks] PASS " + checks + " checks; editor-only fixture, zero user-game writes");
             }
             finally { UnityEngine.Object.DestroyImmediate(stageObject); UnityEngine.Object.DestroyImmediate(go); UnityEngine.Object.DestroyImmediate(cameraObject); }

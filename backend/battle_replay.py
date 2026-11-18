@@ -86,7 +86,7 @@ class VisualWorld(StrictModel):
 
 class VisualEvent(StrictModel):
     event_id: str = Field(min_length=1, max_length=100)
-    kind: Literal['move', 'shot', 'hit', 'service', 'takeoff', 'land', 'retired', 'capture', 'barracks_service']
+    kind: Literal['move', 'shot', 'hit', 'service', 'takeoff', 'land', 'retired', 'capture', 'barracks_service', 'host_place']
     at_seconds: StrictInt = Field(ge=5, le=3600)
     camp_id: str | None = Field(default=None, min_length=1, max_length=40)
     delivery_category: Literal['energy', 'ammo', 'durability', 'stock_energy', 'stock_ammo', 'stock_repair'] | None = None
@@ -196,15 +196,24 @@ def validate_record(value):
                  for u in frame.world.units} == profiles, 'REPLAY_PROFILE_CHANGED', '回放不能更换单位冻结参数')
         capacities(frame.world)
         moved = set()
+        placements = {}
         for event in frame.events:
             require(event.at_seconds == expected and event.event_id not in events,
                     'REPLAY_EVENT_INVALID', '事件必须唯一且属于本帧')
             events.add(event.event_id)
+            if event.kind == 'host_place':
+                before = next((u for u in previous_world.units if u.unit_id == event.source_id), None)
+                require(record.round_number > 1 and expected == record.start_seconds + 5
+                        and before is not None and not before.retired and before.life_id == event.source_life_id
+                        and before.position == event.source_position and event.target_position is not None
+                        and event.source_id not in placements and event.source_id not in moved,
+                        'REPLAY_PLACEMENT_INVALID', '主持人放置只能在首帧发生且须绑定原生命及位置')
+                placements[event.source_id] = event.target_position
             if event.kind in ('move', 'takeoff', 'land'):
                 before = next((u for u in previous_world.units if u.unit_id == event.source_id), None)
                 after = next((u for u in frame.world.units if u.unit_id == event.source_id), None)
                 require(before is not None and after is not None and event.source_id not in moved
-                        and (event.trace[0] if event.kind == 'move' else event.source_position) == before.position
+                        and (event.trace[0] if event.kind == 'move' else event.source_position) == placements.get(event.source_id, before.position)
                         and (event.trace[-1] if event.kind == 'move' else event.target_position) == after.position,
                         'REPLAY_TRACE_INVALID', '同单位每帧只能一条移动轨迹，且必须衔接前后权威位置')
                 moved.add(event.source_id)
@@ -218,13 +227,37 @@ def validate_record(value):
                         continue
                     require(unit_id in identities and identities[unit_id][0] == life_id,
                             'REPLAY_EVENT_INVALID', '事件不能引用不存在的单位生命实例')
-        require(all(u.position == next(v for v in frame.world.units if v.unit_id == u.unit_id).position
+        require(all(placements.get(u.unit_id, u.position) == next(v for v in frame.world.units if v.unit_id == u.unit_id).position
                     or u.unit_id in moved for u in previous_world.units),
                 'REPLAY_TRACE_INVALID', '任何位置变化都必须有衔接首尾的权威移动或起降事件')
         require(all(not u.retired or next(v for v in frame.world.units if v.unit_id == u.unit_id).retired
                     for u in previous_world.units), 'REPLAY_IDENTITY_CHANGED', '已退场生命实例不能复活')
         previous_world = frame.world
     return record
+
+
+def round_opening(state, world):
+    """保持回放前驱不变；本机主持人快照可另附一次性的首帧放置。"""
+    info = state['manual_battle']
+    pending = info.get('host_placement')
+    if pending is None:
+        return world, []
+    require(state['manifest'].get('release_scope') == 'local_manual_test'
+            and pending['round_number'] == info['round_number'] > 1
+            and pending['previous_round_sha256'] == info['previous_round_sha256'],
+            'REPLAY_PLACEMENT_INVALID', '放置与本地测试轮次不符')
+    initial = deepcopy(world)
+    units = {u['unit_id']: u for u in initial['units']}
+    events = []
+    at = info['elapsed_seconds'] + 5
+    for item in pending['entries']:
+        uid = item['source_id']
+        u = units.pop(uid, None)
+        require(u and not u['retired'] and u['life_id'] == item['source_life_id']
+                and u['position'] == item['target_position'], 'REPLAY_PLACEMENT_INVALID', '放置生命或落点不匹配')
+        u['position'] = deepcopy(item['source_position'])
+        events.append(dict(**deepcopy(item), kind='host_place', at_seconds=at, event_id=f'{at}/host-place/{uid}'))
+    return initial, events
 
 
 def seal_record(*, round_number, rule_sha256, scenario_sha256, previous_round_sha256,

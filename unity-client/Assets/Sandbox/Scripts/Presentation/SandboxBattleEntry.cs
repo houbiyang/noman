@@ -9,7 +9,7 @@ namespace Qiongtu.Sandbox
         private VisualElement battleOverlay;
         private ScrollView battleChecks;
         private Label battleStatus;
-        private Button battleCheckButton, battleAgentButton, battleManualButton;
+        private Button battleCheckButton, battleAgentButton, battleManualButton, battleStartButton;
         private Toggle battleProbeAi;
         private string battleMode = "agent";
         private int battleGeneration;
@@ -44,7 +44,7 @@ namespace Qiongtu.Sandbox
             battleManualButton = AddButton(modes, "本地手动测试\n双方分别提交 · 主持人统一结算", () => SelectBattleMode("manual"), "battle-mode");
             battleManualButton.name = "battleModeManual";
             var content = SettingsGroup(panel, "battle-content");
-            AddText(content, "接入中：模式选择和只读依赖检查已提供。总册结算与播放尚未完整接入，当前不能通过此入口开战。", "settings-notice");
+            AddText(content, "先在沙盘完成双方三座兵营和单位部署，再选择本地手动测试并点击对战开始。开战时统一验收并锁定本局编制。", "settings-notice");
             battleStatus = AddText(content, "", "settings-note"); battleStatus.name = "battleCheckStatus";
             battleProbeAi = new Toggle("同时测试双方已启用模型接口（真实请求可能计费；不自动重试）") { value = false, name = "battleProbeAi" };
             battleProbeAi.AddToClassList("settings-field"); content.Add(battleProbeAi);
@@ -53,8 +53,9 @@ namespace Qiongtu.Sandbox
             var footer = SettingsGroup(panel, "settings-footer");
             AddText(footer, "本地手动模式只能绕过AI故障，不能绕过数据库、规则和执行器故障。", "settings-footer-copy");
             battleCheckButton = AddButton(footer, "检查开战依赖", CheckBattleDependencies, "settings-primary"); battleCheckButton.name = "battleCheckButton";
-            var start = AddButton(footer, "开始战斗（待接入）", () => { }, "settings-secondary");
-            start.name = "battleStartButton"; start.SetEnabled(false);
+            if (!deploymentStaging) AddButton(footer, "部署新对局", EnterStagedDeployment, "settings-secondary");
+            battleStartButton = AddButton(footer, "对战开始", () => { if (deploymentStaging) StartStagedBattle(); else { CloseBattleEntry(); Notify("已在对战中，请切换红蓝视角下达指令"); } }, "settings-secondary");
+            battleStartButton.name = "battleStartButton"; battleStartButton.SetEnabled(false);
             SelectBattleMode(battleMode); battleAgentButton.Focus();
         }
 
@@ -70,6 +71,9 @@ namespace Qiongtu.Sandbox
                 : !host ? "请先关闭面板，切换主持人视角后检查双方依赖。"
                 : "尚未检查。未勾选模型测试时，只核对本地依赖与配置，不宣称AI连通成功。";
             battleCheckButton.SetEnabled(host);
+            battleStartButton.SetEnabled(host && mode == "manual" && (!deploymentStaging || BothDeploymentsReady));
+            if (deploymentStaging) battleStatus.text = BothDeploymentsReady ? "双方部署已确认。对战开始将验收并锁定编制，进入第一轮指令阶段。" : "请先完成双方三座兵营部署、生成单位并确认就绪。";
+            battleStartButton.text = mode == "manual" ? (deploymentStaging ? "对战开始" : "返回指令阶段") : "Agent开局待接入";
         }
 
         private void CheckBattleDependencies()
@@ -77,7 +81,7 @@ namespace Qiongtu.Sandbox
             if (battleChecking || battleOverlay == null) return;
             int generation = battleGeneration;
             battleChecking = true;
-            battleCheckButton.SetEnabled(false); battleAgentButton.SetEnabled(false); battleManualButton.SetEnabled(false); battleProbeAi.SetEnabled(false);
+            battleStartButton.SetEnabled(false); battleCheckButton.SetEnabled(false); battleAgentButton.SetEnabled(false); battleManualButton.SetEnabled(false); battleProbeAi.SetEnabled(false);
             battleStatus.text = "正在检查后端、数据库、规则与地图；不会启动或推进对局…";
             bool sent = serverClient != null && serverClient.CheckBattle(battleMode, battleProbeAi.value, (result, error) =>
             {
@@ -90,6 +94,7 @@ namespace Qiongtu.Sandbox
         private void CompleteBattleCheck(SandboxBattlePreflightResult result, string error)
         {
             battleChecking = false; battleCheckButton.SetEnabled(true); battleAgentButton.SetEnabled(true); battleManualButton.SetEnabled(true); battleProbeAi.SetEnabled(true);
+            battleStartButton.SetEnabled(battleMode == "manual" && serverMode && serverClient?.View?.role == "host" && (!deploymentStaging || BothDeploymentsReady));
             battleChecks.Clear();
             if (error != null || result?.checks == null)
             {
@@ -109,8 +114,8 @@ namespace Qiongtu.Sandbox
                 AddText(row, item.message, "settings-note");
             }
             battleStatus.text = failed > 0 ? "检查完成：存在未通过或未测试项；未启动战斗。"
-                : "本次依赖检查完成；不等同开局授权，当前尚未发布新模式开局接口。";
-            // 即使旧响应错误地声称可开局，也没有按钮或命令路径绕过未发布的新执行器。
+                : "本次依赖检查完成。点击对战开始后，将再次验收双方部署并锁定编制。";
+            // 配置入口不启动旧局，创建接口仍须严格验收。
         }
 
         private void CloseBattleEntry()

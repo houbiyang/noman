@@ -19,6 +19,7 @@ namespace Qiongtu.Sandbox
 
         private void OpenSelectedUnitControls(SandboxUnitData unit)
         {
+            if (deploymentStaging) { OpenArmy(); return; }
             ClosePanel(); CloseArmy(); CancelArmyCommand();
             controlledUnitId = unit.id;
             RefreshSelectedUnitControls();
@@ -26,6 +27,7 @@ namespace Qiongtu.Sandbox
 
         private void RefreshSelectedUnitControls()
         {
+            if (deploymentStaging) { CloseSelectedUnitControls(); return; }
             if (controlledUnitId == null || root == null) return;
             var unit = projection?.units.FirstOrDefault(item => item.id == controlledUnitId);
             if (unit == null) { CloseSelectedUnitControls(); return; }

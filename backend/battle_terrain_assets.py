@@ -9,7 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from backend.battle_terrain import SupportTriangle
+from backend.battle_terrain import SupportTriangle, rational
 from backend.demo_domain import MAP_PATH, require
 from backend.runtime import sha256
 
@@ -85,6 +85,7 @@ class TerrainAssets:
         expected = build_manifest(definition_raw, geometry_raw)
         require(manifest == expected, 'BATTLE_TERRAIN_MANIFEST_INVALID', '地表标注或绑定资产已变更，拒绝旧标注')
         self.manifest = deepcopy(expected)
+        self._definition = json.loads(definition_raw)
         self._parts = {p['name']: p for p in json.loads(geometry_raw)['parts']}
         self._annotations = {p['part_id']: p for p in expected['parts']}
 
@@ -92,23 +93,57 @@ class TerrainAssets:
     def current(cls):
         return cls(MAP_PATH.read_bytes(), GEOMETRY_PATH.read_bytes(), json.loads(MANIFEST_PATH.read_bytes()))
 
+    @property
+    def source_definition(self):
+        """原定义字段只读副本；语义目录复用明确来源，不按部件名字猜规则。"""
+        return deepcopy(self._definition)
+
     def annotation(self, part_id):
         require(part_id in self._annotations, 'BATTLE_SURFACE_UNRESOLVED', '未知几何部件不可默认开阔地')
         return deepcopy(self._annotations[part_id])
 
-    def triangle(self, part_id, triangle_index):
-        """按原始索引返回真实面；不使用height数组插值、surfaceHeight或零坡度。"""
+    def part_ids(self):
+        """稳定部件ID，不暴露可变原始网格。"""
+        return tuple(sorted(self._parts))
+
+    def _mesh(self, part_id):
         require(part_id in self._parts, 'BATTLE_SUPPORT_INVALID', '支撑几何不存在')
         part = self._parts[part_id]
         vertices, indices = part.get('vertices'), part.get('triangles')
-        require(isinstance(vertices, list) and len(vertices) % 3 == 0
-                and isinstance(indices, list) and len(indices) % 3 == 0
-                and type(triangle_index) is int and 0 <= triangle_index < len(indices)//3,
+        require(isinstance(vertices, list) and len(vertices) > 0 and len(vertices) % 3 == 0
+                and isinstance(indices, list) and len(indices) % 3 == 0,
+                'BATTLE_SUPPORT_INVALID', '三角面索引或顶点数据无效')
+        return vertices, indices
+
+    def part_bounds(self, part_id):
+        """真实网格的xz包围盒，只用于排除不相交部件，不授予通行。"""
+        vertices, _ = self._mesh(part_id)
+        xs = [rational(v) for v in vertices[0::3]]
+        zs = [rational(v) for v in vertices[2::3]]
+        return min(xs), min(zs), max(xs), max(zs)
+
+    def part_bounds3d(self, part_id):
+        """真实三维包围盒用于射线候选筛选；不能用xz投影判定遮挡。"""
+        vertices, _ = self._mesh(part_id)
+        axes = [tuple(rational(v) for v in vertices[i::3]) for i in range(3)]
+        return tuple(min(axis) for axis in axes) + tuple(max(axis) for axis in axes)
+
+    def face_count(self, part_id):
+        return len(self._mesh(part_id)[1]) // 3
+
+    def face_vertices(self, part_id, triangle_index):
+        """包括垂直面；调用者不得把不能支撑的面悄悄当作平地。"""
+        vertices, indices = self._mesh(part_id)
+        require(type(triangle_index) is int and 0 <= triangle_index < len(indices)//3,
                 'BATTLE_SUPPORT_INVALID', '三角面索引或顶点数据无效')
         corners = indices[triangle_index*3:triangle_index*3+3]
         require(all(type(i) is int and 0 <= i < len(vertices)//3 for i in corners),
                 'BATTLE_SUPPORT_INVALID', '三角面引用了不存在的顶点')
-        return SupportTriangle(tuple(tuple(vertices[i*3:i*3+3]) for i in corners))
+        return tuple(tuple(rational(v) for v in vertices[i*3:i*3+3]) for i in corners)
+
+    def triangle(self, part_id, triangle_index):
+        """按原始索引返回真实面；不用height插值、surfaceHeight或零坡度。"""
+        return SupportTriangle(self.face_vertices(part_id, triangle_index))
 
 
 def main():

@@ -156,6 +156,20 @@ namespace Qiongtu.Sandbox
         /// <summary>将完整模型和地面投影一起框入可用地图区域；定位不是跟随。</summary>
         /// <param name="unitId">当前允许显示的单位。</param>
         /// <param name="viewport">排除 HUD 和右侧抽屉的归一化屏幕区域，原点在左下角。</param>
+        public void ObserveRecordedPoint(Vector3 position)
+        {
+            var bounds = new Bounds(position, new Vector3(35, 20, 35));
+            bounds.Encapsulate(SandboxWorld.Surface(position.x, position.z));
+            ObserveRecordedBounds(bounds);
+        }
+        /// <summary>Camera-only framing of supplied historical endpoints; never moves live units.</summary>
+        public void ObserveRecordedBounds(Bounds bounds)
+        {
+            followedId = null; focus = bounds.center; elevatedFocus = true; pitch = 48;
+            framingViewport = new Rect(.06f, .33f, .88f, .54f);
+            distance = Mathf.Clamp(FitDistance(bounds, Quaternion.Euler(pitch, yaw, 0), framingViewport) * 1.15f, 60, 24000);
+            ApplyCamera(false); ViewChanged?.Invoke();
+        }
         public void Locate(string unitId, Rect viewport = default)
         {
             Transform target = world.FindUnit(unitId);

@@ -17,6 +17,12 @@ from backend.runtime import sha256
 SIDES = ('blue', 'red')
 RESOURCES = ('energy', 'ammo', 'repair')
 SCHEMA = 'qinglan-exact-ledger-v1'
+FIELD_ENERGY_SERVICE_POLICY = 'support-to-hovering-recon-v1'
+
+
+def allows_hover_energy(source, target, resource):
+    return (resource == 'energy' and 'camp_id' not in source and source['unit_type'] == 'support'
+            and target['unit_type'] == 'recon' and target['air_state'] == 'flying')
 
 
 @lru_cache(maxsize=1)
@@ -205,40 +211,63 @@ def _retire(state, unit, reason, attacker_side=None):
         _add(account['lost'], field, carried)
         unit['cargo'][field] = '0'
     unit.update(durability='0', retired=True, retirement_reason=reason, movement=None, task=None)
+    unit.pop('movement_progress', None)
+    unit.pop('geometry_position', None)
     if attacker_side:
         require(attacker_side in SIDES and attacker_side != unit['side'], 'BATTLE_STATE_INVALID', '击毁归属无效')
         _add(state['battle_ledger'][attacker_side], 'kills', _parameters()['unit_profiles'][unit['unit_type']]['kill_value'])
     return True
 
 
+def _segment_rates(kind, segment):
+    """时间预算与累计路径计费共用同一费率，不在计费阶段再次截断5秒。"""
+    p = _parameters()
+    require(kind in p['unit_profiles'], 'BATTLE_STATE_INVALID', '兵种无效')
+    require(('grade' in segment) != ('grade_squared' in segment),
+            'BATTLE_SLOPE_INVALID', '路段须提供唯一坡度证据，不能缺失或混用')
+    grade_squared = (number(segment['grade_squared']) if 'grade_squared' in segment
+                     else number(segment['grade']) ** 2)
+    surface = segment['surface']
+    if kind == 'recon':
+        require(surface == 'air', 'BATTLE_SURFACE_INVALID', '飞行段必须是已核验空域')
+        factor = Fraction(1)
+    else:
+        f = p['terrain']['surface_factors'][kind].get(surface)
+        require(f is not None, 'BATTLE_SURFACE_INVALID', '禁行或未知地表')
+        factor = number(str(f)) * slope_factor(kind, grade_squared)
+    profile = p['unit_profiles'][kind]
+    return Fraction(profile['speed_m_per_minute']) * factor, Fraction(profile['energy_per_km'], 1000) / factor
+
+
+def movement_cost(kind, segments, *, quantum=None):
+    """按已记录累计路程增量精确收费；绝不重复应用时间预算或路段取整。"""
+    cost = Fraction(0)
+    for segment in segments:
+        _, energy_per_m = _segment_rates(kind, segment)
+        cost += number(segment['length_mm']) / 1000 * energy_per_m
+    if quantum is not None:
+        # Local manual billing uses bounded fixed-point amounts. Round down so
+        # quantization never consumes more than the proven energy budget. The
+        # SAME amount is debited from the unit and credited to consumed.energy.
+        require(isinstance(quantum, Fraction) and quantum > 0,
+                'BATTLE_NUMBER_INVALID', '能源记账网格无效')
+        cost = (cost // quantum) * quantum
+    return exact(cost)
+
+
 def segment_budget(kind, segments, energy, *, moving_attack=False, seconds=5):
-    """计算已核验分段的精确路程。length_mm须是路线量化后的权威弧长，不是端点捷径。
+    """连续几何预算证明；规则毫米累计路径由适配器统一记录后用movement_cost收费。
 
     grade为旧合成几何使用的绝对坡度；真实面可传grade_squared，二者必须且只能提供一个。
-    仅返回数值预算，不移动单位；适配器必须保存同一路线的亚毫米余数并校验可停靠点。
+    仅返回数值预算，不移动单位；同一未中断路线保存不足毫米预算，终止清除。
     """
-    p = _parameters(); require(kind in p['unit_profiles'], 'BATTLE_STATE_INVALID', '兵种无效')
     energy = number(energy); remaining = number(seconds)
     require(remaining <= 5, 'BATTLE_STATE_INVALID', '单步预算不能超过5秒')
     spent, lengths = Fraction(0), []
     reservation = Fraction(5, 4) if kind == 'ground' and moving_attack else Fraction(1)
     for segment in segments:
-        surface = segment['surface']
-        require(('grade' in segment) != ('grade_squared' in segment),
-                'BATTLE_SLOPE_INVALID', '路段须提供唯一坡度证据，不能缺失或混用')
-        grade_squared = (number(segment['grade_squared']) if 'grade_squared' in segment
-                         else number(segment['grade']) ** 2)
+        speed, energy_per_m = _segment_rates(kind, segment)
         length = number(segment['length_mm']) / 1000
-        if kind == 'recon':
-            require(surface == 'air', 'BATTLE_SURFACE_INVALID', '飞行段必须是已核验空域')
-            factor = Fraction(1)
-        else:
-            f = p['terrain']['surface_factors'][kind].get(surface)
-            require(f is not None, 'BATTLE_SURFACE_INVALID', '禁行或未知地表')
-            factor = number(str(f)) * slope_factor(kind, grade_squared)
-        profile = p['unit_profiles'][kind]
-        speed = Fraction(profile['speed_m_per_minute']) * factor
-        energy_per_m = Fraction(profile['energy_per_km'], 1000) / factor
         actual = min(length, remaining * speed / 60, (energy - spent * reservation) / (energy_per_m * reservation))
         actual = max(Fraction(0), actual)
         lengths.append(exact(actual * 1000))
@@ -401,7 +430,7 @@ def terminal(state, seconds):
     return dict(winner=winner, reason='mutual_elimination' if not any(living.values()) else 'time_limit')
 
 
-def service_step(state, requests, *, seconds, stationary, start_positive, service_clear):
+def service_step(state, requests, *, seconds, stationary, start_positive, service_clear, hover_energy_clear=None):
     """野外服务：请求必须为已采用任务，几何回调只由地图适配器提供。
 
     接收意图应在resolve_fire前由service_receivers锁定；先伤害再调用本函数。
@@ -409,6 +438,9 @@ def service_step(state, requests, *, seconds, stationary, start_positive, servic
     """
     result = deepcopy(state); units = _units(result); deliveries = []
     service_receivers(result, requests)  # 整批冲突先拒绝，不因遍历顺序偷偷选择赢家。
+    manifest = result.get('manifest', {})
+    hover_policy = (manifest.get('battle_mode') == 'manual'
+                    and manifest.get('field_energy_service_policy') == FIELD_ENERGY_SERVICE_POLICY)
     for request in requests:
         source = units[request['source_id']]; target = units[request['target_id']]
         resource, amount = request['resource'], number(request.get('quantity', request.get('target_balance')))
@@ -419,9 +451,13 @@ def service_step(state, requests, *, seconds, stationary, start_positive, servic
         if not (alive(source) and alive(target) and source['unit_id'] in start_positive
                 and number(source['energy']) > 0
                 and source['unit_id'] in stationary and target['unit_id'] in stationary
-                and (target['unit_type'] != 'recon' or target['air_state'] == 'docked')
-                and _distance2(source['position_mm'], target['position_mm']) <= 100000 ** 2
-                and service_clear(source, target)):
+                and _distance2(source['position_mm'], target['position_mm']) <= 100000 ** 2):
+            continue
+        if hover_policy and allows_hover_energy(source, target, resource):
+            if hover_energy_clear is None or hover_energy_clear(source, target) is not True:
+                continue
+        elif ((target['unit_type'] == 'recon' and target['air_state'] != 'docked')
+              or not service_clear(source, target)):
             continue
         delivered = min(Fraction(2), number(source['cargo'][resource]), missing, wanted)
         if delivered <= 0:

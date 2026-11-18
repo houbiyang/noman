@@ -37,7 +37,7 @@ namespace Qiongtu.Sandbox
     }
 
     /// <summary>只在成功读取并校验后发布权威视图，不把请求中的目标当作已提交事实。</summary>
-    public sealed class SandboxServerClient : MonoBehaviour
+    public sealed partial class SandboxServerClient : MonoBehaviour
     {
         private string endpoint, gameId, bearer, mapId, mapHash;
         private string responseBody, pendingBody, pendingKey, pendingCommandType, pendingBranchId;
@@ -62,8 +62,10 @@ namespace Qiongtu.Sandbox
         public SandboxServerView View { get; private set; }
         public int ConnectionGeneration { get; private set; }
         public bool Busy { get; private set; }
+        // A local new-game draft does not need to poll the unchanged source game.
+        public bool StagingLocalDeployment { get; set; }
         public bool Healthy { get; private set; }
-        public bool HasPending => pendingBody != null || queuedMovementKind != null;
+        public bool HasPending => pendingBody != null || queuedMovementKind != null || manualCreationKey != null;
         public string Status { get; private set; } = "尚未连接后端";
 
         /// <summary>保留最近一百条公开摘要，避免轮询和长时间运行占用无限内存。</summary>
@@ -98,10 +100,7 @@ namespace Qiongtu.Sandbox
         private IEnumerator AutomaticConnect()
         {
             Busy = true; Changed?.Invoke();
-            string origin = "http://127.0.0.1:18766";
-            if (Uri.TryCreate(Application.absoluteURL, UriKind.Absolute, out Uri page)
-                && page.Scheme == "http" && (page.Host == "127.0.0.1" || page.Host == "localhost"))
-                origin = page.GetLeftPart(UriPartial.Authority);
+            string origin = LocalWebOrigin();
             yield return Request("POST", origin + "/api/local-session",
                 JsonUtility.ToJson(new SandboxServerLaunchInput { role = automaticRole, map_hash = mapHash, capture_layout_sha256 = SandboxCaptureLayout.ContentHash }), null, null);
             SandboxServerLaunch launch = responseCode == 200 ? ReadJson<SandboxServerLaunch>() : null;
@@ -135,11 +134,18 @@ namespace Qiongtu.Sandbox
         public void RefreshNow() { if (!Busy && endpoint != null) StartCoroutine(Refresh()); }
 
         /// <summary>以原键和原正文核对未明确完成的命令，禁止自动改键重发。</summary>
-        public void RetryPending() { if (!Busy && HasPending) StartCoroutine(Commit()); }
+        public void RetryPending()
+        {
+            if (Busy) return;
+            if (manualCreationKey != null) RecoverManualCreation((ok, error) => Feedback?.Invoke(error ?? "手动新局已恢复"));
+            else if (HasPending) StartCoroutine(Commit());
+        }
 
         /// <summary>提交严格类型的内部载荷，在收据明确之前不修改地图。</summary>
+        public Func<bool> CommandsBlocked { get; set; }
         public void Command(string kind, object payload = null, SandboxServerContext basis = null)
         {
+            if (CommandsBlocked?.Invoke() == true) { Feedback?.Invoke("历史播放中禁止命令；请退出后继续"); return; }
             if (Busy && !HasPending && Healthy && View != null && basis == null && kind == "movement_order")
             {
                 queuedMovementKind = kind; queuedMovementPayload = payload;
@@ -240,7 +246,7 @@ namespace Qiongtu.Sandbox
             if (endpoint != null && !Busy && Time.realtimeSinceStartup >= nextPoll)
             {
                 if (pendingBody != null) StartCoroutine(VerifyPending());
-                else StartCoroutine(Refresh());
+                else if (!StagingLocalDeployment) StartCoroutine(Refresh());
             }
         }
 
@@ -389,7 +395,7 @@ namespace Qiongtu.Sandbox
             using (var request = new HttpRequestMessage(new HttpMethod(method), url))
             {
                 if (!string.IsNullOrEmpty(accessToken)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-                else request.Headers.TryAddWithoutValidation("Origin", new Uri(url).GetLeftPart(UriPartial.Authority));
+                request.Headers.TryAddWithoutValidation("Origin", new Uri(url).GetLeftPart(UriPartial.Authority));
                 if (body != null) request.Content = new StringContent(body, Encoding.UTF8, "application/json");
                 if (requestKey != null) request.Headers.Add("Idempotency-Key", requestKey);
                 var sending = client.SendAsync(request);
@@ -460,6 +466,10 @@ namespace Qiongtu.Sandbox
             {
                 T result = JsonUtility.FromJson<T>(responseBody);
                 if (result is SandboxServerView view) SandboxServerProjection.NormalizeMissingPlan(view, responseBody);
+                // JsonUtility materializes reference fields even when the HTTP value is null.
+                if (result is SandboxManualSetupCatalogue catalogue
+                    && System.Text.RegularExpressions.Regex.IsMatch(responseBody, @"""pending_creation""\s*:\s*null\s*[,}]"))
+                    catalogue.pending_creation = null;
                 return result;
             }
             catch (ArgumentException) { return null; }

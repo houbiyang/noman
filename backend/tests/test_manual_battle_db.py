@@ -263,6 +263,7 @@ class ManualBattleDatabaseTests(unittest.TestCase):
         database.execute('postgres', f"CREATE DATABASE {database.identifier(name)} TEMPLATE template0 ENCODING 'UTF8';")
         try:
             database.apply_migrations(name)
+            database.execute(name, (database.BACKEND_ROOT / 'rollback' / '013_cross_branch_commands.sql').read_text())
             rollback = (database.BACKEND_ROOT / 'rollback' / '012_manual_battle_commands.sql').read_text()
             database.execute(name, rollback)
             self.assertEqual(database.execute(name, "SELECT count(*) FROM infrastructure.schema_migrations WHERE version='012_manual_battle_commands';").strip(), '0')
@@ -413,6 +414,7 @@ class ManualBattleDatabaseTests(unittest.TestCase):
             ground['task'] = dict(action='attack', target_id=enemy['unit_id'], target_life_id=enemy['life_id'])
             ground['movement'] = dict(action='move', position=dict(x='20', y='20'))
             state['observations']['red']['contacts'] = [deepcopy(ground)]
+            state['battle_points'][0].update(advancing_side='blue', progress_steps=3)
         self.execution_game(lock=False, configure=configure)
         blue = self.view('blue'); red = self.view('red')
         own = next(u for u in blue['units'] if u['unit_type'] == 'ground')
@@ -420,6 +422,12 @@ class ManualBattleDatabaseTests(unittest.TestCase):
         self.assertAlmostEqual(own['energy'], 299 / 3)
         self.assertAlmostEqual(own['current_speed_m_per_minute'], 4 / 3)
         self.assertEqual(own['speed_m_per_minute'], 400)
+        self.assertIs(own['movement_active'], True)
+        host_own = next(u for u in self.view('host')['units'] if u['unit_id'] == own['unit_id'])
+        self.assertIs(host_own['movement_active'], True)
+        idle = next(u for u in blue['units'] if u['unit_type'] == 'support')
+        self.assertIs(idle['movement_active'], False)
+        self.assertNotIn('movement_active', red['contacts'][0])
         self.assertEqual(own['interaction_action'], 'attack')
         self.assertEqual(own['interaction_target_id'], 'red-ground-0')
         for field in ('task', 'movement', 'movement_progress', 'barracks_registration'):
@@ -430,6 +438,76 @@ class ManualBattleDatabaseTests(unittest.TestCase):
                          {'P-01', 'P-02', 'P-03', 'P-04', 'P-05'})
         self.assertIn('blue_score', blue['manual_battle'])
         self.assertIn('red_score', blue['manual_battle'])
+        self.assertIsNone(blue['manual_battle']['red_score'])
+        self.assertIsNone(red['manual_battle']['blue_breakdown'])
+        self.assertEqual(blue['manual_battle']['red_control_score'], '0')
+        for private in ('energy', 'ammo', 'cargo', 'stocks', 'movement', 'task'):
+            self.assertNotIn(private, red['contacts'][0])
+        self.assertEqual(set(red['contacts'][0]['battle_values']), {'durability'})
+        self.assertEqual(blue['battle_capture_points'][0]['progress_steps'], 3)
+        self.assertEqual(red['battle_capture_points'][0]['progress_steps'], 0)
+        self.assertEqual(red['battle_capture_points'][0]['advancing_side'], 'none')
+        self.assertTrue(red['battle_capture_points'][0]['progress_hidden'])
+        # 未推进的点也同样隐藏，不能通过隐藏标记反推敌方是否正在圈内。
+        self.assertTrue(red['battle_capture_points'][1]['progress_hidden'])
+
+    def test_execution_docked_move_rejected_receipt_editable_then_resolve_once(self):
+        from backend.tests.test_battle_execution import order
+        self.execution_game(lock=False)
+        move = order(self.state(), 'recon', movement=dict(action='move', position=dict(x='20', y='20')))
+        self.assertEqual(self.command('battle_draft', 'blue', dict(round_number=1, intents=[move])).status_code, 200)
+        before = self.state(); counts = self.execution_counts()
+        body = dict(context=self.view('blue')['context'], command_type='battle_submit', payload=dict(round_number=1))
+        key = str(uuid4())
+        response = self.command('battle_submit', 'blue', key=key, body=body)
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()['error']['code'], 'BATTLE_ROUTE_FORBIDDEN')
+        repeated = self.command('battle_submit', 'blue', key=key, body=body)
+        self.assertTrue(repeated.json()['replayed'])
+        self.assertEqual({k: v for k, v in repeated.json().items() if k != 'replayed'},
+                         {k: v for k, v in response.json().items() if k != 'replayed'})
+        self.assertEqual(self.state(), before)
+        self.assertEqual(self.execution_counts(), counts)
+        self.assertFalse(self.view('blue')['manual_battle']['submitted']['blue'])
+        move.update(movement=dict(action='stop'), task=dict(action='takeoff'))
+        self.assertEqual(self.command('battle_draft', 'blue', dict(round_number=1, intents=[move])).status_code, 200)
+        for side in ('blue', 'red'):
+            self.assertEqual(self.command('battle_submit', side).status_code, 200)
+        key = str(uuid4())
+        body = dict(context=self.view()['context'], command_type='battle_resolve', payload=dict(round_number=1))
+        response = self.command('battle_resolve', key=key, body=body)
+        self.assertEqual(response.status_code, 200, response.text)
+        after = self.state(); calls = self.geometry.step_calls
+        repeated = self.command('battle_resolve', key=key, body=body)
+        self.assertTrue(repeated.json()['replayed'])
+        self.assertEqual({k: v for k, v in repeated.json().items() if k != 'replayed'},
+                         {k: v for k, v in response.json().items() if k != 'replayed'})
+        self.assertEqual(self.state(), after)
+        self.assertEqual(self.geometry.step_calls, calls)
+        self.assertEqual(after['manual_battle']['elapsed_seconds'], 60)
+        rounds = self.client.get(self.path + '/battle/rounds', headers=self.headers['host'])
+        self.assertEqual(rounds.status_code, 200, rounds.text)
+        self.assertEqual(len(rounds.json()['items']), 1)
+
+    def test_execution_geometry_precheck_failure_never_locks_and_stop_recovers(self):
+        from backend.tests.test_battle_execution import order
+        from backend.runtime import ServiceError
+        self.execution_game(lock=False)
+        move = order(self.state(), movement=dict(action='move', position=dict(x='20', y='20')))
+        self.assertEqual(self.command('battle_draft', 'blue', dict(round_number=1, intents=[move])).status_code, 200)
+        def reject(unit):
+            raise ServiceError(409, 'BATTLE_AIR_ROUTE_FORBIDDEN', '合成地图静态剩余路线拒绝')
+        self.geometry.validate_movement_submission = reject
+        before = self.state(); counts = self.execution_counts()
+        response = self.command('battle_submit', 'blue')
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()['error']['code'], 'BATTLE_AIR_ROUTE_FORBIDDEN')
+        self.assertEqual(self.state(), before)
+        self.assertEqual(self.execution_counts(), counts)
+        self.assertEqual(self.geometry.step_calls, 0)
+        move['movement'] = dict(action='stop')
+        self.assertEqual(self.command('battle_draft', 'blue', dict(round_number=1, intents=[move])).status_code, 200)
+        self.assertEqual(self.command('battle_submit', 'blue').status_code, 200)
 
     def test_execution_invalid_service_plan_cannot_lock_and_can_be_corrected(self):
         from backend.tests.test_battle_execution import resupply
@@ -482,8 +560,10 @@ class ManualBattleDatabaseTests(unittest.TestCase):
             self.assertIsNone(view['battle_result'])
             for side in ('blue', 'red'):
                 actual = kernel.score(self.state(), side)
-                self.assertEqual(view['manual_battle'][side + '_breakdown'], actual)
-                self.assertEqual(view['manual_battle'][side + '_score'], actual['total'])
+                visible = role == 'host' or role == side
+                self.assertEqual(view['manual_battle'][side + '_breakdown'], actual if visible else None)
+                self.assertEqual(view['manual_battle'][side + '_score'], actual['total'] if visible else None)
+                self.assertEqual(view['manual_battle'][side + '_control_score'], actual['control'])
 
     def test_manual_archive_freezes_sanitized_summary_without_private_plan_or_legacy_score(self):
         from backend.tests.test_battle_execution import attack

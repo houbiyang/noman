@@ -139,6 +139,21 @@ class ManualBattleTests(TestCase):
         self.assert_code('INTENT_CONFLICT', manual_battle.draft, state, 'blue', dict(round_number=1, intents=[move]))
         self.assertEqual(before, state)
 
+    def test_docked_recon_movement_rejected_before_lock_and_stop_recovers(self):
+        for air in ('docked', 'taking_off', 'landing'):
+            with self.subTest(air=air):
+                state = state_fixture()
+                next(u for u in state['units'] if u['unit_id'] == 'blue-recon')['air_state'] = air
+                move = dict(unit_id='blue-recon', life_id='blue-recon-life',
+                            movement=dict(action='move', position=dict(x='20', y='20')))
+                state = manual_battle.draft(state, 'blue', dict(round_number=1, intents=[move]))
+                before = deepcopy(state)
+                self.assert_code('BATTLE_ROUTE_FORBIDDEN', manual_battle.submit, state, 'blue', {'round_number': 1})
+                self.assertEqual(state, before)
+                move['movement'] = dict(action='stop')
+                state = manual_battle.draft(state, 'blue', dict(round_number=1, intents=[move]))
+                self.assertTrue(manual_battle.submit(state, 'blue', {'round_number': 1})['manual_battle']['submitted']['blue'])
+
     def test_submit_locks_own_side_only_and_empty_submission_is_valid(self):
         state = state_fixture()
         state = manual_battle.submit(state, 'blue', {'round_number': 1})

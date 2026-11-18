@@ -24,14 +24,14 @@ namespace Qiongtu.Sandbox
     public sealed class SandboxBattleDraftPayload
     {
         private readonly string json;
-        private SandboxBattleDraftPayload(int round, SandboxServerUnit unit, string channel, object value, string suffix = "")
+        private SandboxBattleDraftPayload(int round, SandboxServerUnit unit, string channel, object value, string suffix = "", bool stopTask = false)
         {
             if (round < 1 || round > 60 || unit == null || string.IsNullOrEmpty(unit.life_id)) throw new ArgumentException("轮次或单位生命实例无效");
             string identity = JsonUtility.ToJson(new Identity { unit_id = unit.unit_id, life_id = unit.life_id });
             string body = JsonUtility.ToJson(value);
             if (suffix.Length > 0) body = body.Substring(0, body.Length - 1) + suffix + "}";
             json = "{\"round_number\":" + round + ",\"intents\":[" + identity.Substring(0, identity.Length - 1)
-                + ",\"" + channel + "\":" + body + "}]}";
+                + ",\"" + channel + "\":" + body + (stopTask ? ",\"task\":{\"action\":\"stop\"}" : "") + "}]}";
         }
         public string ToJson() => json;
         private static string Quote(string value)
@@ -42,6 +42,10 @@ namespace Qiongtu.Sandbox
         public static SandboxBattleDraftPayload Movement(int round, SandboxServerUnit unit, SandboxServerPosition point = null, SandboxServerPosition[] waypoints = null)
             => point == null ? new SandboxBattleDraftPayload(round, unit, "movement", new Action { action = "stop" })
                 : new SandboxBattleDraftPayload(round, unit, "movement", new Move { position = point, waypoints = waypoints ?? Array.Empty<SandboxServerPosition>() });
+        // 两通道同时明确停止；不是删除草稿或撤销已结算历史。
+        public static SandboxBattleDraftPayload StopAll(int round, SandboxServerUnit unit)
+            => new SandboxBattleDraftPayload(round, unit, "movement", new Action { action = "stop" },
+                "", true);
         public static SandboxBattleDraftPayload Task(int round, SandboxServerUnit unit, string action)
         {
             if (action != "stop" && action != "takeoff" && action != "land") throw new ArgumentException("任务必须明确指定参数");
@@ -77,4 +81,34 @@ namespace Qiongtu.Sandbox
         [Serializable] private sealed class Recon { public string action = "recon"; public SandboxServerPosition position; }
         [Serializable] private sealed class AreaAttack { public string action = "attack_area"; public SandboxServerPosition position; public int radius_m; }
     }
+    /// <summary>Explicit business coordinates only; this parser neither finds nor authorizes a route.</summary>
+    public static class SandboxManualRouteInput
+    {
+        public static SandboxServerPosition[] Parse(string text)
+        {
+            var rows = (text ?? "").Replace("\r", "").Split(new[] { '\n', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            if (rows.Length < 1 || rows.Length > 8) throw new ArgumentException("请输入1～8个坐标点：最多7个途经点，最后一行为终点");
+            var result = new SandboxServerPosition[rows.Length];
+            for (int i = 0; i < rows.Length; i++)
+            {
+                var xy = rows[i].Split(',');
+                if (xy.Length != 2) throw new ArgumentException("第" + (i + 1) + "行须为 X,Y（英文逗号）");
+                decimal[] values = new decimal[2];
+                for (int j = 0; j < 2; j++)
+                {
+                    string value = xy[j].Trim();
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^\d+(?:\.\d{1,6})?$")
+                        || !decimal.TryParse(value, System.Globalization.NumberStyles.AllowDecimalPoint,
+                            System.Globalization.CultureInfo.InvariantCulture, out values[j])
+                        || values[j] < 0 || values[j] > (j == 0 ? 120 : 80))
+                        throw new ArgumentException("第" + (i + 1) + "行坐标须在X[0,120]、Y[0,80]内，最多6位小数，不接受科学计数法");
+                }
+                result[i] = new SandboxServerPosition {
+                    x = values[0].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture),
+                    y = values[1].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) };
+            }
+            return result;
+        }
+    }
+
 }

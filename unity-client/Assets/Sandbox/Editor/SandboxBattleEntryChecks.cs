@@ -59,13 +59,14 @@ namespace Qiongtu.Sandbox.Editor
                 Call(hud, "CompleteBattleCheck", result, null);
                 Check(root.Q<ScrollView>("battleChecks").contentContainer.childCount == 3, "all checks rendered");
                 Check(root.Q<Label>("battleCheckStatus").text.Contains("未通过或未测试"), "unknown is not called connected");
-                Check(!root.Q<Button>("battleStartButton").enabledSelf, "even bad response cannot enable old start command");
+                Check(root.Q<Button>("battleStartButton").enabledSelf && root.Q<Button>("battleStartButton").text == "返回指令阶段", "existing game action returns to commands, never creates another game");
                 Call(hud, "CompleteBattleCheck", null, "后端暂未完成请求");
                 Check(root.Q<Label>("battleCheckStatus").text == "后端暂未完成请求", "server errors stay in modal");
                 Call(hud, "CloseBattleEntry");
                 Check(root.Q("battleOverlay") == null, "close removes overlay");
                 view.role = "blue"; Call(hud, "OpenBattleEntry");
                 Check(!root.Q<Button>("battleCheckButton").enabledSelf, "side cannot inspect both private configurations");
+                Check(!root.Q<Button>("battleStartButton").enabledSelf, "side cannot create independent games");
                 Check(root.Q<Label>("battleCheckStatus").text.Contains("主持人"), "role requirement explained");
                 Check(!client.HasPending && !client.Busy, "checks never send user game writes");
                 Call(hud, "CloseBattleEntry");

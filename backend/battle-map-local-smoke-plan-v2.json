@@ -1,0 +1,162 @@
+{
+  "rounds": [
+    {
+      "red": [
+        {
+          "unit_id": "R-G01",
+          "movement": {
+            "action": "move",
+            "position": {
+              "x": "17.7",
+              "y": "28.66666"
+            }
+          }
+        },
+        {
+          "unit_id": "R-U01",
+          "task": {
+            "action": "takeoff"
+          }
+        }
+      ],
+      "blue": [
+        {
+          "unit_id": "B-G01",
+          "movement": {
+            "action": "move",
+            "position": {
+              "x": "108.7",
+              "y": "54"
+            }
+          }
+        },
+        {
+          "unit_id": "B-U01",
+          "task": {
+            "action": "takeoff"
+          }
+        }
+      ]
+    },
+    {
+      "red": [
+        {
+          "unit_id": "R-G01",
+          "movement": {
+            "action": "stop"
+          },
+          "task": {
+            "action": "barracks",
+            "camp_id": "R-CAMP-infantry",
+            "targets": {
+              "energy": "100"
+            }
+          }
+        },
+        {
+          "unit_id": "R-U01",
+          "task": {
+            "action": "stop"
+          }
+        }
+      ],
+      "blue": [
+        {
+          "unit_id": "B-G01",
+          "movement": {
+            "action": "stop"
+          },
+          "task": {
+            "action": "barracks",
+            "camp_id": "B-CAMP-infantry",
+            "targets": {
+              "energy": "100"
+            }
+          }
+        },
+        {
+          "unit_id": "B-U01",
+          "task": {
+            "action": "stop"
+          }
+        }
+      ]
+    },
+    {
+      "red": [
+        {
+          "unit_id": "R-U01",
+          "task": {
+            "action": "land"
+          }
+        }
+      ],
+      "blue": [
+        {
+          "unit_id": "B-U01",
+          "task": {
+            "action": "land"
+          }
+        }
+      ]
+    },
+    {
+      "red": [
+        {
+          "unit_id": "R-S01",
+          "movement": {
+            "action": "move",
+            "position": {
+              "x": "14.7",
+              "y": "26.66666"
+            }
+          }
+        }
+      ],
+      "blue": [
+        {
+          "unit_id": "B-S01",
+          "movement": {
+            "action": "move",
+            "position": {
+              "x": "103.7",
+              "y": "55.33332"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "red": [
+        {
+          "unit_id": "R-S01",
+          "movement": {
+            "action": "stop"
+          },
+          "task": {
+            "action": "barracks",
+            "camp_id": "R-CAMP-support",
+            "targets": {
+              "energy": "100"
+            }
+          }
+        }
+      ],
+      "blue": [
+        {
+          "unit_id": "B-S01",
+          "movement": {
+            "action": "stop"
+          },
+          "task": {
+            "action": "barracks",
+            "camp_id": "B-CAMP-support",
+            "targets": {
+              "energy": "100"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

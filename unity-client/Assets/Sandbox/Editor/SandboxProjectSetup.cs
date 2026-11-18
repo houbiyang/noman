@@ -106,6 +106,15 @@ namespace Qiongtu.Sandbox.Editor
         [MenuItem("穹图/阶段一/构建现有场景网页版")]
         public static void BuildCurrentWeb()
         {
+            // 可将当前场景构建到隔离暂存目录，避免构建过程覆盖正在提供服务的Web。
+            string output = Environment.GetEnvironmentVariable("QIONGTU_WEB_BUILD_PATH");
+            output = Path.GetFullPath(string.IsNullOrEmpty(output) ? "Builds/Web" : output);
+            string buildsRoot = Path.GetFullPath("Builds") + Path.DirectorySeparatorChar;
+            if (!output.StartsWith(buildsRoot, StringComparison.Ordinal) || output == buildsRoot.TrimEnd(Path.DirectorySeparatorChar))
+                throw new InvalidOperationException("网页构建目录必须是本工程Builds的子目录");
+            SandboxDeploymentFlowChecks.Run();
+            SandboxManualSetupChecks.Run();
+            SandboxRecordedEffectsChecks.Run();
             SandboxCaptureChecks.Run();
             SandboxDeploymentBannerChecks.Run();
             SandboxBattleEntryChecks.Run();
@@ -124,16 +133,16 @@ namespace Qiongtu.Sandbox.Editor
             AssetDatabase.SaveAssets();
             var options = new BuildPlayerOptions
             {
-                scenes = new[] { ScenePath }, locationPathName = "Builds/Web",
+                scenes = new[] { ScenePath }, locationPathName = output,
                 target = BuildTarget.WebGL, options = BuildOptions.None
             };
             BuildReport report = BuildPipeline.BuildPlayer(options);
             if (report.summary.result != BuildResult.Succeeded)
                 throw new InvalidOperationException("网页构建失败：" + report.summary.result);
-            string notices = Path.Combine("Builds/Web", "ThirdPartyNotices");
+            string notices = Path.Combine(output, "ThirdPartyNotices");
             Directory.CreateDirectory(notices);
             File.Copy("Assets/Sandbox/Resources/Fonts/LICENSE.txt", Path.Combine(notices, "NotoSansCJK-LICENSE.txt"), true);
-            Debug.Log("[穹图] 网页版构建成功：Builds/Web/index.html；请通过 HTTP 服务访问");
+            Debug.Log("[穹图] 网页版构建成功：" + Path.Combine(output, "index.html") + "；请通过 HTTP 服务访问");
         }
     }
 }

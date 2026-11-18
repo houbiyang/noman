@@ -9,6 +9,13 @@ namespace Qiongtu.Sandbox
         {
             VisualElement banner = root?.Q("deploymentStageBanner");
             if (banner == null) return;
+            if (deploymentStaging)
+            {
+                banner.EnableInClassList("hidden", false);
+                SetText("deploymentStageTitle", "部署阶段");
+                SetText("deploymentStageDetail", BothDeploymentsReady ? "双方部署已就绪 · 战斗 → 本地手动测试 → 对战开始" : "双方各放置三座兵营并生成固定编制，再确认部署完成");
+                return;
+            }
             if (ManualBattle != null)
             {
                 banner.EnableInClassList("hidden", false);

@@ -28,6 +28,8 @@ from backend import database, spatial, movement, coordination, battle_rules, qin
 from backend.map_catalog import current_map, asset_manifest, validate as validate_map
 from backend import rulebook, battle_capacity, manual_battle, battle_kernel
 from backend.battle_contracts import BattleDraftRequest, BattleRoundRequest
+from backend import battle_setup, battle_scenario
+from backend.battle_execution import Executor as BattleExecutor
 
 
 HASH_VERSION = "qiongtu-json-v1"
@@ -68,6 +70,19 @@ def input_view(state: dict, side: str) -> dict:
     """只从本方允许内容构造建议依据，排除登记建议引起的自身变化。"""
     return dict(manifest=state["manifest"], units=[unit for unit in state["units"] if unit["side"] == side],
                 tasks=[task for task in state["tasks"] if task["side"] == side])
+
+
+def manual_scores(state: dict, role: str) -> dict:
+    """总册11.3：双方占点分公开；赛中对手击毁/资源/总分不公开。"""
+    public = role == 'host' or state['manual_battle']['stage'] == 'finished'
+    result = {}
+    for side in ('blue', 'red'):
+        score = battle_kernel.score(state, side)
+        allowed = public or role == side
+        result[side + '_control_score'] = score['control']
+        result[side + '_score'] = score['total'] if allowed else None
+        result[side + '_breakdown'] = score if allowed else None
+    return result
 
 
 class SandboxService:
@@ -306,12 +321,125 @@ class SandboxService:
             self._new_proposals(connection, game_id, branch_id, snapshot_id, epoch, state)
             return self._created(connection, game_id), False
 
+    def _manual_sources(self):
+        """正式新局只消费服务端适配器已绑定的发布场景，不从请求选择accepted内容。"""
+        from backend.battle_map_geometry import MapGeometry, LocalManualMapGeometry, OfflineMapGeometry
+        executor = self.battle_executor
+        if isinstance(executor, BattleExecutor) and (type(executor.geometry) in (MapGeometry, LocalManualMapGeometry)
+                or (getattr(self, '_acceptance_only', False) and type(executor.geometry) is OfflineMapGeometry)):
+            executor.geometry._verify_sources()
+            geometry = executor.geometry
+            return deepcopy(geometry.rules), deepcopy(geometry.scenario), deepcopy(geometry.capacity)
+        return battle_setup.sources(hover_energy=True)
+
+    def install_manual_geometry(self, geometry):
+        """显式受控装配；未验收真实来源立即报错，不更改现有游戏/数据库发布状态。"""
+        from backend.battle_map_geometry import MapGeometry, LocalManualMapGeometry
+        require(type(geometry) in (MapGeometry, LocalManualMapGeometry), 'BATTLE_ENGINE_NOT_READY', '只装配已验收的真实地图适配器', 503)
+        geometry._verify_sources()
+        self._acceptance_only = False
+        self.battle_executor = BattleExecutor(geometry)
+
+    def install_acceptance_geometry(self, geometry):
+        """显式离线HTTP验收入口；候选仍非发布资格，用户库永远拒绝。"""
+        from backend.battle_map_geometry import OfflineMapGeometry
+        require(type(geometry) is OfflineMapGeometry, 'BATTLE_ENGINE_NOT_READY', '验收入口仅接真实离线候选', 503)
+        with self.settings.connect() as connection:
+            battle_scenario.require_acceptance_database(connection, self.settings.connection['database'])
+        geometry._verify_sources()
+        self._acceptance_only = True
+        self.battle_executor = BattleExecutor(geometry)
+
+    def manual_setup(self) -> dict:
+        """引导权限保护的配置目录，无凭据、对局状态或隐式登记。"""
+        from backend.battle_preflight import setup_acceptance_checks
+        rules, scenario, capacity = self._manual_sources()
+        from backend.battle_map_geometry import source_readiness
+        geometry = getattr(self.battle_executor, 'geometry', None)
+        from backend.battle_map_geometry import MapGeometry, LocalManualMapGeometry, OfflineMapGeometry
+        geometry_readiness = geometry.readiness() if type(geometry) in (MapGeometry, LocalManualMapGeometry, OfflineMapGeometry) else source_readiness()
+        scope = {key: deepcopy(scenario[key]) for key in ('release_scope', 'competitive_ready', 'limitations') if key in scenario}
+        return dict(**scope, recommended_setup=deepcopy(getattr(self, 'manual_recommended_setup', None)), geometry_readiness=geometry_readiness, **battle_setup.versions(rules, scenario, capacity), mode='manual', round_seconds=60,
+            maximum_rounds=60, field_energy_service_policy=scenario.get('field_energy_service_policy'),
+            capacity=capacity['capacity'], map=scenario['map'],
+            capture_points=scenario['capture_points'], acceptance=scenario['acceptance'],
+            checks=setup_acceptance_checks(scenario, self.battle_executor),
+            can_create=False, message='请查看下方待完成验收项；配置提交不代表开战，本接口不自动发布。')
+
+    def create_manual_battle(self, request: battle_setup.CreateManualBattle, request_key: UUID) -> tuple[dict, bool]:
+        """独立新局事务；相同创建键串行，根快照/名册/席位/存档一次提交。"""
+        from backend.battle_preflight import command_schema_check
+        content = dict(protocol='qinglan-manual-creation-v1', payload=request.model_dump(mode='json'))
+        creation_hash = sha256(content)
+        with self.settings.connect() as connection:
+            connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (str(request_key),))
+            existing = connection.execute('SELECT id,creation_payload_sha256 FROM games WHERE creation_request_key=%s',
+                                          (request_key,)).fetchone()
+            if existing:
+                require(existing['creation_payload_sha256'] == creation_hash, 'IDEMPOTENCY_KEY_REUSED',
+                        '同一创建请求键不能用于不同输入')
+                return self._created(connection, existing['id']), True
+            rules, scenario, capacity = self._manual_sources()
+            binding = battle_setup.versions(rules, scenario, capacity)
+            require(all(str(getattr(request, key)) == value for key, value in binding.items()),
+                    'BATTLE_VERSION_CHANGED', '配置版本或摘要已变化，请重新读取配置', 409)
+            candidate = False
+            if getattr(self, '_acceptance_only', False):
+                from backend.battle_map_geometry import OfflineMapGeometry
+                battle_scenario.require_acceptance_database(connection, self.settings.connection['database'])
+                candidate = (type(getattr(self.battle_executor, 'geometry', None)) is OfflineMapGeometry
+                    and scenario.get('release_scope') == battle_scenario.LOCAL_MANUAL_SCOPE
+                    and scenario.get('acceptance', {}).get('status') == 'local_manual_test_candidate')
+            require(battle_scenario.manual_accepted(scenario) or candidate, 'BATTLE_SCENARIO_NOT_READY',
+                    '场景尚未通过对应范围真实地图验收；不会发布草案或迁移旧局', 503)
+            rows = connection.execute("""SELECT id,definition,payload_sha256,availability FROM rule_versions
+                WHERE id IN (%s,%s) FOR SHARE""", (binding['rule_version_id'], binding['capacity_version_id'])).fetchall()
+            registered = {str(row['id']): row for row in rows}
+            for key, value, digest in (('rule_version_id', rules, binding['rule_sha256']),
+                                        ('capacity_version_id', capacity, binding['capacity_sha256'])):
+                row = registered.get(binding[key])
+                require(row and row['definition'] == value and row['payload_sha256'] == digest
+                        and row['availability'] == 'active', 'BATTLE_VERSION_NOT_READY',
+                        '总册或容量版本未发布或登记内容不一致', 503)
+            row = connection.execute("""SELECT rule_version_id,definition,payload_sha256,availability
+                FROM scenario_versions WHERE id=%s FOR SHARE""", (binding['scenario_version_id'],)).fetchone()
+            require(row and str(row['rule_version_id']) == binding['rule_version_id']
+                    and row['definition'] == scenario and row['payload_sha256'] == binding['scenario_sha256']
+                    and row['availability'] == 'active', 'BATTLE_SCENARIO_NOT_READY',
+                    '独立总册场景尚未发布或登记不一致', 503)
+            constraint = connection.execute("""SELECT c.convalidated,pg_get_constraintdef(c.oid) AS expression
+                FROM pg_constraint c WHERE c.conrelid='sandbox.game_commands'::regclass
+                AND c.conname='game_commands_command_type_check' AND c.contype='c'""").fetchone()
+            require(command_schema_check(constraint)['status'] == 'passed', 'BATTLE_COMMAND_SCHEMA_NOT_READY',
+                    '请先核对手动及跨分支命令约束，不会自动迁移', 503)
+            executor = self.battle_executor
+            require(isinstance(executor, BattleExecutor), 'BATTLE_ENGINE_NOT_READY',
+                    '尚未装配总册地图执行器；不会使用旧引擎或预演', 503)
+            state = battle_setup.build(request, rules, scenario, capacity, executor.geometry)
+            state = executor.initial_observations(deepcopy(state))
+            for camp in state['camps']:
+                camp['deployment_validated'] = True
+            game_id, branch_id, snapshot_id, epoch = uuid4(), uuid4(), uuid4(), uuid4()
+            insert(connection, 'games', dict(id=game_id, game_no='QT-' + game_id.hex[:16].upper(), title=request.title,
+                creation_request_key=request_key, creation_payload_sha256=creation_hash, creation_hash_format_version=HASH_VERSION,
+                scenario_version_id=binding['scenario_version_id'], rule_version_id=binding['rule_version_id'],
+                active_branch_id=branch_id, head_snapshot_id=snapshot_id, control_revision=0, execution_epoch=epoch, is_demo=True))
+            insert(connection, 'game_branches', dict(id=branch_id, game_id=game_id))
+            for role in ('host', 'red', 'blue'):
+                insert(connection, 'game_members', dict(id=uuid4(), game_id=game_id, role=role))
+            self._snapshot(connection, game_id, branch_id, snapshot_id, state, 0, 0, kind='initial')
+            insert(connection, 'game_saves', dict(id=uuid4(), game_id=game_id, branch_id=branch_id,
+                                                snapshot_id=snapshot_id, save_kind='auto'))
+            # 手动局不生成固定AI建议，不签发任何席位令牌。
+            return self._created(connection, game_id), False
+
     def _created(self, connection, game_id) -> dict:
         """生成受控创建摘要，不暴露内部快照内容。"""
         game = self._game(connection, game_id)
         return dict(game_id=str(game["id"]), game_no=game["game_no"], title=game["title"], is_demo=game["is_demo"],
                     phase=game["state_payload"]["lifecycle"]["phase"], scenario_version_id=str(game["scenario_version_id"]),
-                    rule_version_id=str(game["rule_version_id"]), creation_request_key=str(game["creation_request_key"]))
+                    rule_version_id=str(game["rule_version_id"]), creation_request_key=str(game["creation_request_key"]),
+                    creation_payload_sha256=game["creation_payload_sha256"])
 
     def creation(self, request_key: UUID) -> dict:
         """响应丢失后按原创建键核对结果。"""
@@ -340,6 +468,11 @@ class SandboxService:
         projected_units = own(state['units'])
         projected_contacts = deepcopy(state['observations'].get(role, {}).get('contacts', []))
         if manual and 'battle_ledger' in state:
+            # 防御性白名单：旧快照/测试适配器也不能借contact带出敌方库存或规划。
+            projected_contacts = [{key: deepcopy(value) for key, value in contact.items() if key in
+                ('unit_id', 'life_id', 'side', 'unit_type', 'name', 'position', 'position_mm',
+                 'surface_id', 'durability', 'retired', 'air_state', 'last_seen_step', 'observed_at')}
+                for contact in projected_contacts]
             profiles = battle_kernel.profiles()
             for unit in projected_units + projected_contacts:
                 profile = profiles[unit['unit_type']]
@@ -361,6 +494,7 @@ class SandboxService:
         for unit in projected_units:
             if manual:
                 task = unit.get('task') or {}
+                unit['movement_active'] = bool(unit.get('movement'))
                 unit['interaction_action'] = task.get('action', '')
                 target_id = task.get('target_id', '')
                 unit['interaction_target_id'] = target_id if target_id in visible_targets else ''
@@ -380,7 +514,7 @@ class SandboxService:
         if manual:
             for contact in projected_contacts:
                 for key in ('task', 'movement', 'movement_progress', 'barracks_registration',
-                            'interaction_action', 'interaction_target_id'):
+                            'interaction_action', 'interaction_target_id', 'movement_active'):
                     contact.pop(key, None)
         result = dict(schema_version="game-view-v1", context=self._context(game, principal), role=role,
                     unit_interactions=(dict(enabled=True, rule_version_id=unit_info['rule_version_id'],
@@ -415,14 +549,23 @@ class SandboxService:
             result['victory'] = None
             result['battle_result'] = None
             result['manual_battle'] = manual_battle.projection(state, role)
+            for key in ('release_scope', 'competitive_ready', 'limitations'):
+                if key in state['manifest']:
+                    result['manual_battle'][key] = deepcopy(state['manifest'][key])
+            if state['manifest'].get('field_energy_service_policy') == battle_kernel.FIELD_ENERGY_SERVICE_POLICY:
+                result['manual_battle']['field_energy_service_policy'] = battle_kernel.FIELD_ENERGY_SERVICE_POLICY
             if 'battle_ledger' in state:
-                result['battle_capture_points'] = [{key: point[key] for key in
-                    ('point_id', 'owner', 'advancing_side', 'progress_steps', 'contested')}
-                    for point in state['battle_points']]
-                blue_score, red_score = (battle_kernel.score(state, side) for side in ('blue', 'red'))
-                result['manual_battle'].update(blue_score=blue_score['total'], red_score=red_score['total'],
-                    blue_breakdown=blue_score, red_breakdown=red_score,
-                    winner=(state.get('battle_result') or {}).get('winner', ''),
+                result['battle_capture_points'] = []
+                for point in state['battle_points']:
+                    item = {key: point[key] for key in
+                            ('point_id', 'owner', 'advancing_side', 'progress_steps', 'contested')}
+                    hidden = role != 'host' and not finished and point['advancing_side'] != role
+                    item['progress_hidden'] = hidden
+                    if hidden:
+                        item.update(advancing_side='none', progress_steps=0)
+                    result['battle_capture_points'].append(item)
+                result['manual_battle'].update(manual_scores(state, role))
+                result['manual_battle'].update(winner=(state.get('battle_result') or {}).get('winner', ''),
                     finish_reason=(state.get('battle_result') or {}).get('reason', ''))
             for key in ('can_control_time', 'can_start_game', 'can_advance', 'can_review_proposal',
                         'can_set_ready', 'can_manage_units', 'can_move_unit', 'can_place_barracks',
@@ -999,9 +1142,19 @@ class SandboxService:
     def result(self, game_id: str, bearer: str) -> dict:
         """读取同一提交头的证据、算式、关键节点；旧演示仍不编造结果。"""
         with self.settings.connect() as connection:
-            self._principal(connection, bearer, game_id)
+            principal = self._principal(connection, bearer, game_id)
             game = self._game(connection, game_id)
             state = game["state_payload"]
+            if manual_battle.enabled(state):
+                manual_battle.validate(state)
+                battle_kernel.validate(state)
+                finished = state['manual_battle']['stage'] == 'finished'
+                return dict(game_id=game_id, branch_id=str(game['active_branch_id']), snapshot_id=str(game['head_snapshot_id']),
+                    is_demo=game['is_demo'], mode='manual', result_status='settled' if finished else 'in_progress',
+                    simulation_step=state['lifecycle']['simulation_step'], elapsed_seconds=state['manual_battle']['elapsed_seconds'],
+                    completed_rounds=state['manual_battle']['completed_rounds'], round_seconds=60, maximum_rounds=60,
+                    **manual_scores(state, principal['role']),
+                    result=deepcopy(state.get('battle_result')), read_only=True)
             value = battle_rules.evidence(state)
             if value is None:
                 require(state["lifecycle"]["phase"] == "finished", "RESULT_NOT_READY", "当前演示尚未结束")
@@ -1036,8 +1189,8 @@ class SandboxService:
             summary = published['manual_battle']
             projection['manual_battle'] = {key: deepcopy(summary[key]) for key in
                 ('schema_version', 'mode', 'stage', 'round_number', 'completed_rounds', 'elapsed_seconds',
-                 'round_seconds', 'maximum_rounds', 'blue_score', 'red_score', 'blue_breakdown',
-                 'red_breakdown', 'winner', 'finish_reason') if key in summary}
+                 'round_seconds', 'maximum_rounds', 'blue_control_score', 'red_control_score', 'blue_score', 'red_score', 'blue_breakdown',
+                 'red_breakdown', 'winner', 'finish_reason', 'release_scope', 'competitive_ready', 'limitations') if key in summary}
         insert(connection, "match_archives", dict(id=identity, game_id=game["id"], member_id=principal["member_id"],
             branch_id=game["active_branch_id"], snapshot_id=game["head_snapshot_id"], title=title or (("对局结束 / " if automatic else "对局记录 / ") + game["title"])[:80],
             automatic=automatic, role=role, phase=clock["phase"], simulation_step=clock["simulation_step"], projection=projection))

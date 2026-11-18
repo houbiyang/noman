@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 
 namespace Qiongtu.Sandbox
 {
-    /// <summary>隔离相机、历史模型和地图副本。只采样已裁决记录，不ApplyProjection或发命令。
+    /// <summary>真实历史使用原地图与主相机；只有独立合成预演使用隔离视口。只采样已裁决记录，不ApplyProjection或发命令。
     /// 复用对抗预演的机械动作与补给预演的连接束/流动粒子，不导入其自动裁决流程。</summary>
     public sealed class SandboxRoundReplayStage : MonoBehaviour
     {
@@ -20,20 +20,26 @@ namespace Qiongtu.Sandbox
         private readonly Dictionary<string, SandboxReplayEvent> moves = new Dictionary<string, SandboxReplayEvent>();
         private readonly Dictionary<string, LineRenderer> points = new Dictionary<string, LineRenderer>();
         private readonly List<GameObject> particles = new List<GameObject>();
+        private readonly List<LineRenderer> shotTrails = new List<LineRenderer>();
         private readonly List<LineRenderer> beams = new List<LineRenderer>();
         private readonly List<SandboxReplayEvent> recent = new List<SandboxReplayEvent>();
+        private readonly HashSet<(int, string, string, Vector3, Vector3)> serviceConnections = new HashSet<(int, string, string, Vector3, Vector3)>();
+        private static readonly Color ServiceColor = new Color(.3f, 1, .74f);
         private MaterialPropertyBlock tint;
         private Camera view, main;
-        private int mainMask, particleCount, beamCount, frameAt = -1;
+        private int mainMask, particleCount, beamCount, trailCount, frameAt = -1;
         private SandboxRoundReplayCursor sampled;
         private Material glow;
         private RenderTexture texture;
         private Vector3 focus = new Vector3(6000, 0, 6000);
         private float distance = 16000;
-        private bool released;
+        private bool released, inMap;
+        public bool UsesOriginalMap => inMap;
         public RenderTexture Texture => texture;
         public Camera Camera => view;
         public int ParticlePoolSize => particles.Count;
+        public int ActiveServiceConnectionCount => beamCount;
+        public int ActiveShotTrailCount => trailCount;
         private static Color Team(string side) => side == "blue" ? new Color(.27f, .57f, .76f)
             : side == "red" ? new Color(.86f, .38f, .27f) : new Color(.7f, .76f, .65f);
         private static void SetLayer(Transform root)
@@ -41,11 +47,15 @@ namespace Qiongtu.Sandbox
             root.gameObject.layer = Layer;
             foreach (Transform child in root) SetLayer(child);
         }
-        public void Initialize(SandboxWorld source)
+        public void Initialize(SandboxWorld source, bool originalMap = false)
         {
+            inMap = originalMap;
             tint = new MaterialPropertyBlock();
             main = Camera.main;
-            if (main) { mainMask = main.cullingMask; main.cullingMask &= ~(1 << Layer); }
+            if (main) { mainMask = main.cullingMask; main.cullingMask = inMap ? mainMask | (1 << Layer) : mainMask & ~(1 << Layer); }
+            if (inMap) view = main;
+            else
+            {
             texture = new RenderTexture(1280, 720, 24) { name = "Read-only recorded battle viewport" };
             texture.Create();
             var cameraObject = new GameObject("Recorded battle camera"); cameraObject.transform.SetParent(transform, false);
@@ -54,7 +64,8 @@ namespace Qiongtu.Sandbox
             view.cullingMask = 1 << Layer; view.targetTexture = texture; view.orthographic = false;
             view.fieldOfView = 50; view.rect = new Rect(0, 0, 1, 1); view.nearClipPlane = .5f;
             view.farClipPlane = 40000; view.enabled = true; view.useOcclusionCulling = false;
-            if (source?.ReplayMapSource != null)
+            }
+            if (!inMap && source?.ReplayMapSource != null)
             {
                 var map = Instantiate(source.ReplayMapSource, transform, true); map.name = "Frozen map visual clone";
                 SetLayer(map.transform);
@@ -75,13 +86,34 @@ namespace Qiongtu.Sandbox
                 line.positionCount = boundary.Length; line.SetPositions(boundary); line.startWidth = line.endWidth = 6;
                 points.Add(point.id, line);
             }
-            PoseCamera();
+            if (!inMap) PoseCamera();
         }
         public static Vector3 Position(SandboxReplayPosition value) => new Vector3(value.x_mm, value.height_mm, value.z_mm) / 1000f;
         public void Focus(SandboxReplayUnit unit)
         {
             focus = models.TryGetValue(unit.unit_id, out var model) ? model.transform.position : Position(unit.position);
             distance = 160; PoseCamera();
+        }
+        /// <summary>只调整预演镜头，不移动实时单位或改写回放端点。</summary>
+        public void FrameRehearsal(SandboxReplayUnit[] units)
+        {
+            if (units == null || units.Length == 0) return;
+            Bounds bounds = new Bounds(Position(units[0].position), Vector3.zero);
+            foreach (var unit in units) bounds.Encapsulate(Position(unit.position));
+            // Rehearsal-only display magnification; authoritative coordinates and events stay untouched.
+            foreach (var unit in units)
+                if (models.TryGetValue(unit.unit_id, out var model))
+                {
+                    var renderers = model.GetComponentsInChildren<Renderer>();
+                    if (renderers.Length == 0) continue;
+                    Bounds visual = renderers[0].bounds;
+                    foreach (var renderer in renderers) visual.Encapsulate(renderer.bounds);
+                    float longest = Mathf.Max(visual.size.x, visual.size.y, visual.size.z);
+                    if (longest > .001f) model.transform.localScale *= (unit.unit_type == "recon" ? 12 : 18) / longest;
+                }
+            focus = bounds.center;
+            distance = Mathf.Max(260, bounds.size.magnitude * 1.65f);
+            PoseCamera();
         }
         public void Overview() { focus = new Vector3(6000, 0, 6000); distance = 16000; PoseCamera(); }
         public void Zoom(float factor) { distance = Mathf.Clamp(distance * factor, 25, 24000); PoseCamera(); }
@@ -98,6 +130,7 @@ namespace Qiongtu.Sandbox
             if (!prefab) throw new InvalidOperationException("缺少回放模型 " + key);
             var holder = new GameObject("Recorded " + unit.unit_id); holder.transform.SetParent(transform, false);
             var model = Instantiate(prefab, holder.transform, false);
+            if (inMap) model.transform.localScale *= SandboxUnitView.ModelScale;
             var renderers = model.GetComponentsInChildren<Renderer>();
             if (renderers.Length > 0)
             {
@@ -105,7 +138,7 @@ namespace Qiongtu.Sandbox
                 foreach (var r in renderers) { bounds.Encapsulate(r.bounds); r.shadowCastingMode = ShadowCastingMode.Off; }
                 model.transform.localPosition = new Vector3(0, -bounds.min.y, 0);
             }
-            var actor = model.AddComponent<SandboxCombatActor>();
+            var actor = model.GetComponent<SandboxCombatActor>() ?? model.AddComponent<SandboxCombatActor>();
             actor.Configure(Team(unit.side), unit.unit_type == "recon" && !unit.docked);
             SetLayer(holder.transform);
             foreach (var collider in holder.GetComponentsInChildren<Collider>()) collider.enabled = false;
@@ -148,7 +181,7 @@ namespace Qiongtu.Sandbox
         }
         public void Sample(SandboxRoundReplayCursor cursor)
         {
-            IndexEvents(cursor); particleCount = 0; beamCount = 0;
+            IndexEvents(cursor); particleCount = 0; beamCount = 0; trailCount = 0; serviceConnections.Clear();
             foreach (var unit in cursor.World.units)
             {
                 var model = Model(unit); Vector3 position = Position(unit.position);
@@ -172,7 +205,7 @@ namespace Qiongtu.Sandbox
                     shot?.at_seconds ?? -100, hit?.at_seconds ?? -100, end?.at_seconds ?? -100, unit.retired);
             }
             foreach (var point in cursor.World.capture_points)
-                if (points.TryGetValue(point.point_id, out var ring)) ring.startColor = ring.endColor = Team(point.owner);
+                if (points.TryGetValue(point.point_id, out var ring)) TintLine(ring, Team(point.owner));
             // 端点、时间、交付资源都来自记录；没有命中/资源交付判定。
             foreach (var e in recent)
             {
@@ -181,19 +214,40 @@ namespace Qiongtu.Sandbox
                 Vector3 a = Position(e.source_position) + Vector3.up * 2, b = Position(e.target_position) + Vector3.up * 2;
                 if (e.kind == "shot")
                 {
-                    Sphere(Vector3.Lerp(a, b, Mathf.Clamp01(age / .6f)), .7f, new Color(1, .7f, .2f));
+                    if (age < .6f) {
+                        var head = Vector3.Lerp(a, b, Mathf.Clamp01(age / .6f));
+                        Sphere(head, inMap ? 1.4f : .7f, new Color(1, .7f, .2f));
+                        if (trailCount == shotTrails.Count) shotTrails.Add(NewBeam("Recorded shot streak (pooled)"));
+                        var trail = shotTrails[trailCount++]; trail.gameObject.SetActive(true);
+                        trail.SetPosition(0, Vector3.Lerp(a, b, Mathf.Clamp01((age - .12f) / .6f))); trail.SetPosition(1, head);
+                        TintLine(trail, new Color(1, .72f, .25f));
+                        trail.startWidth = trail.endWidth = CosmeticWidth(head);
+                    }
                     if (age < .18f) Sphere(a, 2.5f * (1 - age / .18f), new Color(1, .8f, .3f));
                 }
                 else if (e.kind == "hit") Sphere(b, (1 + age * 3) * Mathf.Clamp01(1 - age / 2), new Color(1, .4f, .13f));
                 else if (e.kind == "service" || e.kind == "barracks_service")
                 {
-                    Color color = e.resource == "energy" ? new Color(.3f, 1, .74f) : e.resource == "ammo" ? new Color(1, .76f, .27f) : new Color(.4f, .76f, 1);
+                    // 同一次实际服务可能产生能源/弹药/维修多条账目；统一为一条补给连接。
+                    // 不合成靠近、停靠或离场动作，也不在无交付事件时制造动画。
+                    if (!serviceConnections.Add((e.at_seconds, e.camp_id ?? e.source_id, e.target_id, a, b))) continue;
+                    Color color = e.resource == "ammo" ? new Color(1, .72f, .25f) : e.resource == "repair" ? new Color(.35f, .78f, 1) : ServiceColor;
                     Beam(a, b, color);
-                    for (int i = 0; i < 4; i++) Sphere(Vector3.Lerp(a, b, Mathf.Repeat(age * .65f + i * .25f, 1)), .55f, color);
+                    for (int i = 0; i < 4; i++) Sphere(Vector3.Lerp(a, b, Mathf.Repeat(age * .65f + i * .25f, 1)), inMap ? 1.15f : .55f, color);
                 }
             }
             for (int i = particleCount; i < particles.Count; i++) particles[i].SetActive(false);
             for (int i = beamCount; i < beams.Count; i++) beams[i].gameObject.SetActive(false);
+            for (int i = trailCount; i < shotTrails.Count; i++) shotTrails[i].gameObject.SetActive(false);
+        }
+        public Vector3 RecordedPosition(string unitId) => models[unitId].transform.position;
+        public bool TryCapturePosition(string id, out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (id == null || !points.TryGetValue(id, out var ring) || ring.positionCount == 0) return false;
+            for (int i = 0; i < ring.positionCount; i++) position += ring.GetPosition(i);
+            position /= ring.positionCount;
+            return true;
         }
         public Vector3 ViewPosition(string unitId) => view.WorldToViewportPoint(models[unitId].transform.position + Vector3.up * 8);
         private void Sphere(Vector3 position, float radius, Color color)
@@ -214,17 +268,27 @@ namespace Qiongtu.Sandbox
             var line = obj.AddComponent<LineRenderer>(); line.sharedMaterial = glow; line.positionCount = 2;
             line.startWidth = line.endWidth = .28f; return line;
         }
+        private void TintLine(LineRenderer line, Color color)
+        {
+            line.startColor = line.endColor = color;
+            // Glow shader has no vertex-color input. Supply its actual shader property,
+            // not just LineRenderer gradient, otherwise all recorded beams render white.
+            tint.Clear(); tint.SetColor("_BaseColor", color); line.SetPropertyBlock(tint);
+        }
+        private float CosmeticWidth(Vector3 position) => !inMap || !view ? .28f : Mathf.Clamp(
+            Vector3.Distance(view.transform.position, position) * Mathf.Tan(view.fieldOfView * Mathf.Deg2Rad * .5f) * 4 / Mathf.Max(1, view.pixelHeight), .45f, 4);
         private void Beam(Vector3 a, Vector3 b, Color color)
         {
             if (beamCount == beams.Count) beams.Add(NewBeam("Recorded service connection (pooled)"));
             var line = beams[beamCount++]; line.gameObject.SetActive(true);
-            line.SetPosition(0, a); line.SetPosition(1, b); line.startColor = line.endColor = color;
+            line.startWidth = line.endWidth = CosmeticWidth((a + b) * .5f);
+            line.SetPosition(0, a); line.SetPosition(1, b); TintLine(line, color);
         }
         // 同步释放隔离相机，再帧末销毁物体；快速关闭后重开也不会恢复错的主相机mask。
         public void Release()
         {
             if (released) return; released = true;
-            if (view) { view.enabled = false; view.targetTexture = null; }
+            if (view && !inMap) { view.enabled = false; view.targetTexture = null; }
             if (main) main.cullingMask = mainMask;
             if (texture) { texture.Release(); if (Application.isPlaying) Destroy(texture); else DestroyImmediate(texture); texture = null; }
             gameObject.SetActive(false);

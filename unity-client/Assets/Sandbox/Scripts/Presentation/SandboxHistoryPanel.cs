@@ -89,6 +89,6 @@ namespace Qiongtu.Sandbox
         }
 
         private void BuildHistorySettings() => BuildHistoryReport();
-        private void BuildResultSettings() => BuildResultReport();
+        private void BuildResultSettings() { BuildResultReport(); AddRehearsalResultEntry(); }
     }
 }

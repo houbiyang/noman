@@ -53,6 +53,24 @@ class BattleReplayTests(TestCase):
             function(*args)
         self.assertEqual(caught.exception.code, code)
 
+    def test_local_placement_preserves_prefix_and_can_precede_actual_movement(self):
+        prev = record_fixture()
+        r = record_fixture(2, prev)
+        unit = r['initial_world']['units'][0]
+        origin = unit['position']; placed = dict(origin, x_mm=5000); end = dict(placed, x_mm=5100)
+        for frame in r['frames']:
+            frame['world']['units'][0]['position'] = end
+        frame = r['frames'][0]
+        identity = dict(source_id=unit['unit_id'], source_life_id=unit['life_id'], at_seconds=65)
+        frame['events'] = [dict(identity, event_id='place', kind='host_place', source_position=origin,
+                                target_position=placed),
+                           dict(identity, event_id='real-move', kind='move', trace=[placed, end])]
+        ReplayCursor([prev, reseal(r)])
+        frame['events'][1]['trace'] = [origin, end]
+        self.assert_code('REPLAY_TRACE_INVALID', validate_record, reseal(r))
+        frame['events'] = []
+        self.assert_code('REPLAY_TRACE_INVALID', validate_record, reseal(r))
+
     def test_exact_fractional_resources_and_five_frozen_points(self):
         value = record_fixture()
         value['frames'][0]['world']['units'][0].update(durability='492/5', energy='97.125')

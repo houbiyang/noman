@@ -39,6 +39,29 @@ namespace Qiongtu.Sandbox
         private string selectedUnit;
         private readonly HashSet<string> relocated = new HashSet<string>();
 
+        private bool historicalPresentation;
+        private readonly Dictionary<GameObject, bool> historicalHidden = new Dictionary<GameObject, bool>();
+        public bool HistoricalPresentation => historicalPresentation;
+        // Hide only live presentation groups. Authoritative projection keeps receiving fresh snapshots.
+        public void SetHistoricalPresentation(bool enabled)
+        {
+            historicalPresentation = enabled;
+            if (!enabled)
+            {
+                foreach (var item in historicalHidden) if (item.Key) item.Key.SetActive(item.Value);
+                historicalHidden.Clear(); return;
+            }
+            HideLiveGroup(unitRoot ? unitRoot.gameObject : null);
+            HideLiveGroup(attackPlayback ? attackPlayback.gameObject : null);
+            HideLiveGroup(captureMarkers);
+        }
+        private void HideLiveGroup(GameObject group)
+        {
+            if (!group) return;
+            if (!historicalHidden.ContainsKey(group)) historicalHidden.Add(group, group.activeSelf);
+            group.SetActive(false);
+        }
+
         /// <summary>当前公开的稳定地图标记。</summary>
         public SandboxMapPoint[] MapPoints => mapPoints ?? Definition.points;
         /// <summary>仅供只读回放复制的静态地图，不包含实时单位。</summary>
@@ -530,6 +553,7 @@ namespace Qiongtu.Sandbox
         }
         private void LateUpdate()
         {
+            if (historicalPresentation) { SetHistoricalPresentation(true); return; }
             Transform target = FindUnit(selectedUnit);
             selectionRing.gameObject.SetActive(target != null);
             UpdateSelectionProjection(target);

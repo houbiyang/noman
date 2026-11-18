@@ -20,12 +20,15 @@ class Motion:
     """已核验、经过同时扫掠碰撞截断的实际路线，绝非客户端计划路线。
 
     segments记录实际水平弧长/地表/纵横坡；trace为毫米表现轨迹，progress保存同路线
-    的精确亚毫米余数。几何适配器负责两者一致性、完整占地、合法停止面及低能源分支。
+    的同路线预算游标。规则位置为毫米，停止/受阻/到达/取消清余数，所在层仍持久。几何适配器负责两者一致性、完整占地、合法停止面及低能源分支。
     """
     trace: tuple
     segments: tuple = ()
     progress: dict | None = None
     finished: bool = False
+    surface_id: str | None = None
+    interrupted: bool = False
+    budget_segments: tuple | None = None
 
 
 class Geometry(ABC):
@@ -33,6 +36,26 @@ class Geometry(ABC):
     @abstractmethod
     def verify(self, state):
         """核验场景/规则/资产摘要、各地形门禁及当前完整世界；失败须抛ServiceError。"""
+
+    def validate_deployment(self, state):
+        """新局专用强制检查，缺实现即拒绝，不能用verify能力检查代替。
+
+        核对本方部署区、三营60x60m完整占地及<=5%坡度、合法服务锚点/停靠面、
+        全部单位合法停止面及动态占地不重叠、不阻塞必要通路；五点有效面不重叠且
+        不与任一兵营100m服务区相交。须核对surface_id/高度/版本并严格返回True。
+        不移动、替换或缩减客户端配置，不修改输入。
+        """
+        require(False, 'BATTLE_DEPLOYMENT_NOT_READY', '地图适配器尚未实现总册新局部署验收', 503)
+
+    def validate_movement_submission(self, unit):
+        """只读核验本方持续移动的静态条件；不预演敌方/动态冲突或扣资源。"""
+
+    def clear_movement(self, unit):
+        """停止/受阻/到达/取消预算余数；不能重写已核验的毫米位置及所在层。"""
+        unit = deepcopy(unit)
+        unit.pop('movement_progress', None)
+        unit.pop('geometry_position', None)  # 废弃的跨路线亚毫米权威起点不再继承。
+        return unit
 
     @abstractmethod
     def position(self, point):
@@ -66,6 +89,10 @@ class Geometry(ABC):
     def service_clear(self, source, target):
         pass
 
+    def hover_energy_clear(self, source, target):
+        """可选的稳定飞行补能证据；旧地图适配器默认拒绝。"""
+        return False
+
     @abstractmethod
     def flight_legal(self, unit, action):
         """返回(dock_legal,air_legal)，校验完整起降占地、实际高度及空域。"""
@@ -98,6 +125,53 @@ class Executor:
     def __init__(self, geometry):
         require(isinstance(geometry, Geometry), 'BATTLE_ENGINE_NOT_READY', '需要完整的冻结地图适配器', 503)
         self.geometry = geometry
+
+    def prepare_new_game(self, state):
+        """仅校验独立新局，不运行仿真；隔离几何回调的可变输入。"""
+        manual_battle.validate(state)
+        require(state['manual_battle']['completed_rounds'] == 0
+                and state['lifecycle']['phase'] == 'preparing',
+                'NEW_GAME_REQUIRED', '部署验收仅用于独立新局')
+        require(self.geometry.validate_deployment(deepcopy(state)) is True,
+                'BATTLE_DEPLOYMENT_INVALID', '预部署位置或兵营服务面未通过总册验收', 422)
+        self._verify(deepcopy(state))
+
+    def initial_observations(self, state):
+        """总册0秒观察；仅在部署验收之后调用，返回副本而不推进时钟或开火。"""
+        self.prepare_new_game(deepcopy(state))
+        result = deepcopy(state)
+        units = _units(result)
+        positive = frozenset(i for i, u in units.items() if k.alive(u) and k.number(u['energy']) > 0)
+        stable = frozenset(i for i, u in units.items() if k.alive(u)
+            and (u['unit_type'] != 'recon' or u['air_state'] == 'flying'))
+        visible = self.geometry.observe(deepcopy(result), start_positive=positive, stable_observers=stable)
+        self._observations(result, visible, 0)
+        return result
+
+    @staticmethod
+    def _observations(state, visible, seconds):
+        """当前信息白名单与最后观察历史；失视绝不刷新敌方坐标或库存。"""
+        units = _units(state)
+        require(set(visible) == set(k.SIDES) and all(set(ids) <= {i for i, u in units.items()
+            if u['side'] != side} for side, ids in visible.items()),
+            'BATTLE_GEOMETRY_INVALID', '观察证据含非敌军或无效标识')
+        fields = ('unit_id', 'life_id', 'side', 'unit_type', 'position_mm', 'position',
+                  'surface_id', 'durability', 'retired', 'air_state')
+        for side in k.SIDES:
+            observation = state.setdefault('observations', {}).setdefault(side, {})
+            history = {item['unit_id']: {key: deepcopy(item[key]) for key in fields + ('observed_at',)
+                       if key in item} for item in observation.get('last_seen_records', [])}
+            for item in observation.get('contacts', []):
+                history[item['unit_id']] = {key: deepcopy(item[key]) for key in fields + ('observed_at',)
+                                           if key in item}
+            contacts = []
+            for identity in sorted(visible[side]):
+                item = {key: deepcopy(units[identity][key]) for key in fields if key in units[identity]}
+                item['observed_at'] = seconds
+                contacts.append(item)
+                history.pop(identity, None)
+            observation['contacts'] = contacts
+            observation['last_seen_records'] = [history[i] for i in sorted(history)]
 
     def supports(self, state):
         """只读能力检查；无修改、联网、创建游戏、隐式版本升级。"""
@@ -139,6 +213,16 @@ class Executor:
         battle_replay.VisualWorld.model_validate(world)
         return world
 
+    def _clear_movement(self, unit):
+        expected = deepcopy(unit)
+        expected.pop('movement_progress', None)
+        expected.pop('geometry_position', None)
+        cleared = self.geometry.clear_movement(deepcopy(unit))
+        require(cleared == expected, 'BATTLE_GEOMETRY_INVALID',
+                '清除预算余数不得改动权威毫米位置、所在层或资源')
+        unit.clear()
+        unit.update(cleared)
+
     def _adopt(self, state, intents):
         units = _units(state)
         require(set(intents) == set(k.SIDES), 'BOTH_SIDES_REQUIRED', '共同计划须同时包含双方')
@@ -153,7 +237,7 @@ class Executor:
                 unit = units[identity]
                 if 'movement' in item:
                     unit['movement'] = None if item['movement']['action'] == 'stop' else deepcopy(item['movement'])
-                    unit.pop('movement_progress', None)
+                    self._clear_movement(unit)
                 if 'task' in item:
                     task = deepcopy(item['task'])
                     if task['action'] == 'attack_area':
@@ -171,8 +255,12 @@ class Executor:
 
     def validate_submission(self, state, actor):
         self._verify(state)
-        self._adopt(deepcopy(state), {side: list(state['manual_battle']['drafts'][side].values())
+        adopted = deepcopy(state)
+        self._adopt(adopted, {side: list(state['manual_battle']['drafts'][side].values())
             if side == actor else [] for side in k.SIDES})
+        for unit in adopted['units']:
+            if unit['side'] == actor and k.alive(unit) and unit.get('movement'):
+                self.geometry.validate_movement_submission(deepcopy(unit))
 
     def _services(self, state):
         units = _units(state); field, barracks = [], []
@@ -230,33 +318,95 @@ class Executor:
             for position in motion.trace:
                 battle_replay.VisualPosition.model_validate(position)
             require(motion.trace[0] == unit['position_mm'], 'BATTLE_GEOMETRY_INVALID', '轨迹起点必须等于权威位置')
+            require(type(motion.finished) is bool and type(motion.interrupted) is bool,
+                    'BATTLE_GEOMETRY_INVALID', '路线完成/中断证据必须为布尔值')
+            moving_attack = unit['unit_type'] == 'ground' and (unit.get('task') or {}).get('action') in ('attack', 'attack_area')
+            reservation = Fraction(5, 4) if moving_attack else Fraction(1)
             distance = sum((k.number(segment['length_mm']) for segment in motion.segments), Fraction(0))
+            continuous = motion.segments if motion.budget_segments is None else motion.budget_segments
+            budget_distance = sum((k.number(segment['length_mm']) for segment in continuous), Fraction(0))
+            require(distance >= 0 and budget_distance >= 0,
+                    'BATTLE_GEOMETRY_INVALID', '路径增量不得为负')
+            available = k.number(unit['energy'])
+            if motion.budget_segments is not None:
+                from backend.battle_map_motion import record_path_segments, pending_path_energy
+                old_progress = unit.get('movement_progress')
+                available = max(Fraction(0), available-pending_path_energy(unit['unit_type'], old_progress)*reservation)
+                billed, pending, recorded = record_path_segments(continuous, old_progress,
+                    interrupted=motion.finished or motion.interrupted,
+                    quantum_mm=getattr(self.geometry, "distance_quantum_mm", 1))
+                require(tuple(motion.segments) == billed and isinstance(motion.progress, dict)
+                        and motion.progress.get('path_pending_segments') == pending
+                        and motion.progress.get('recorded_distance_mm') == recorded
+                        and motion.progress.get('rule_position_mm') == motion.trace[-1],
+                        'BATTLE_GEOMETRY_INVALID', '累计毫米路径、费用或规则位置绑定不一致')
+            if budget_distance > 0 or distance > 0:
+                require(identity in positive and identity not in locked and identity not in transitions
+                        and unit.get('movement') and (unit['unit_type'] != 'recon' or unit['air_state'] == 'flying'),
+                        'BATTLE_GEOMETRY_INVALID', '失能、服务中、起降中或无移动授权的单位不能移动')
+                budget = k.segment_budget(unit['unit_type'], continuous, k.exact(available), moving_attack=moving_attack)
+                require(budget['lengths_mm'] == [k.exact(k.number(v['length_mm'])) for v in continuous],
+                        'BATTLE_GEOMETRY_INVALID', '连续轨迹超出5秒或能源预留预算')
             if distance == 0:
                 require(all(p == unit['position_mm'] for p in motion.trace),
-                        'BATTLE_GEOMETRY_INVALID', '零路程不能更改位置')
-                stationary.add(identity)
+                        'BATTLE_GEOMETRY_INVALID', '零记录路程不能更改规则位置')
+                if budget_distance == 0:
+                    stationary.add(identity)
                 unit['speed_m_per_minute'] = '0'
             else:
-                require(identity in positive and identity not in locked and identity not in transitions
-                        and unit.get('movement') and (unit['unit_type'] != 'recon' or unit['air_state'] == 'flying')
-                        and len(motion.trace) >= 2,
-                        'BATTLE_GEOMETRY_INVALID', '失能、服务中、起降中或无移动授权的单位不能移动')
-                budget = k.segment_budget(unit['unit_type'], motion.segments, unit['energy'],
-                    moving_attack=unit['unit_type'] == 'ground' and (unit.get('task') or {}).get('action') in ('attack', 'attack_area'))
-                require(budget['lengths_mm'] == [k.exact(k.number(s['length_mm'])) for s in motion.segments],
-                        'BATTLE_GEOMETRY_INVALID', '实际轨迹超出5秒或能源预留预算')
-                moved_energy[identity] = budget['energy']
-                k.consume_energy(state, unit, k.number(budget['energy']))
+                require(len(motion.trace) >= 2, 'BATTLE_GEOMETRY_INVALID', '已记录移动缺少轨迹')
+                cost = k.movement_cost(unit['unit_type'], motion.segments,
+                    quantum=getattr(self.geometry, 'movement_energy_quantum', None))
+                require(k.number(cost)*reservation <= k.number(unit['energy']),
+                        'BATTLE_GEOMETRY_INVALID', '已记录路径超过可用能源')
+                moved_energy[identity] = cost
+                k.consume_energy(state, unit, k.number(cost))
                 unit['position_mm'] = deepcopy(motion.trace[-1])
                 unit['speed_m_per_minute'] = k.exact(distance * 12 / 1000)
                 _event(events, seconds, 'move', source_id=identity, source_life_id=unit['life_id'], trace=deepcopy(list(motion.trace)))
                 if unit['unit_type'] == 'recon' and k.number(unit['energy']) == 0:
                     k._retire(state, unit, 'air_energy_exhausted')
+            # 来源只有服务端Geometry回调。客户端Intent是extra=forbid，不能提供这些字段。
+            # 精确字段仅校验同路线游标一致性，不发布为跨路线权威起点。
+            position_fields = ('catalog_sha256', 'surface_id', 'exact_position_m')
+            progress = motion.progress
+            surface_id = motion.surface_id
+            if progress is not None:
+                require(isinstance(progress, dict), 'BATTLE_GEOMETRY_INVALID', '路线游标不是JSON对象')
+                if any(key in progress for key in position_fields):
+                    digest, surface, values = (progress.get(key) for key in position_fields)
+                    require(isinstance(digest, str) and len(digest) == 64
+                            and all(c in '0123456789abcdef' for c in digest)
+                            and isinstance(surface, str) and bool(surface)
+                            and isinstance(values, list) and len(values) == 2
+                            and all(isinstance(v, str) and 0 < len(v) <= 4096 for v in values),
+                            'BATTLE_GEOMETRY_INVALID', '精确位置须包含目录摘要、层及两个有理数字符串')
+                    try:
+                        exact = [Fraction(v) for v in values]
+                    except (ValueError, ZeroDivisionError):
+                        require(False, 'BATTLE_GEOMETRY_INVALID', '精确位置有理数损坏')
+                    bound = (progress.get('rule_position_mm') == unit['position_mm']
+                             if motion.budget_segments is not None else
+                             [round(v*1000) for v in exact] ==
+                             [unit['position_mm']['x_mm'], unit['position_mm']['z_mm']])
+                    require(bound and (surface_id is None or surface_id == surface),
+                            'BATTLE_GEOMETRY_INVALID', '精确位置与实际停止点或层不一致')
+                    catalog = getattr(self.geometry, 'catalog', None)
+                    require(catalog is None or digest == catalog.digest,
+                            'BATTLE_GEOMETRY_INVALID', '精确位置来自其他合法面目录')
+                    surface_id = surface
+            if surface_id is not None:
+                require(isinstance(surface_id, str) and bool(surface_id),
+                        'BATTLE_GEOMETRY_INVALID', '实际停止支撑层标识无效')
+                unit['surface_id'] = surface_id
             if motion.progress is not None:
                 unit['movement_progress'] = deepcopy(motion.progress)
             if motion.finished:
                 unit['movement'] = None
-                unit.pop('movement_progress', None)
+            if motion.finished or motion.interrupted or not k.alive(unit):
+                self._clear_movement(unit)
+            else:
+                unit.pop('geometry_position', None)
         k.validate(state)
         return motions, stationary, moved_energy
 
@@ -300,6 +450,13 @@ class Executor:
         result, shots = k.resolve_fire(result, seconds=seconds, start_positive=positive,
             moved_energy=moved_energy, observed=visible, receivers=receivers,
             fire_clear=lambda a, b: self.geometry.fire_clear(deepcopy(a), deepcopy(b)) is True)
+        # 本步已获取的信息保留为历史；唯一观察源死亡/失能后不能继续授予当前信息。
+        self._observations(result, visible, seconds)
+        visible_after_fire = self.geometry.observe(deepcopy(result), start_positive=frozenset(positive),
+                                                   stable_observers=frozenset(stable))
+        observer_survivors = frozenset(i for i, u in _units(result).items()
+            if i in stable and k.alive(u) and k.number(u['energy']) > 0)
+        visible = {side: set(visible[side]) & set(visible_after_fire[side]) for side in k.SIDES}
         units = _units(result)
         for unit in units.values():
             unit.pop('last_attack_target_id', None)
@@ -309,7 +466,8 @@ class Executor:
             _interaction(events, seconds, 'hit', shot, units, amount=shot['damage'])
         clear = lambda a, b: self.geometry.service_clear(deepcopy(a), deepcopy(b)) is True
         result, deliveries = k.service_step(result, field, seconds=seconds, stationary=stationary,
-                                           start_positive=positive, service_clear=clear)
+            start_positive=positive, service_clear=clear,
+            hover_energy_clear=lambda a, b: self.geometry.hover_energy_clear(deepcopy(a), deepcopy(b)) is True)
         units = _units(result)
         for delivery in deliveries:
             _interaction(events, seconds, 'service', delivery, units, resource=delivery['resource'], amount=delivery['amount'])
@@ -365,22 +523,26 @@ class Executor:
         result['battle_ledger']['elapsed_seconds'] = seconds
         k.validate(result)
         result['battle_result'] = k.terminal(result, seconds)
-        # 当前可见集合在交火前冻结；只向各方发布可见敌军，不返回主持人的完整世界。
-        for side in k.SIDES:
-            result.setdefault('observations', {}).setdefault(side, {})['contacts'] = [
-                {key: deepcopy(units[i][key]) for key in ('unit_id', 'life_id', 'side', 'unit_type',
-                    'position_mm', 'position', 'durability', 'energy', 'ammo', 'retired', 'air_state', 'speed_m_per_minute')} for i in sorted(visible[side])]
+        # 交火资格保留步初/交火前证据；输出当前观察另查仍有效的旧来源。
+        # 服务恢复、刚完成起飞都不产生当步新观察资格。
+        current = self.geometry.observe(deepcopy(result), start_positive=frozenset(positive) & observer_survivors,
+                                        stable_observers=observer_survivors)
+        visible = {side: set(visible[side]) & set(current[side]) &
+                   {i for i, u in units.items() if k.alive(u)} for side in k.SIDES}
+        self._observations(result, visible, seconds)
         return result, dict(at_seconds=seconds, world=self.project_world(result), events=events)
 
     def __call__(self, state, intents):
         self._verify(state)
         result = deepcopy(state)
-        initial = self.project_world(result)
+        initial, opening = battle_replay.round_opening(result, self.project_world(result))
         self._adopt(result, deepcopy(intents))
         result['battle_round_facts'] = []
         frames = []
         for _ in range(12):
             result, frame = self.step(result)
+            if not frames and opening:
+                frame['events'][0:0] = opening
             frames.append(frame)
             if result.get('battle_result'):
                 break

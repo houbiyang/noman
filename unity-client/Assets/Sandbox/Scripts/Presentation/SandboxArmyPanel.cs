@@ -35,13 +35,14 @@ namespace Qiongtu.Sandbox
         private void RenderArmy()
         {
             CloseArmy();
+            if (deploymentStaging) { RenderStagedArmy(); return; }
             armyOverlay = new VisualElement { name = "armyOverlay" }; armyOverlay.AddToClassList("army-panel"); armyOverlay.AddToClassList("ui-blocker");
             root.Add(armyOverlay);
             if (managedArmyType.HasValue) { RenderBarracksManagement(); return; }
             var panel = armyOverlay;
             var header = new VisualElement(); header.AddToClassList("army-header"); panel.Add(header);
             var titles = new VisualElement(); titles.style.flexGrow = 1; header.Add(titles);
-            AddText(titles, "军队配置", "army-title");
+            AddText(titles, ManualBattle != null ? "本局军队" : "军队配置", "army-title");
             AddButton(header, "×", () => { CloseArmy(); CancelArmyCommand(); }, "army-close");
             var toolbar = new VisualElement(); toolbar.AddToClassList("army-toolbar"); panel.Add(toolbar);
             AddText(toolbar, SideLabel(armySide) + "编队", "army-side");
@@ -57,8 +58,8 @@ namespace Qiongtu.Sandbox
             for (int i = 0; i < 3; i++) BuildArmyCard(cards, i);
             var footer = new VisualElement(); footer.AddToClassList("army-footer"); panel.Add(footer);
             var summary = new VisualElement(); summary.style.flexGrow = 1; footer.Add(summary);
-            AddText(summary, "点击兵营卡片 → 在地图上拖动并放置", "army-footnote");
-            AddText(summary, "输入本次新增数量，从对应兵营生成单位；移动时出营", "army-footnote");
+            AddText(summary, ManualBattle != null ? "本局兵营与编制已锁定" : "点击兵营卡片 → 在地图上拖动并放置", "army-footnote");
+            AddText(summary, ManualBattle != null ? "点击管理单位查看状态；选中本方单位编排本轮指令" : "输入本次新增数量，从对应兵营生成单位；移动时出营", "army-footnote");
         }
         private void BuildArmyCard(VisualElement parent, int index)
         {
@@ -69,11 +70,11 @@ namespace Qiongtu.Sandbox
             var stage = new VisualElement(); stage.AddToClassList("army-stage"); card.Add(stage);
             var image = new Image { image = Resources.Load<Texture2D>("Army/" + DemoSandboxViewSource.ArmyKey(type) + "-barracks-card"), scaleMode = ScaleMode.ScaleToFit };
             image.AddToClassList("army-model"); stage.Add(image);
-            stage.RegisterCallback<ClickEvent>(evt => { BeginDeploy(type, evt.position); evt.StopPropagation(); });
+            stage.RegisterCallback<ClickEvent>(evt => { if (ManualBattle != null) OpenArmyManagement(armySide, type); else BeginDeploy(type, evt.position); evt.StopPropagation(); });
             var details = new VisualElement(); details.AddToClassList("army-card-details"); card.Add(details);
             AddText(details, camp == null ? DemoSandboxViewSource.BarracksName(type) : BarracksDisplayName(camp), "army-card-title");
             AddText(details, DemoSandboxViewSource.ArmyName(type), "army-troop-name");
-            AddText(details, camp == null ? "尚未建造" : "已建造 · 可设置出兵数量", "army-current");
+            AddText(details, camp == null ? "尚未建造" : ManualBattle != null ? "已部署 · 本局编制已锁定" : "已建造 · 可设置出兵数量", "army-current");
             AddButton(details, "查看兵种 / 管理单位", () => OpenArmyManagement(armySide, type), "army-manage");
         }
 
@@ -86,6 +87,7 @@ namespace Qiongtu.Sandbox
 
         private void SelectBarracks(string id)
         {
+            if (recordedOverlay != null) return;
             var camp = projection.barracks?.FirstOrDefault(item => item.id == id);
             if (camp == null) return;
             OpenArmyManagement(camp.side, camp.type);
@@ -135,10 +137,15 @@ namespace Qiongtu.Sandbox
                 modes.AddToClassList("field"); body.Add(modes);
                 modes.RegisterValueChangedCallback(_ => { movementMode = new[] { "move", "fast_move", "reverse_move" }[modes.index];
                     refreshArmyManagement?.Invoke(); });
-                if (serverClient.View.clock.phase == "preparing") AddText(body, "集群试走：同兵营单位按纵队出发，各自记录位置和测试能源；对局时间不变。Ctrl＋点击可添加途经点。", "army-footnote");
+                if (ManualBattle == null && serverClient.View.clock.phase == "preparing") AddText(body, "集群试走：同兵营单位按纵队出发，各自记录位置和测试能源；对局时间不变。Ctrl＋点击可添加途经点。", "army-footnote");
             }
             AddUnitInteractionSetup(body);
             var spawn = new VisualElement(); spawn.AddToClassList("army-spawn"); body.Add(spawn);
+            if (ManualBattle != null)
+            {
+                spawn.style.display = DisplayStyle.None;
+                AddText(body, "本局编制已锁定，战中不能新增单位或修改数量。", "army-footnote");
+            }
             var quantityInput = new IntegerField("本次新增出兵数量") { value = spawnQuantity };
             quantityInput.AddToClassList("army-spawn-input"); spawn.Add(quantityInput);
             var spawnLimit = AddText(spawn, "", "army-footnote");
@@ -147,7 +154,7 @@ namespace Qiongtu.Sandbox
             {
                 int current = SandboxArmyLayout.UnitsForBarracks(projection.units, armySide, type).Length;
                 int remaining = serverMode ? Math.Max(0, 10 - current) : source.ArmyCapacityRemaining;
-                bool canSpawn = hasCamp && (!serverMode || serverClient.View?.clock.phase == "preparing"
+                bool canSpawn = ManualBattle == null && hasCamp && (!serverMode || serverClient.View?.clock.phase == "preparing"
                     && serverClient.View.camps.Any(item => item.side == ServerSide(armySide) && item.unit_type == ServerType(type) && item.deployment_validated));
                 spawnLimit.text = !canSpawn ? "请先建造该兵种兵营；仅准备阶段可新增单位"
                     : remaining == 0 ? "该兵种已达到当前数量上限"
@@ -351,14 +358,17 @@ namespace Qiongtu.Sandbox
             if (ManualBattle != null)
             {
                 var fact = ManualUnit(id); if (fact == null) return;
-                pendingManualMoveLife = fact.life_id; pendingManualMoveBasis = serverClient.View.context;
+                CancelArmyCommand();
+                pendingManualMoveLife = fact.life_id; pendingManualMoveBasis = serverClient.View.context; pendingManualMoveScope = ManualScope;
             }
             PausePlayback(); pendingMoveId = id; pendingFormationMovement = formation; selectedId = id; pendingArmyType = null; world.Select(id);
             if (serverMode && serverClient.View?.units?.Any(item => item.unit_id == id && item.in_barracks) == true)
                 cameraRig.Locate(id, UnitLocateViewport());
             pendingMovementMode = movementMode; movementWaypoints.Clear();
             ClosePanel(); CloseArmy();
-            ShowArmyCommand((formation ? "集群移动 " : "移动 ") + id, serverMode && serverClient.View.spatial_test
+            ShowArmyCommand((formation ? "集群移动 " : "移动 ") + id, ManualBattle != null
+                ? "手动路线 · Ctrl＋点击添加途经点（最多 7 个）· 松开 Ctrl 点击最终目标暂存 · 不自动寻路 · Esc 取消"
+                : serverMode && serverClient.View.spatial_test
                 ? serverClient.View.clock.phase == "preparing" ? (formation ? "同兵营单位排队出发 · 单击目标开始 · Ctrl＋点击添加途经点 · Esc 取消" : "部署试走 · 单击目标开始 · Ctrl＋点击添加途经点 · Esc 取消") : "单击目标位置排队 · 主持人推进后移动 · Esc 取消"
                 : "单击目标位置 · 地面单位自动寻路 · Esc 取消");
         }
@@ -388,25 +398,31 @@ namespace Qiongtu.Sandbox
             AddText(text, title, "army-command-title"); AddText(text, detail, "army-command-detail");
             AddButton(armyCommand, "取消", CancelArmyCommand, "army-secondary");
         }
+        private bool AppendManualMovementWaypoint(SandboxServerPosition point)
+        {
+            if (point == null || movementWaypoints.Count >= 7) return false;
+            movementWaypoints.Add(point); return true;
+        }
         private void CancelArmyCommand()
         {
             movementWaypoints.Clear();
             pendingReconId = null;
-            pendingBattleAreaId = null; pendingBattleAreaScope = null; pendingBattleAreaRadius = 0;
-            pendingBattleAreaBasis = null; pendingManualMoveBasis = null; pendingManualMoveLife = null;
+            pendingBattleAreaId = null; pendingBattleAreaScope = null; pendingBattleAreaLife = null; pendingBattleAreaRadius = 0;
+            pendingBattleAreaBasis = null; pendingManualMoveBasis = null; pendingManualMoveLife = null; pendingManualMoveScope = null;
             pendingArmyType = null; pendingMoveId = null; pendingFormationMovement = false; armyCommand?.RemoveFromHierarchy(); armyCommand = null;
             HideBarracksDragPreview();
             armyOverlay?.Query<VisualElement>(className: "army-card-selected").ForEach(card => card.RemoveFromClassList("army-card-selected"));
         }
         private void HandleArmyMapClick(Vector3 point)
         {
+            if (recordedOverlay != null) return;
             if (serverMode && (!serverClient.Healthy || serverClient.HasPending || serverClient.Busy && pendingMoveId == null))
             { Notify("请等待当前同步或提交结果，选址状态已保留"); return; }
             if (!world.TryBusinessPosition(point, out Vector2 position)) { Notify("请选择地图范围内的位置"); return; }
             if (pendingBattleAreaId != null)
             {
                 var fact = ManualUnit(pendingBattleAreaId);
-                if (fact == null || pendingBattleAreaScope != ManualScope) { CancelArmyCommand(); return; }
+                if (fact == null || fact.life_id != pendingBattleAreaLife || pendingBattleAreaScope != ManualScope) { CancelArmyCommand(); return; }
                 var payload = SandboxBattleDraftPayload.Area(ManualBattle.round_number, fact, ServerPosition(position.x, position.y), pendingBattleAreaRadius);
                 var basis = pendingBattleAreaBasis; CancelArmyCommand(); SendServerCommand("battle_draft", payload, basis); return;
             }
@@ -420,6 +436,11 @@ namespace Qiongtu.Sandbox
             if (pendingArmyType.HasValue)
             {
                 SandboxUnitType type = pendingArmyType.Value;
+                if (deploymentStaging)
+                {
+                    PreviewStagedCamp(pendingArmySide, (int)type, Mathf.RoundToInt(position.x * 100000f), Mathf.RoundToInt(position.y * 150000f), false);
+                    return;
+                }
                 if (serverMode)
                 {
                     var payload = new SandboxServerBarracks { side = ServerSide(pendingArmySide), unit_type = ServerType(type),
@@ -443,8 +464,13 @@ namespace Qiongtu.Sandbox
                     if (ManualBattle != null)
                     {
                         var fact = ManualUnit(id);
-                        if (fact == null || fact.life_id != pendingManualMoveLife || pendingManualMoveBasis == null) { CancelArmyCommand(); return; }
-                        SubmitManualMovement(id, ServerPosition(position.x, position.y), basis: pendingManualMoveBasis);
+                        if (fact == null || fact.life_id != pendingManualMoveLife || pendingManualMoveBasis == null || pendingManualMoveScope != ManualScope) { CancelArmyCommand(); return; }
+                        if (UnityEngine.InputSystem.Keyboard.current?.ctrlKey.isPressed == true)
+                        {
+                            if (!AppendManualMovementWaypoint(ServerPosition(position.x, position.y))) { Notify("手动路线最多 7 个途经点，请松开 Ctrl 点击最终目标"); return; }
+                            Notify("已添加手动途经点 " + movementWaypoints.Count + "，松开 Ctrl 点击最终目标暂存"); return;
+                        }
+                        SubmitManualMovement(id, ServerPosition(position.x, position.y), movementWaypoints.ToArray(), pendingManualMoveBasis);
                         CancelArmyCommand(); return;
                     }
                     if (serverClient.View.spatial_test)
